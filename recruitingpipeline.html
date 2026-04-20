@@ -1,0 +1,2974 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Pipeline — Recruiting Analytics</title>
+<!--
+  PIPELINE — A self-contained recruiting analytics dashboard.
+
+  WHAT IT DOES
+  Drop a Greenhouse (or similar ATS) export (.xlsx / .xls / .csv) onto the page and
+  it will detect the columns, ask you to confirm the mapping, persist the mapping
+  in IndexedDB so future uploads of the same export skip straight to the dashboard,
+  and render a complete analytics suite:
+    - 6 KPIs (apps, hires, offer accept, time-to-hire, active, rejection)
+    - Funnel with pass-through rates and health colors
+    - Time-in-stage box plot (bottleneck finder)
+    - Throughput area chart
+    - Time-to-hire trend
+    - Source effectiveness (chart + table)
+    - Live pipeline Kanban
+    - Rejection analysis
+    - Recruiter workload
+    - Searchable candidate drill-down table
+
+  EXPECTED COLUMNS (any subset; map the rest yourself in the mapper)
+    application_id, candidate_id, candidate_name, email, job, department, office,
+    applied_at, current_stage, milestone, status, source, source_type,
+    recruiter, coordinator, hiring_manager, rejected_at, rejection_reason,
+    hired_at, last_activity_at, stage_entered_at, pipeline_percent
+
+  HOW TO RUN
+    Double-click this file. Or drop it on Netlify. No build, no server.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/customParseFormat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/idb-keyval@6.2.1/dist/umd.js"></script>
+<style>
+  :root {
+    /* Spacing — 4px base */
+    --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px;
+    /* Radius — restrained, Linear-style */
+    --r-xs: 4px; --r-sm: 6px; --r-md: 8px; --r-lg: 12px; --r-xl: 16px; --r-2xl: 20px;
+    /* Type scale */
+    --t-micro: 11px; --t-xs: 12px; --t-sm: 13px; --t-md: 14px; --t-lg: 16px; --t-xl: 18px; --t-2xl: 22px; --t-3xl: 28px; --t-display: 34px;
+    /* Type families */
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    /* Easing & transition */
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+    --dur-fast: 120ms; --dur-base: 180ms; --dur-slow: 280ms;
+
+    /* Light palette — warm-neutral, Stripe/Linear feel */
+    --bg: #FAFAF7;
+    --bg-elev: #FFFFFF;
+    --bg-soft: #F3F3EE;
+    --bg-deep: #ECECE6;
+    --fg: #0A0B0F;
+    --fg-muted: #4F5460;
+    --fg-dim: #8E929C;
+    --border: rgba(10,11,15,0.06);
+    --border-strong: rgba(10,11,15,0.13);
+    --border-focus: rgba(14,124,114,0.35);
+    --accent: #0E7C72;
+    --accent-hi: #12B4A6;
+    --accent-soft: rgba(14,124,114,0.09);
+    --accent-strong: rgba(14,124,114,0.18);
+    --good: #2F7A3D;
+    --warn: #B07626;
+    --bad:  #B43E2F;
+    --good-soft: rgba(47,122,61,0.11);
+    --warn-soft: rgba(176,118,38,0.12);
+    --bad-soft:  rgba(180,62,47,0.11);
+    /* Categorical — Okabe-Ito-inspired, perceptually distinct */
+    --cat-1:#0E7C72; --cat-2:#3B5BA9; --cat-3:#B47A2A; --cat-4:#7A3E8E;
+    --cat-5:#B43E2F; --cat-6:#4F7A4A; --cat-7:#2B6F86; --cat-8:#8C5A2B;
+    /* Elevation — restrained, layered */
+    --shadow-xs: 0 1px 2px rgba(10,11,15,0.04);
+    --shadow-sm: 0 1px 3px rgba(10,11,15,0.05), 0 1px 2px rgba(10,11,15,0.03);
+    --shadow-md: 0 8px 20px rgba(10,11,15,0.08), 0 2px 4px rgba(10,11,15,0.04);
+    --shadow-lg: 0 24px 48px rgba(10,11,15,0.14), 0 4px 10px rgba(10,11,15,0.06);
+    --grad-accent: linear-gradient(135deg, #0E7C72 0%, #14B8A6 100%);
+    --grad-aurora: radial-gradient(900px 500px at 100% 0%, rgba(14,124,114,0.08), transparent 55%), radial-gradient(700px 400px at 0% 100%, rgba(59,91,169,0.05), transparent 50%);
+    --skeleton: linear-gradient(90deg, rgba(10,11,15,0.04), rgba(10,11,15,0.08), rgba(10,11,15,0.04));
+    --ring: 0 0 0 3px var(--border-focus);
+    color-scheme: light;
+  }
+  html.dark {
+    --bg: #0A0A0C;
+    --bg-elev: #131418;
+    --bg-soft: #1B1C22;
+    --bg-deep: #06070A;
+    --fg: #F1F2F4;
+    --fg-muted: #9A9DA6;
+    --fg-dim: #5E6068;
+    --border: rgba(255,255,255,0.06);
+    --border-strong: rgba(255,255,255,0.13);
+    --border-focus: rgba(45,212,191,0.45);
+    --accent: #2DD4BF;
+    --accent-hi: #5EEAD4;
+    --accent-soft: rgba(45,212,191,0.10);
+    --accent-strong: rgba(45,212,191,0.20);
+    --good: #5FCB7B;
+    --warn: #E0B265;
+    --bad:  #E68A7E;
+    --good-soft: rgba(95,203,123,0.13);
+    --warn-soft: rgba(224,178,101,0.12);
+    --bad-soft:  rgba(230,138,126,0.12);
+    --cat-1:#2DD4BF; --cat-2:#7AA0F2; --cat-3:#E0B265; --cat-4:#C599DC;
+    --cat-5:#E68A7E; --cat-6:#87C281; --cat-7:#6FB8D6; --cat-8:#D6A06E;
+    --shadow-xs: 0 1px 2px rgba(0,0,0,0.40);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.40), 0 1px 2px rgba(0,0,0,0.25);
+    --shadow-md: 0 10px 22px rgba(0,0,0,0.55), 0 2px 4px rgba(0,0,0,0.30);
+    --shadow-lg: 0 30px 60px rgba(0,0,0,0.65), 0 6px 14px rgba(0,0,0,0.35);
+    --grad-accent: linear-gradient(135deg, #14B8A6 0%, #2DD4BF 100%);
+    --grad-aurora: radial-gradient(900px 500px at 100% 0%, rgba(45,212,191,0.10), transparent 55%), radial-gradient(700px 400px at 0% 100%, rgba(122,160,242,0.06), transparent 50%);
+    --skeleton: linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.10), rgba(255,255,255,0.04));
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  *:focus-visible { outline: none; box-shadow: var(--ring); border-radius: var(--r-sm); }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); }
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--t-md);
+    line-height: 1.5;
+    font-feature-settings: 'cv11' on, 'ss01' on;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    min-height: 100vh;
+    background-image: var(--grad-aurora);
+    background-attachment: fixed;
+  }
+  .num { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' on, 'lnum' on, 'cv11' on; }
+  .mono { font-family: var(--font-mono); }
+  button { font-family: inherit; font-size: inherit; cursor: pointer; color: inherit; background: none; border: none; padding: 0; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; text-underline-offset: 2px; }
+  ::selection { background: var(--accent-strong); color: var(--fg); }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 99px; border: 2px solid var(--bg); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--fg-dim); }
+  hr { border: none; border-top: 1px solid var(--border); margin: var(--s5) 0; }
+
+  /* ===== Topbar ===== */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: color-mix(in srgb, var(--bg) 78%, transparent);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap;
+  }
+  .brand {
+    font-weight: 600; font-size: var(--t-md); letter-spacing: -0.015em;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .brand-mark {
+    width: 26px; height: 26px; border-radius: 7px;
+    background: var(--grad-accent);
+    display: inline-flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 6px rgba(14,124,114,0.30), inset 0 1px 0 rgba(255,255,255,0.25);
+    color: #fff;
+  }
+  .brand-mark svg { width: 14px; height: 14px; }
+  .brand-meta {
+    margin-left: 8px; padding-left: 12px;
+    border-left: 1px solid var(--border);
+    font-size: var(--t-xs); color: var(--fg-muted); font-weight: 500;
+  }
+  .topbar .grow { flex: 1; }
+  .topbar-actions { display: flex; align-items: center; gap: 4px; }
+  .topbar-divider { width: 1px; height: 18px; background: var(--border); margin: 0 6px; align-self: center; }
+  .freshness {
+    font-size: var(--t-xs); color: var(--fg-muted);
+    display: inline-flex; align-items: center; gap: 7px; padding: 0 10px;
+    font-variant-numeric: tabular-nums;
+  }
+  .freshness::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--good);
+    box-shadow: 0 0 0 3px var(--good-soft);
+    animation: pulse 2.4s var(--ease-soft) infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 3px var(--good-soft); }
+    50% { box-shadow: 0 0 0 5px var(--good-soft); }
+  }
+
+  /* ===== Buttons ===== */
+  .pillbtn {
+    background: var(--bg-elev); color: var(--fg);
+    border: 1px solid var(--border); border-radius: var(--r-md);
+    padding: 7px 12px; font-weight: 500; font-size: var(--t-sm); line-height: 1;
+    transition: transform var(--dur-fast) var(--ease-out), border-color var(--dur-base) var(--ease-out), background var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), color var(--dur-base);
+    display: inline-flex; align-items: center; gap: 6px;
+    box-shadow: var(--shadow-xs);
+    white-space: nowrap;
+  }
+  .pillbtn:hover { border-color: var(--border-strong); background: var(--bg-soft); }
+  .pillbtn:active { transform: translateY(1px); box-shadow: none; }
+  .pillbtn.primary {
+    background: var(--grad-accent); color: #fff; border-color: transparent;
+    box-shadow: 0 1px 3px rgba(14,124,114,0.30), inset 0 1px 0 rgba(255,255,255,0.18);
+    font-weight: 600;
+  }
+  .pillbtn.primary:hover { filter: brightness(1.05); border-color: transparent; box-shadow: 0 2px 8px rgba(14,124,114,0.40), inset 0 1px 0 rgba(255,255,255,0.20); }
+  .pillbtn.ghost { background: transparent; border-color: transparent; box-shadow: none; color: var(--fg-muted); padding: 7px 10px; }
+  .pillbtn.ghost:hover { background: var(--bg-soft); border-color: transparent; color: var(--fg); }
+  .pillbtn.danger { color: var(--bad); }
+  .pillbtn.danger:hover { background: var(--bad-soft); border-color: transparent; }
+  .pillbtn .ico { width: 14px; height: 14px; opacity: 0.85; flex-shrink: 0; }
+  .pillbtn:hover .ico { opacity: 1; }
+  .pillbtn.primary .ico { opacity: 1; }
+  .pillbtn.icon-only { padding: 7px; }
+  .pillbtn.sm { padding: 5px 9px; font-size: var(--t-xs); }
+
+  /* ===== Filterbar ===== */
+  .filterbar {
+    position: relative; z-index: 40;
+    border-bottom: 1px solid var(--border);
+    padding: 10px 24px;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: color-mix(in srgb, var(--bg-elev) 40%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .filterbar .mselect { position: relative; }
+  .filterbar .mselect-pop { z-index: 60; }
+  .filter-group { display: flex; align-items: center; gap: 6px; }
+  .filter-label {
+    font-size: 10px; color: var(--fg-dim); font-weight: 600;
+    letter-spacing: 0.10em; text-transform: uppercase;
+  }
+  .select {
+    background: var(--bg-elev); color: var(--fg);
+    border: 1px solid var(--border); border-radius: var(--r-sm);
+    padding: 6px 10px; font-size: var(--t-xs); min-width: 110px;
+    transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+    font-family: inherit;
+    appearance: none; -webkit-appearance: none; -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%238E929C' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 8px center;
+    padding-right: 24px;
+  }
+  input.select { background-image: none; padding-right: 10px; }
+  .select:hover { border-color: var(--border-strong); }
+  .select:focus { border-color: var(--accent); outline: none; box-shadow: var(--ring); }
+  .preset-group {
+    display: inline-flex; padding: 2px;
+    background: var(--bg-soft); border-radius: var(--r-md);
+    border: 1px solid var(--border);
+  }
+  .preset-btn {
+    background: transparent; border: none; color: var(--fg-muted);
+    border-radius: 5px; padding: 5px 11px; font-size: var(--t-xs); font-weight: 600;
+    transition: all var(--dur-base) var(--ease-out); cursor: pointer;
+    font-family: inherit; line-height: 1;
+  }
+  .preset-btn:hover { color: var(--fg); }
+  .preset-btn.active {
+    background: var(--bg-elev); color: var(--fg);
+    box-shadow: var(--shadow-xs);
+  }
+  .filter-divider { width: 1px; height: 18px; background: var(--border); margin: 0 2px; }
+
+  /* ===== Layout ===== */
+  main { padding: var(--s5) 24px var(--s7); max-width: 1640px; margin: 0 auto; }
+  .grid { display: grid; gap: var(--s4); }
+  .grid-kpi { grid-template-columns: repeat(6, 1fr); }
+  .grid-1-1 { grid-template-columns: 1fr 1fr; }
+  .grid-2-1 { grid-template-columns: 2fr 1fr; }
+  @media (max-width: 1280px) {
+    .grid-kpi { grid-template-columns: repeat(3, 1fr); }
+    .grid-1-1, .grid-2-1 { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 1023px) {
+    .grid-kpi { grid-template-columns: repeat(2, 1fr); }
+    .smallscreen-warn { display: block !important; }
+    main { padding: var(--s4) 16px var(--s6); }
+    .topbar, .filterbar { padding-left: 16px; padding-right: 16px; }
+  }
+
+  /* ===== Cards ===== */
+  .card {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: var(--s5);
+    transition: border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+    position: relative;
+    box-shadow: var(--shadow-xs);
+  }
+  .card:hover { border-color: var(--border-strong); }
+  .card.flat { box-shadow: none; }
+  .card-title {
+    font-size: var(--t-sm); font-weight: 600; color: var(--fg);
+    letter-spacing: -0.005em;
+    margin: 0 0 var(--s4);
+    display: flex; align-items: center; gap: var(--s2);
+  }
+  .card-title > .tip { margin-left: auto; }
+  .card-title > :last-child:not(.tip) { margin-left: auto; }
+  .card-title .card-sub {
+    font-size: var(--t-xs); font-weight: 400; color: var(--fg-dim);
+    margin: 0;
+  }
+  .card-sub { font-size: var(--t-xs); color: var(--fg-dim); font-weight: 400; }
+  .card-actions { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; }
+
+  /* ===== Section header ===== */
+  .section-h {
+    display: flex; align-items: baseline; gap: 12px;
+    margin: var(--s6) 0 var(--s4); padding: 0;
+    font-size: var(--t-xl); font-weight: 600; letter-spacing: -0.02em;
+    color: var(--fg);
+  }
+  .section-h:first-of-type { margin-top: var(--s5); }
+  .section-h .section-sub {
+    font-size: var(--t-xs); font-weight: 400; color: var(--fg-dim);
+    letter-spacing: 0; margin-left: auto;
+  }
+  .section-eyebrow {
+    font-size: 10px; font-weight: 600; color: var(--fg-dim);
+    letter-spacing: 0.12em; text-transform: uppercase;
+    display: block; margin-bottom: 4px;
+  }
+
+  /* ===== KPI ===== */
+  .kpi {
+    position: relative; overflow: hidden;
+    background: var(--bg-elev); border: 1px solid var(--border);
+    border-radius: var(--r-lg); padding: 16px 18px 0;
+    min-height: 132px;
+    display: flex; flex-direction: column;
+    transition: border-color var(--dur-base), box-shadow var(--dur-base);
+    box-shadow: var(--shadow-xs);
+  }
+  .kpi:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
+  .kpi-label {
+    font-size: var(--t-xs); font-weight: 500; color: var(--fg-muted);
+    letter-spacing: 0; text-transform: none;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .kpi-label .info {
+    width: 12px; height: 12px; opacity: 0; color: var(--fg-dim);
+    transition: opacity var(--dur-base);
+  }
+  .kpi:hover .kpi-label .info { opacity: 1; }
+  .kpi-value {
+    font-size: var(--t-display); font-weight: 600; letter-spacing: -0.03em;
+    line-height: 1.05; color: var(--fg);
+    margin-top: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .kpi-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    margin-top: 4px;
+  }
+  .kpi-delta {
+    font-size: var(--t-xs); font-weight: 600; padding: 2px 7px; border-radius: 99px;
+    display: inline-flex; align-items: center; gap: 4px; letter-spacing: 0;
+    line-height: 1.4;
+  }
+  .kpi-delta svg { width: 10px; height: 10px; }
+  .kpi-delta.up   { color: var(--good); background: var(--good-soft); }
+  .kpi-delta.down { color: var(--bad);  background: var(--bad-soft); }
+  .kpi-delta.flat { color: var(--fg-muted); background: var(--bg-soft); }
+  .kpi-spark {
+    width: calc(100% + 36px); height: 42px;
+    margin: auto -18px 0;
+    opacity: 0.9;
+  }
+  .kpi-tooltip-row {
+    font-size: var(--t-xs); color: var(--fg-dim); margin-top: 3px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ===== Empty stage / drop zone ===== */
+  .empty-stage {
+    display: flex; align-items: center; justify-content: center;
+    min-height: calc(100vh - 80px); padding: 32px 24px;
+  }
+  .empty-wrap {
+    width: 100%; max-width: 1080px;
+    display: grid; grid-template-columns: 1.1fr 1fr; gap: var(--s7);
+    align-items: center;
+  }
+  @media (max-width: 900px) {
+    .empty-wrap { grid-template-columns: 1fr; gap: var(--s5); }
+    .empty-preview { order: -1; }
+  }
+  .empty-pitch h1 {
+    font-size: 38px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.1;
+    margin: 0 0 14px; color: var(--fg);
+  }
+  .empty-pitch h1 em {
+    font-style: normal;
+    background: var(--grad-accent);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .empty-pitch .lede { font-size: var(--t-lg); color: var(--fg-muted); margin: 0 0 var(--s5); line-height: 1.55; }
+  .empty-feat { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: var(--s5); }
+  .empty-feat-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    font-size: var(--t-sm); color: var(--fg-muted);
+  }
+  .empty-feat-item .check {
+    flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%;
+    background: var(--accent-soft); color: var(--accent);
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-top: 1px;
+  }
+  .empty-feat-item .check svg { width: 10px; height: 10px; }
+  .dropzone {
+    border: 1.5px dashed var(--border-strong); border-radius: var(--r-xl);
+    padding: 28px 24px; text-align: center;
+    background: var(--bg-elev);
+    transition: border-color var(--dur-base) var(--ease-out), background var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
+    box-shadow: var(--shadow-sm);
+    position: relative; overflow: hidden;
+  }
+  .dropzone::before {
+    content: ''; position: absolute; inset: 0; border-radius: inherit;
+    background:
+      radial-gradient(circle at 20% 0%, var(--accent-soft) 0%, transparent 40%),
+      radial-gradient(circle at 100% 100%, var(--accent-soft) 0%, transparent 40%);
+    opacity: 0.7; pointer-events: none; z-index: 0;
+  }
+  .dropzone > * { position: relative; z-index: 1; }
+  .dropzone.drag {
+    border-color: var(--accent); border-style: solid;
+    transform: scale(1.005);
+    box-shadow: 0 0 0 4px var(--accent-soft), var(--shadow-md);
+  }
+  .dropzone .upload-illust {
+    width: 56px; height: 56px; margin: 0 auto 14px;
+    background: var(--bg-elev); border-radius: var(--r-lg);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--accent); border: 1px solid var(--border);
+    box-shadow: var(--shadow-xs);
+  }
+  .dropzone .upload-illust svg { width: 24px; height: 24px; }
+  .dropzone h3 { margin: 4px 0 4px; font-size: var(--t-lg); font-weight: 600; letter-spacing: -0.01em; }
+  .dropzone p { color: var(--fg-muted); margin: 2px 0; font-size: var(--t-sm); }
+  .dropzone code {
+    font-family: var(--font-mono); font-size: 11px;
+    background: var(--bg-soft); border: 1px solid var(--border);
+    padding: 1px 5px; border-radius: 4px;
+  }
+  .dropzone .actions { margin-top: 16px; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+  .dropzone .privacy {
+    margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
+    font-size: var(--t-xs); color: var(--fg-dim); display: inline-flex; align-items: center; gap: 6px;
+  }
+  .empty-preview {
+    background: var(--bg-elev); border: 1px solid var(--border);
+    border-radius: var(--r-xl); padding: var(--s4);
+    box-shadow: var(--shadow-md);
+    position: relative; overflow: hidden;
+  }
+  .empty-preview::before {
+    content: ''; position: absolute; inset: 0;
+    background: var(--grad-aurora); pointer-events: none;
+  }
+  .empty-preview > * { position: relative; }
+  .empty-preview-h {
+    display: flex; gap: 6px; padding-bottom: 12px; border-bottom: 1px solid var(--border); margin-bottom: 14px;
+  }
+  .empty-preview-h .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--bg-soft); }
+  .empty-preview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .empty-preview-card {
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-md);
+    padding: 12px;
+  }
+  .empty-preview-card .label { font-size: 10px; color: var(--fg-muted); font-weight: 500; }
+  .empty-preview-card .val { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; margin-top: 2px; color: var(--fg); }
+  .empty-preview-card .delt {
+    font-size: 10px; color: var(--good); background: var(--good-soft);
+    padding: 1px 5px; border-radius: 99px; display: inline-block; margin-top: 4px; font-weight: 600;
+  }
+  .empty-preview-bars {
+    margin-top: 12px; display: flex; align-items: flex-end; gap: 4px; height: 60px;
+  }
+  .empty-preview-bars span {
+    flex: 1; background: var(--accent-soft); border-radius: 3px 3px 0 0;
+    border-top: 2px solid var(--accent);
+  }
+
+  /* ===== Modal ===== */
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.50); z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    animation: bgIn 200ms var(--ease-out);
+  }
+  @keyframes bgIn { from { opacity: 0; } to { opacity: 1; } }
+  .modal {
+    background: var(--bg-elev); border-radius: var(--r-xl); max-width: 980px; width: 100%;
+    max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
+    animation: modalIn 260ms var(--ease-out);
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: translateY(12px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .modal-h {
+    padding: 18px var(--s5);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .modal-h h3 { margin: 0; font-size: var(--t-lg); font-weight: 600; letter-spacing: -0.015em; }
+  .modal-body { padding: var(--s5); overflow-y: auto; }
+  .modal-foot {
+    padding: 14px var(--s5);
+    border-top: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    background: var(--bg-soft);
+  }
+
+  /* ===== Mapping ===== */
+  .map-section-title {
+    font-size: 10px; font-weight: 600; color: var(--fg-muted);
+    letter-spacing: 0.12em; text-transform: uppercase; margin: 22px 0 10px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .map-section-title::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+  .map-row {
+    display: grid; grid-template-columns: 1fr 1.4fr; gap: 16px;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+    align-items: start;
+  }
+  .map-row:last-child { border-bottom: none; }
+  .map-canon { display: flex; flex-direction: column; gap: 2px; }
+  .map-canon-name {
+    font-weight: 500; font-size: var(--t-sm); display: flex; align-items: center; gap: 8px; color: var(--fg);
+  }
+  .map-canon-name code {
+    font-size: 10px; color: var(--fg-muted); background: var(--bg-soft);
+    padding: 1px 6px; border-radius: 4px; font-family: var(--font-mono);
+  }
+  .map-canon-hint { font-size: var(--t-xs); color: var(--fg-dim); }
+  .map-canon-req {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--bad);
+    display: inline-block; flex-shrink: 0;
+  }
+  .map-pick { display: flex; flex-direction: column; gap: 4px; }
+  .map-pick-row { display: flex; gap: 8px; align-items: center; }
+  .map-pick-row select { flex: 1; min-width: 0; }
+  .conf-pill {
+    font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 99px;
+    min-width: 36px; text-align: center; letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .conf-pill.hi { background: var(--good-soft); color: var(--good); }
+  .conf-pill.md { background: var(--warn-soft); color: var(--warn); }
+  .conf-pill.lo { background: var(--bad-soft); color: var(--bad); }
+  .map-preview {
+    font-size: 11px; color: var(--fg-muted); margin-top: 4px;
+    font-family: var(--font-mono);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    padding: 4px 8px; background: var(--bg-soft); border-radius: var(--r-xs);
+    border: 1px solid var(--border);
+  }
+  .map-preview:empty { display: none; }
+
+  /* ===== Charts ===== */
+  .chart { width: 100%; height: 320px; }
+  .chart-tall { height: 380px; }
+  .chart-sm { height: 240px; }
+
+  /* ===== Tables ===== */
+  table.tbl { width: 100%; border-collapse: collapse; font-size: var(--t-sm); }
+  table.tbl thead th {
+    text-align: left; font-weight: 500; color: var(--fg-muted);
+    padding: 10px 12px; border-bottom: 1px solid var(--border);
+    font-size: var(--t-xs); letter-spacing: 0;
+    cursor: pointer; user-select: none;
+    transition: color var(--dur-fast);
+    background: transparent;
+    position: sticky; top: 0;
+  }
+  table.tbl thead th:first-child { padding-left: 4px; }
+  table.tbl thead th:last-child { padding-right: 4px; }
+  table.tbl thead th:hover { color: var(--fg); }
+  table.tbl thead th.sorted { color: var(--fg); }
+  table.tbl thead th.sorted::after {
+    content: ''; display: inline-block; width: 0; height: 0; margin-left: 5px;
+    border-left: 4px solid transparent; border-right: 4px solid transparent;
+    vertical-align: middle;
+  }
+  table.tbl thead th.sorted.asc::after { border-bottom: 5px solid var(--accent); }
+  table.tbl thead th.sorted.desc::after { border-top: 5px solid var(--accent); }
+  table.tbl td {
+    padding: 11px 12px; border-bottom: 1px solid var(--border);
+    transition: background var(--dur-fast);
+    color: var(--fg);
+  }
+  table.tbl td:first-child { padding-left: 4px; }
+  table.tbl td:last-child { padding-right: 4px; }
+  table.tbl tbody tr:last-child td { border-bottom: none; }
+  table.tbl tbody tr { transition: background var(--dur-fast); }
+  table.tbl tbody tr:hover td { background: var(--bg-soft); }
+  table.tbl td.num, table.tbl th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.tbl td.muted { color: var(--fg-muted); }
+  .row-highlight-good td { background: var(--good-soft) !important; }
+  .row-highlight-bad td { background: var(--bad-soft) !important; }
+
+  /* ===== Kanban ===== */
+  .kanban { display: flex; gap: 12px; overflow-x: auto; padding: 4px 4px 12px; margin: -4px; }
+  .kanban-col {
+    min-width: 264px; max-width: 264px; flex: 0 0 264px;
+    background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--r-lg);
+    padding: 10px;
+    transition: border-color var(--dur-base);
+  }
+  .kanban-col:hover { border-color: var(--border-strong); }
+  .kanban-col-h {
+    font-size: var(--t-xs); font-weight: 600; color: var(--fg);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 4px 6px 10px; margin-bottom: 8px;
+    letter-spacing: -0.005em;
+    border-bottom: 1px solid var(--border);
+  }
+  .kanban-col-h .nm { display: inline-flex; align-items: center; gap: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .kanban-col-h .nm::before {
+    content: ''; width: 7px; height: 7px; border-radius: 2px;
+    background: var(--dot, var(--cat-1)); flex-shrink: 0;
+  }
+  .kanban-col-h .ct {
+    background: var(--bg-elev); color: var(--fg-muted);
+    padding: 1px 8px; border-radius: 99px; font-size: 11px; font-weight: 600;
+    border: 1px solid var(--border); letter-spacing: 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .k-card {
+    background: var(--bg-elev); border: 1px solid var(--border);
+    border-radius: var(--r-md); padding: 10px 12px; margin-bottom: 6px;
+    font-size: var(--t-xs); cursor: pointer;
+    transition: border-color var(--dur-base), transform var(--dur-base), box-shadow var(--dur-base);
+    position: relative;
+    box-shadow: var(--shadow-xs);
+  }
+  .k-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
+  .k-card:hover { transform: translateY(-1px); }
+  .k-card .nm { font-weight: 600; font-size: var(--t-sm); color: var(--fg); margin-bottom: 1px; letter-spacing: -0.005em; }
+  .k-card .jb { color: var(--fg-muted); font-size: 11px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .k-card .ds {
+    font-size: 10px; margin-top: 8px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 7px; border-radius: 99px;
+    font-variant-numeric: tabular-nums;
+  }
+  .k-card .ds::before {
+    content: ''; width: 4px; height: 4px; border-radius: 50%; background: currentColor;
+  }
+  .ds.green { color: var(--good); background: var(--good-soft); }
+  .ds.yellow { color: var(--warn); background: var(--warn-soft); }
+  .ds.orange { color: var(--warn); background: var(--warn-soft); }
+  .ds.red { color: var(--bad); background: var(--bad-soft); }
+  .k-show-all {
+    width: 100%; font-size: 11px; padding: 7px;
+    margin-top: 4px; background: transparent; border: 1px dashed var(--border);
+    color: var(--fg-muted); border-radius: var(--r-md);
+    cursor: pointer; font-weight: 500;
+    transition: all var(--dur-base) var(--ease-out);
+    font-family: inherit;
+  }
+  .k-show-all:hover { background: var(--bg-elev); color: var(--fg); border-color: var(--border-strong); border-style: solid; }
+
+  /* ===== Side panel ===== */
+  .side-panel {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 480px; max-width: 100%;
+    background: var(--bg-elev); border-left: 1px solid var(--border);
+    z-index: 90; transform: translateX(100%);
+    transition: transform var(--dur-slow) var(--ease-out);
+    overflow-y: auto; padding: var(--s5) var(--s5) var(--s7);
+    box-shadow: var(--shadow-lg);
+  }
+  .side-panel.open { transform: translateX(0); }
+  .side-panel h3 { margin: 0 0 6px; font-size: var(--t-xl); font-weight: 600; letter-spacing: -0.015em; }
+  .side-panel .field {
+    display: grid; grid-template-columns: 130px 1fr; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid var(--border); font-size: var(--t-sm);
+    align-items: start;
+  }
+  .side-panel .field:last-child { border-bottom: none; }
+  .side-panel .field-k {
+    color: var(--fg-muted); font-size: var(--t-xs); font-weight: 500;
+    letter-spacing: 0;
+  }
+  .side-panel .field-v { color: var(--fg); }
+  .side-panel .closebtn { float: right; margin-bottom: 12px; }
+
+  /* ===== Toast ===== */
+  .toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(12px);
+    background: var(--fg); color: var(--bg);
+    padding: 10px 18px; border-radius: var(--r-md);
+    font-size: var(--t-sm); font-weight: 500; z-index: 200;
+    opacity: 0; transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
+    pointer-events: none; max-width: 80vw; text-align: center;
+    box-shadow: var(--shadow-md);
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ===== Badges ===== */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 99px;
+    background: var(--accent-soft); color: var(--accent);
+    letter-spacing: 0;
+  }
+  .badge::before {
+    content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor;
+  }
+  .badge.warn { background: var(--warn-soft); color: var(--warn); }
+  .badge.bad { background: var(--bad-soft); color: var(--bad); }
+  .badge.good { background: var(--good-soft); color: var(--good); }
+  .badge.neutral { background: var(--bg-soft); color: var(--fg-muted); }
+
+  /* ===== Multi-select ===== */
+  .mselect { position: relative; display: inline-block; }
+  .mselect-pop {
+    position: absolute; top: calc(100% + 6px); left: 0;
+    min-width: 240px; max-height: 320px; overflow-y: auto;
+    background: var(--bg-elev); border: 1px solid var(--border-strong);
+    border-radius: var(--r-md); padding: 6px;
+    z-index: 30; box-shadow: var(--shadow-md);
+    animation: popIn 160ms var(--ease-out);
+  }
+  @keyframes popIn {
+    from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .mselect-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px; font-size: var(--t-xs); cursor: pointer; border-radius: var(--r-sm);
+    transition: background var(--dur-fast);
+    color: var(--fg);
+  }
+  .mselect-item:hover { background: var(--bg-soft); }
+  .mselect-item input[type=checkbox] { accent-color: var(--accent); }
+  .mselect-search {
+    width: 100%; border: 1px solid var(--border); background: var(--bg-soft); color: var(--fg);
+    border-radius: var(--r-sm); padding: 6px 8px; font-size: var(--t-xs); margin-bottom: 4px;
+    font-family: inherit;
+  }
+  .mselect-search:focus { outline: none; border-color: var(--accent); box-shadow: var(--ring); }
+
+  .smallscreen-warn {
+    display: none; padding: 10px 14px;
+    background: var(--warn-soft); color: var(--warn);
+    border-radius: var(--r-md); margin-bottom: var(--s4);
+    font-size: var(--t-xs); text-align: center; font-weight: 500;
+    border: 1px solid color-mix(in srgb, var(--warn) 25%, transparent);
+  }
+
+  /* ===== Stage list (settings) ===== */
+  .stage-list { list-style: none; padding: 0; margin: 0; }
+  .stage-list li {
+    padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--r-md);
+    margin-bottom: 6px; background: var(--bg-elev);
+    cursor: grab; user-select: none;
+    display: flex; align-items: center; gap: 10px; font-size: var(--t-sm);
+    transition: border-color var(--dur-fast), transform var(--dur-fast), box-shadow var(--dur-fast);
+    box-shadow: var(--shadow-xs);
+  }
+  .stage-list li:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
+  .stage-list li:active { cursor: grabbing; }
+  .stage-list li.drag { opacity: 0.4; transform: scale(0.99); }
+  .stage-list .grip {
+    color: var(--fg-dim); width: 12px; height: 16px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+
+  /* ===== Upload summary ===== */
+  .upload-summary {
+    padding: 10px 14px; border-radius: var(--r-md);
+    background: var(--bg-elev); border: 1px solid var(--border);
+    font-size: var(--t-xs); color: var(--fg-muted); margin-bottom: var(--s4);
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    box-shadow: var(--shadow-xs);
+  }
+  .upload-summary b { color: var(--fg); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .upload-summary .summary-warn { color: var(--warn); margin-left: 8px; }
+
+  details summary { cursor: pointer; font-size: var(--t-xs); color: var(--fg-muted); padding: 8px 0; user-select: none; }
+  details summary:hover { color: var(--fg); }
+
+  .kbd {
+    font-family: var(--font-mono);
+    background: var(--bg-soft); border: 1px solid var(--border);
+    border-radius: var(--r-xs); padding: 2px 6px; font-size: 11px; font-weight: 500;
+    color: var(--fg-muted);
+    box-shadow: 0 1px 0 var(--border);
+    line-height: 1.4;
+  }
+
+  .help-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.50); backdrop-filter: blur(8px); z-index: 110; display: flex; align-items: center; justify-content: center; animation: bgIn 200ms var(--ease-out); padding: 24px; }
+  .help-overlay .modal { max-width: 460px; }
+  .help-overlay .row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; font-size: var(--t-sm); border-bottom: 1px solid var(--border); color: var(--fg-muted); }
+  .help-overlay .row:last-child { border-bottom: none; }
+
+  /* ===== Search input ===== */
+  .search {
+    background: var(--bg-elev); border: 1px solid var(--border); color: var(--fg);
+    padding: 8px 12px 8px 34px; border-radius: var(--r-md);
+    font-size: var(--t-sm); width: 280px; font-family: inherit;
+    transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238E929C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: 12px center;
+  }
+  .search::placeholder { color: var(--fg-dim); }
+  .search:focus { outline: none; border-color: var(--accent); box-shadow: var(--ring); }
+
+  .pager-info { font-size: var(--t-xs); color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+
+  /* ===== Info tooltip ===== */
+  .tip {
+    position: relative;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    border: 1px solid var(--border-strong);
+    color: var(--fg-dim);
+    font-family: var(--font-sans); font-size: 9px; font-weight: 700;
+    cursor: help;
+    background: transparent;
+    vertical-align: middle;
+    transition: color var(--dur-fast), border-color var(--dur-fast), background var(--dur-fast);
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .tip::before { content: '?'; transform: translateY(-0.5px); }
+  .tip:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+  .tip-pop {
+    position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%) translateY(2px);
+    background: var(--fg); color: var(--bg);
+    padding: 9px 12px; border-radius: var(--r-md);
+    font-size: 11px; font-weight: 500; line-height: 1.45;
+    width: max-content; max-width: 280px;
+    z-index: 200;
+    box-shadow: var(--shadow-lg);
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
+    text-align: left;
+    letter-spacing: 0;
+  }
+  .tip-pop::after {
+    content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    border: 5px solid transparent; border-top-color: var(--fg);
+  }
+  .tip-pop b { font-weight: 600; color: var(--bg); }
+  .tip-pop code {
+    font-family: var(--font-mono); font-size: 10px;
+    background: rgba(255,255,255,0.10); padding: 1px 4px; border-radius: 3px;
+    color: var(--bg);
+  }
+  html.dark .tip-pop b { color: var(--bg); }
+  html.dark .tip-pop code { background: rgba(0,0,0,0.20); }
+  .tip:hover .tip-pop, .tip:focus .tip-pop, .tip:focus-visible .tip-pop {
+    opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto;
+  }
+  .tip-pop.right { left: auto; right: -4px; transform: translateY(2px); }
+  .tip-pop.right::after { left: auto; right: 12px; transform: none; }
+  .tip:hover .tip-pop.right, .tip:focus .tip-pop.right { transform: translateY(0); }
+  .tip-pop.below { top: calc(100% + 8px); bottom: auto; transform: translateX(-50%) translateY(-2px); }
+  .tip-pop.below::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: var(--fg); }
+  .tip:hover .tip-pop.below { transform: translateX(-50%) translateY(0); }
+
+  /* ===== Floating tooltip (portal) ===== */
+  #floating-tip {
+    position: fixed; top: 0; left: 0;
+    background: var(--fg); color: var(--bg);
+    padding: 9px 12px; border-radius: var(--r-md);
+    font-family: var(--font-sans);
+    font-size: 11px; font-weight: 500; line-height: 1.45;
+    width: max-content; max-width: 300px;
+    z-index: 9999;
+    box-shadow: var(--shadow-lg);
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--dur-base) var(--ease-out);
+    text-align: left; letter-spacing: 0;
+    display: none;
+  }
+  #floating-tip.visible { opacity: 1; }
+  #floating-tip b { font-weight: 600; color: var(--bg); }
+  #floating-tip code {
+    font-family: var(--font-mono); font-size: 10px;
+    background: rgba(255,255,255,0.10); padding: 1px 4px; border-radius: 3px;
+    color: var(--bg);
+  }
+  html.dark #floating-tip code { background: rgba(0,0,0,0.20); }
+  #floating-tip::after {
+    content: ''; position: absolute; left: 50%;
+    border: 5px solid transparent;
+  }
+  #floating-tip.above::after { top: 100%; transform: translateX(-50%); border-top-color: var(--fg); }
+  #floating-tip.below::after { bottom: 100%; transform: translateX(-50%); border-bottom-color: var(--fg); }
+
+  /* ===== Skeleton ===== */
+  .skel {
+    background: var(--skeleton); background-size: 200% 100%;
+    border-radius: var(--r-sm); animation: shimmer 1.4s linear infinite;
+    color: transparent;
+  }
+  @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+  @media print {
+    .topbar, .filterbar, .pillbtn, .side-panel, button, .smallscreen-warn { display: none !important; }
+    body { background: white; color: black; background-image: none; }
+    .card { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; }
+    .kpi { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; }
+    .section-h { color: black; }
+    main { padding: 12px; max-width: none; }
+    .grid-1-1, .grid-2-1 { grid-template-columns: 1fr 1fr; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <span class="brand-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l4-4 5 4 8-8"/><path d="M14 5h6v6"/></svg>
+    </span>
+    Pipeline
+    <span class="brand-meta" id="brand-meta">Recruiting analytics</span>
+  </div>
+  <div class="grow"></div>
+  <span id="freshness" class="freshness"></span>
+  <div class="topbar-actions">
+    <button class="pillbtn ghost" id="btn-sample" title="Load sample data">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Sample
+    </button>
+    <button class="pillbtn primary" id="btn-upload" title="Upload (U)">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Upload
+    </button>
+    <span class="topbar-divider"></span>
+    <button class="pillbtn ghost icon-only" id="btn-settings" title="Settings" aria-label="Settings">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+    <button class="pillbtn ghost icon-only" id="btn-export-png" title="Export charts as PNG" aria-label="Export PNG">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+    </button>
+    <button class="pillbtn ghost icon-only" id="btn-export-csv" title="Export filtered CSV" aria-label="Export CSV">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </button>
+    <button class="pillbtn ghost icon-only" id="btn-theme" title="Toggle theme (D)" aria-label="Toggle theme">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+    <button class="pillbtn ghost icon-only" id="btn-help" title="Help (?)" aria-label="Help">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    </button>
+  </div>
+  <input type="file" id="file-input" accept=".xlsx,.xls,.csv" multiple style="display:none">
+</div>
+
+<div class="filterbar" id="filterbar" style="display:none">
+  <div class="filter-group">
+    <span class="filter-label">Range</span>
+    <div class="preset-group">
+      <button class="preset-btn" data-preset="7">7d</button>
+      <button class="preset-btn" data-preset="30">30d</button>
+      <button class="preset-btn active" data-preset="90">90d</button>
+      <button class="preset-btn" data-preset="ytd">YTD</button>
+      <button class="preset-btn" data-preset="all">All</button>
+    </div>
+    <input type="date" id="date-from" class="select" style="min-width:130px">
+    <span class="filter-label" style="opacity:0.5">→</span>
+    <input type="date" id="date-to" class="select" style="min-width:130px">
+  </div>
+  <span class="filter-divider"></span>
+  <div class="filter-group">
+    <span class="filter-label">Status</span>
+    <select class="select" id="sel-status">
+      <option value="all">All</option>
+      <option value="active">Active</option>
+      <option value="hired">Hired</option>
+      <option value="rejected">Rejected</option>
+    </select>
+  </div>
+  <div class="filter-group" id="ms-job-wrap"></div>
+  <div class="filter-group" id="ms-dept-wrap"></div>
+  <div class="filter-group" id="ms-office-wrap"></div>
+  <div class="filter-group" id="ms-source-wrap"></div>
+  <div class="filter-group" id="ms-recruiter-wrap"></div>
+  <div class="filter-group" id="ms-custom-wrap"></div>
+  <button class="pillbtn ghost" id="btn-reset-filters" style="margin-left:auto" title="Reset all filters">
+    <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+    Reset
+  </button>
+</div>
+
+<div id="empty-stage" class="empty-stage">
+  <div class="empty-wrap">
+    <div class="empty-pitch">
+      <span class="section-eyebrow">Recruiting analytics, instantly</span>
+      <h1>Turn your ATS export into <em>actionable hiring intelligence</em>.</h1>
+      <p class="lede">Drop in a Greenhouse, Lever, or Ashby spreadsheet and get a live funnel, time-in-stage box plot, source ROI, and bottleneck alerts in under 10 seconds.</p>
+      <div class="empty-feat">
+        <div class="empty-feat-item">
+          <span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+          <span>Auto-detects columns with confidence pills &mdash; no schema setup.</span>
+        </div>
+        <div class="empty-feat-item">
+          <span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+          <span>Saved mappings &mdash; future uploads skip straight to the dashboard.</span>
+        </div>
+        <div class="empty-feat-item">
+          <span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+          <span>Health bands flag stages above or below industry pass-through rates.</span>
+        </div>
+        <div class="empty-feat-item">
+          <span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+          <span>Shareable URL state &mdash; filters live in the hash, no server needed.</span>
+        </div>
+      </div>
+      <div class="dropzone" id="dropzone">
+        <span class="upload-illust">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </span>
+        <h3>Drop your export here</h3>
+        <p>Accepts <code>.xlsx</code> &middot; <code>.xls</code> &middot; <code>.csv</code> &mdash; multiple files OK.</p>
+        <div class="actions">
+          <button class="pillbtn primary" onclick="document.getElementById('file-input').click()">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Choose file
+          </button>
+          <button class="pillbtn" onclick="loadSampleData()">Try with sample data</button>
+        </div>
+        <div class="privacy">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Everything stays on your device &mdash; no upload to a server.
+        </div>
+      </div>
+    </div>
+    <div class="empty-preview" aria-hidden="true">
+      <div class="empty-preview-h">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      </div>
+      <div class="empty-preview-grid">
+        <div class="empty-preview-card">
+          <div class="label">Applications</div>
+          <div class="val">2,847</div>
+          <div class="delt">&#9650; 12%</div>
+        </div>
+        <div class="empty-preview-card">
+          <div class="label">Hires</div>
+          <div class="val">38</div>
+          <div class="delt">&#9650; 4</div>
+        </div>
+        <div class="empty-preview-card">
+          <div class="label">Time to hire</div>
+          <div class="val">31d</div>
+          <div class="delt" style="background:var(--bg-soft);color:var(--fg-muted)">flat</div>
+        </div>
+        <div class="empty-preview-card">
+          <div class="label">Offer accept</div>
+          <div class="val">82%</div>
+          <div class="delt">&#9650; 6pp</div>
+        </div>
+      </div>
+      <div class="empty-preview-bars">
+        <span style="height:30%"></span><span style="height:48%"></span><span style="height:62%"></span>
+        <span style="height:55%"></span><span style="height:78%"></span><span style="height:65%"></span>
+        <span style="height:88%"></span><span style="height:72%"></span><span style="height:95%"></span>
+        <span style="height:82%"></span><span style="height:70%"></span><span style="height:60%"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main id="dashboard" style="display:none">
+  <div class="smallscreen-warn">Best viewed on desktop (≥1280px). Charts will render but filters and tables may overflow.</div>
+  <div id="upload-summary"></div>
+  <section class="grid grid-kpi" id="kpi-row"></section>
+
+  <h3 class="section-h">Funnel &amp; bottlenecks</h3>
+  <section class="grid grid-1-1">
+    <div class="card">
+      <div class="card-title">Conversion funnel <span class="card-sub">ever-reached</span> <span class="tip" tabindex="0" aria-label="Funnel calculation" data-tip="Each stage = count of distinct candidates who **ever reached** it. Pass-through % is shown vs the previous stage. Bar color reflects `HEALTH_BANDS` thresholds (good / watch / bad)."></span></div>
+      <div id="chart-funnel" class="chart chart-tall"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Time in stage <span class="card-sub">median + p25–p75 box</span> <span class="tip" tabindex="0" aria-label="Time in stage calculation" data-tip="Box = **p25–p75**, whisker = p10–p90, dot = median. For active candidates, days = **today − stage_entered_at**; for terminal candidates, days = **hired_at** / **rejected_at** − stage_entered_at."></span></div>
+      <div id="chart-tis" class="chart chart-tall"></div>
+    </div>
+  </section>
+
+  <h3 class="section-h">Throughput &amp; time-to-hire</h3>
+  <section class="grid grid-1-1">
+    <div class="card">
+      <div class="card-title">Weekly throughput <span class="tip" tabindex="0" aria-label="Weekly throughput calculation" data-tip="Counts per ISO week of **applied_at**, **rejected_at**, **hired_at**. Net = applied − rejected − hired."></span></div>
+      <div id="chart-throughput" class="chart"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Time to hire trend <span class="card-sub">monthly cohort</span> <span class="tip" tabindex="0" aria-label="Time to hire trend calculation" data-tip="Median **hired_at − applied_at** grouped by hire month. Per-department lines appear when ≤5 departments are filtered, otherwise a single aggregate line."></span></div>
+      <div id="chart-tth" class="chart"></div>
+    </div>
+  </section>
+
+  <h3 class="section-h">Source effectiveness</h3>
+  <section class="grid grid-1-1">
+    <div class="card">
+      <div class="card-title">Applications by source <span class="tip" tabindex="0" aria-label="Source chart calculation" data-tip="Stacked bars per source: **applications**, **interviews** (reached Hiring Manager Screen or later), **offers** (reached Offer), **hires** (status = hired)."></span></div>
+      <div id="chart-source" class="chart"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Source detail <span class="tip" tabindex="0" aria-label="Source detail calculations" data-tip="Per-source metrics. **Hire rate** = hires ÷ applications. **Median TtH** = median(hired_at − applied_at). **Offer accept** = hires ÷ offers."></span></div>
+      <div style="overflow-x:auto"><table class="tbl" id="tbl-source"></table></div>
+    </div>
+  </section>
+
+  <h3 class="section-h">Live pipeline <span class="card-sub">ignores date filter</span> <span class="tip" tabindex="0" aria-label="Live pipeline calculation" data-tip="Active candidates grouped by **current_stage** (status = active across all data, not date-filtered). Card color shows time in stage: green <3d, yellow <7d, orange <14d, red ≥14d. Click a card to open the candidate panel."></span></h3>
+  <section class="card">
+    <div class="kanban" id="kanban"></div>
+  </section>
+
+  <h3 class="section-h">Rejection analysis</h3>
+  <section class="grid grid-1-1">
+    <div class="card">
+      <div class="card-title">Reasons <span class="tip" tabindex="0" aria-label="Rejection reasons calculation" data-tip="Distribution of **rejection_reason** across rejected candidates in the current filter. Empty/blank reasons are bucketed as “(none)”."></span></div>
+      <div id="chart-rej-donut" class="chart"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Reasons by stage <span class="tip" tabindex="0" aria-label="Reasons by stage calculation" data-tip="Top 8 rejection reasons (series) broken out by **current_stage** at time of rejection. Stacked horizontally."></span></div>
+      <div id="chart-rej-stage" class="chart"></div>
+    </div>
+  </section>
+
+  <h3 class="section-h">Recruiter workload <span class="tip" tabindex="0" aria-label="Recruiter workload calculation" data-tip="Per **recruiter_owner**: active load (status = active across all data, not date-filtered), hires &amp; rejections in the current date range, and median time to hire across hires."></span></h3>
+  <section class="card">
+    <div style="overflow-x:auto"><table class="tbl" id="tbl-recruiter"></table></div>
+  </section>
+
+  <h3 class="section-h">Candidates <span class="tip" tabindex="0" aria-label="Candidates table" data-tip="All applications matching the current filters and search. Click a row to open the candidate panel with stage history."></span></h3>
+  <section class="card">
+    <div style="display:flex; justify-content:space-between; gap:12px; margin-bottom:10px;">
+      <input type="search" id="search-cand" class="search" placeholder="Search name or job…" />
+      <span class="card-sub" id="cand-count"></span>
+    </div>
+    <div style="overflow-x:auto"><table class="tbl" id="tbl-cand"></table></div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+      <button class="pillbtn" id="cand-prev">Prev</button>
+      <span class="card-sub num" id="cand-page-info"></span>
+      <button class="pillbtn" id="cand-next">Next</button>
+    </div>
+  </section>
+</main>
+
+<div id="side-panel" class="side-panel"></div>
+<div id="modal-root"></div>
+<div id="toast" class="toast"></div>
+
+<script>
+'use strict';
+dayjs.extend(dayjs_plugin_customParseFormat);
+
+const CANONICAL = [
+  ['application_id', 'Application ID', 'rec', ['id','application id','application_id','app id'], 'Used for dedupe'],
+  ['candidate_id',   'Candidate ID',   'opt', ['candidate_id','candidate id'], ''],
+  ['candidate_name', 'Candidate name', 'rec', ['candidate','candidate name','name','full name'], 'Shown in tables & kanban'],
+  ['email',          'Email',          'opt', ['email','email address','e-mail'], ''],
+  ['job',            'Job',            'rec', ['job','job name','jobs','requisition','role','position','req'], ''],
+  ['department',     'Department',     'opt', ['department','dept'], 'Enables department filter'],
+  ['office',         'Office',         'opt', ['office','location','site'], ''],
+  ['applied_at',     'Applied at',     'req', ['applied at','application date','applied date','created at','date applied','apply date','applied_at'], 'Powers date filter'],
+  ['current_stage',  'Current stage',  'req', ['current stage','stage','stage name','current_stage'], 'Drives funnel & kanban'],
+  ['milestone',      'Milestone',      'opt', ['milestone'], ''],
+  ['status',         'Status',         'req', ['status','application status','state'], 'active/hired/rejected'],
+  ['source',         'Source',         'rec', ['source','source name','public name','source_name'], ''],
+  ['source_type',    'Source type',    'opt', ['source type','source_type','source category'], ''],
+  ['recruiter',      'Recruiter',      'opt', ['recruiter','credited to','recruiter name','recruiter_name'], ''],
+  ['coordinator',    'Coordinator',    'opt', ['coordinator'], ''],
+  ['hiring_manager', 'Hiring manager', 'opt', ['hiring manager','hiring_manager','hm'], ''],
+  ['rejected_at',    'Rejected at',    'rec', ['rejected at','rejection date','rejected_at'], 'Powers rejection analysis'],
+  ['rejection_reason','Rejection reason','opt',['rejection reason','rejection_reason','reason'], ''],
+  ['hired_at',       'Hired at',       'rec', ['hired at','hire date','start date','hired_at'], 'Powers time-to-hire'],
+  ['last_activity_at','Last activity', 'opt', ['last activity at','last activity','last_activity_at'], ''],
+  ['stage_entered_at','Stage entered at','rec',['stage entered at','entered current stage','last stage change at','stage_entered_at'], 'Powers time-in-stage'],
+  ['pipeline_percent','Pipeline %',    'opt', ['pipeline percent','pipeline_percent','pipeline %'], ''],
+];
+
+const DEFAULT_STAGE_ORDER = [
+  'Prospect','Application Review','Preliminary Phone Screen','Recruiter Screen',
+  'Hiring Manager Screen','Take-Home','Technical Assessment','Onsite',
+  'Face to Face','Reference Check','Offer','Hired'
+];
+const STAGE_ALIASES = {
+  'phone screen':'Preliminary Phone Screen',
+  'preliminary phone screen':'Preliminary Phone Screen',
+  'recruiter screen':'Recruiter Screen',
+  'hm screen':'Hiring Manager Screen',
+  'hiring manager':'Hiring Manager Screen',
+  'hiring manager screen':'Hiring Manager Screen',
+  'face to face':'Face to Face',
+  'face-to-face':'Face to Face',
+  'onsite':'Onsite',
+  'on-site':'Onsite',
+  'on site':'Onsite',
+  'take home':'Take-Home',
+  'take-home':'Take-Home',
+  'technical assessment':'Technical Assessment',
+  'tech screen':'Technical Assessment',
+  'reference':'Reference Check',
+  'reference check':'Reference Check',
+  'offer':'Offer',
+  'hired':'Hired',
+  'application review':'Application Review',
+  'app review':'Application Review',
+  'prospect':'Prospect',
+};
+const HEALTH_BANDS = {
+  'Application Review→Preliminary Phone Screen': [0.10, 0.25],
+  'Preliminary Phone Screen→Hiring Manager Screen': [0.40, 0.60],
+  'Hiring Manager Screen→Onsite': [0.40, 0.70],
+  'Onsite→Offer': [0.30, 0.60],
+  'Offer→Hired': [0.80, 0.95],
+};
+
+const state = {
+  rawRows: [],
+  fileMeta: { uploadedAt: null, fileNames: [] },
+  mapping: {},
+  fingerprint: null,
+  stageOrder: DEFAULT_STAGE_ORDER.slice(),
+  customFields: [],
+  filters: {
+    preset: '90', from: null, to: null, status: 'all',
+    job: [], department: [], office: [], source: [], recruiter: [], custom: {},
+  },
+  candPage: 0, candPageSize: 50, candSort: 'applied_at', candSortDir: 'desc', candSearch: '',
+  sourceSort: 'applications', sourceSortDir: 'desc',
+  recruiterSort: 'active', recruiterSortDir: 'desc',
+  charts: {},
+};
+
+const $ = sel => document.querySelector(sel);
+const $$ = sel => Array.from(document.querySelectorAll(sel));
+const fmtN = n => (n == null || isNaN(n)) ? '—' : new Intl.NumberFormat().format(Math.round(n));
+const fmtPct = n => (n == null || isNaN(n)) ? '—' : (n*100).toFixed(0)+'%';
+const fmtPct1 = n => (n == null || isNaN(n)) ? '—' : (n*100).toFixed(1)+'%';
+const fmtDays = n => (n == null || isNaN(n)) ? '—' : `${Math.round(n)}d`;
+const norm = s => String(s||'').toLowerCase().replace(/[_\-\.\/\\]+/g,' ').replace(/\s+/g,' ').trim();
+
+function toast(msg, ms=2400) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(()=>t.classList.remove('show'), ms);
+}
+function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+function tip(text, pos = '') {
+  return `<span class="tip" tabindex="0" aria-label="${escapeHtml(text)}" data-tip="${escapeHtml(text)}" data-tip-pos="${pos}" onclick="event.stopPropagation()"></span>`;
+}
+function initFloatingTip() {
+  if (document.getElementById('floating-tip')) return;
+  const el = document.createElement('div');
+  el.id = 'floating-tip';
+  document.body.appendChild(el);
+  let current = null;
+  function position(target) {
+    const text = target.dataset.tip || '';
+    el.innerHTML = escapeHtml(text)
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+    el.style.display = 'block';
+    el.style.opacity = '0';
+    el.classList.remove('above', 'below');
+    const r = target.getBoundingClientRect();
+    const tr = el.getBoundingClientRect();
+    let top = r.top - tr.height - 8;
+    let placement = 'above';
+    if (top < 8) { top = r.bottom + 8; placement = 'below'; }
+    let left = r.left + r.width / 2 - tr.width / 2;
+    if (left < 8) left = 8;
+    if (left + tr.width > window.innerWidth - 8) left = window.innerWidth - tr.width - 8;
+    el.style.top = top + 'px';
+    el.style.left = left + 'px';
+    el.classList.add(placement);
+    requestAnimationFrame(() => el.classList.add('visible'));
+  }
+  function hide() { el.classList.remove('visible'); el.style.display = 'none'; current = null; }
+  document.addEventListener('mouseover', e => {
+    const t = e.target.closest && e.target.closest('.tip');
+    if (t && t !== current) { current = t; position(t); }
+  });
+  document.addEventListener('mouseout', e => {
+    const t = e.target.closest && e.target.closest('.tip');
+    if (t && t === current) {
+      const to = e.relatedTarget;
+      if (!to || !t.contains(to)) hide();
+    }
+  });
+  document.addEventListener('focusin', e => {
+    const t = e.target.closest && e.target.closest('.tip');
+    if (t) { current = t; position(t); }
+  });
+  document.addEventListener('focusout', e => {
+    const t = e.target.closest && e.target.closest('.tip');
+    if (t && t === current) hide();
+  });
+  window.addEventListener('scroll', hide, true);
+  window.addEventListener('resize', hide);
+}
+function fnvHash(str) {
+  let h = 0x811c9dc5;
+  for (let i=0;i<str.length;i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return ('00000000' + (h>>>0).toString(16)).slice(-8);
+}
+function fingerprint(headers) { return fnvHash(headers.map(h=>norm(h)).sort().join('|')); }
+function levenshtein(a, b) {
+  if (!a || !b) return Math.max(a?.length||0, b?.length||0);
+  const m = a.length, n = b.length;
+  const dp = Array(n+1).fill(0).map((_,i)=>i);
+  for (let i=1;i<=m;i++) {
+    let prev = dp[0]; dp[0] = i;
+    for (let j=1;j<=n;j++) {
+      const tmp = dp[j];
+      dp[j] = a[i-1]===b[j-1] ? prev : 1 + Math.min(prev, dp[j-1], dp[j]);
+      prev = tmp;
+    }
+  }
+  return dp[n];
+}
+
+const DATE_FORMATS = ['YYYY-MM-DD','YYYY-MM-DDTHH:mm:ss','YYYY-MM-DD HH:mm:ss','MM/DD/YYYY','M/D/YYYY','DD/MM/YYYY','D/M/YYYY','YYYY/MM/DD','MMM D, YYYY','D MMM YYYY','MMM DD YYYY'];
+function parseDate(v) {
+  if (v == null || v === '') return null;
+  if (v instanceof Date) return dayjs(v).isValid() ? dayjs(v) : null;
+  if (typeof v === 'number') {
+    if (v > 25000 && v < 90000) {
+      const d = new Date(Date.UTC(1899,11,30) + v*86400000);
+      return dayjs(d);
+    }
+  }
+  const s = String(v).trim();
+  if (!s) return null;
+  let d = dayjs(s);
+  if (d.isValid() && /^\d{4}-\d{2}-\d{2}/.test(s)) return d;
+  for (const fmt of DATE_FORMATS) {
+    d = dayjs(s, fmt, true);
+    if (d.isValid()) return d;
+  }
+  d = dayjs(s);
+  return d.isValid() ? d : null;
+}
+
+function scoreHeaderToCanonical(header, canon) {
+  const h = norm(header);
+  const aliases = canon[3];
+  for (const a of aliases) {
+    if (h === norm(a)) return 1.0;
+  }
+  const hTokens = new Set(h.split(' '));
+  let best = 0;
+  for (const a of aliases) {
+    const aTokens = new Set(norm(a).split(' '));
+    let overlap = 0;
+    for (const t of aTokens) if (hTokens.has(t)) overlap++;
+    if (overlap === 0) continue;
+    const ratio = overlap / Math.max(aTokens.size, hTokens.size);
+    if (ratio >= 1) best = Math.max(best, 0.92);
+    else if (ratio >= 0.66) best = Math.max(best, 0.82);
+    else if (ratio >= 0.5) best = Math.max(best, 0.72);
+    else best = Math.max(best, 0.55);
+  }
+  const canonName = norm(canon[0].replace(/_/g,' '));
+  const dist = levenshtein(h, canonName);
+  const maxLen = Math.max(h.length, canonName.length);
+  if (maxLen > 0) {
+    const sim = 1 - dist/maxLen;
+    if (sim > 0.85) best = Math.max(best, 0.78);
+    else if (sim > 0.7) best = Math.max(best, 0.6);
+  }
+  return best;
+}
+
+function sniffValueType(samples) {
+  const nonEmpty = samples.filter(v => v !== null && v !== undefined && v !== '').slice(0, 20);
+  if (nonEmpty.length === 0) return null;
+  let dates = 0, emails = 0, statuses = 0, stages = 0;
+  const stageKey = new Set(DEFAULT_STAGE_ORDER.map(norm).concat(Object.keys(STAGE_ALIASES)));
+  const statusVals = new Set(['active','hired','rejected','converted','hire','reject','archived','in process','in progress']);
+  for (const v of nonEmpty) {
+    if (parseDate(v)) dates++;
+    const s = String(v).toLowerCase().trim();
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) emails++;
+    if (statusVals.has(s)) statuses++;
+    if (stageKey.has(norm(s))) stages++;
+  }
+  const r = c => c / nonEmpty.length;
+  if (r(emails) > 0.7) return 'email';
+  if (r(statuses) > 0.7) return 'status';
+  if (r(stages) > 0.5) return 'current_stage';
+  if (r(dates) > 0.7) return 'date';
+  return null;
+}
+
+function autoDetectMapping(headers, sampleRows) {
+  const cand = {};
+  for (const c of CANONICAL) cand[c[0]] = [];
+  for (const h of headers) {
+    let bestC = null, bestS = 0;
+    for (const c of CANONICAL) {
+      const s = scoreHeaderToCanonical(h, c);
+      if (s > bestS) { bestS = s; bestC = c[0]; }
+    }
+    if (bestC && bestS >= 0.5) {
+      cand[bestC].push({ header: h, score: bestS });
+    } else {
+      const samples = sampleRows.map(r => r[h]);
+      const sniff = sniffValueType(samples);
+      if (sniff === 'email') cand['email'].push({ header: h, score: 0.55 });
+      else if (sniff === 'status') cand['status'].push({ header: h, score: 0.55 });
+      else if (sniff === 'current_stage') cand['current_stage'].push({ header: h, score: 0.55 });
+      else if (sniff === 'date') {
+        const order = ['applied_at','hired_at','rejected_at','stage_entered_at','last_activity_at'];
+        for (const f of order) {
+          if (cand[f].length === 0) { cand[f].push({ header: h, score: 0.52 }); break; }
+        }
+      }
+    }
+  }
+  const result = {}, conf = {};
+  for (const c of CANONICAL) {
+    const list = cand[c[0]].sort((a,b)=>b.score-a.score);
+    if (list.length) { result[c[0]] = list[0].header; conf[c[0]] = list[0].score; }
+  }
+  const used = {};
+  for (const f of Object.keys(result)) {
+    const h = result[f];
+    if (used[h] != null) {
+      const otherF = used[h];
+      if ((conf[f]||0) > (conf[otherF]||0)) {
+        delete result[otherF]; delete conf[otherF];
+        used[h] = f;
+      } else { delete result[f]; delete conf[f]; }
+    } else { used[h] = f; }
+  }
+  return { mapping: result, confidence: conf };
+}
+
+function normalizeStage(s) {
+  if (!s) return '';
+  const n = norm(s);
+  if (STAGE_ALIASES[n]) return STAGE_ALIASES[n];
+  let best = null, bestSim = 0;
+  for (const stage of DEFAULT_STAGE_ORDER) {
+    const sn = norm(stage);
+    if (sn === n) return stage;
+    if (n.includes(sn) || sn.includes(n)) {
+      const sim = Math.min(sn.length, n.length) / Math.max(sn.length, n.length);
+      if (sim > bestSim) { bestSim = sim; best = stage; }
+    }
+  }
+  if (best && bestSim > 0.5) return best;
+  return s.replace(/\w\S*/g, w => w[0].toUpperCase() + w.slice(1).toLowerCase());
+}
+
+function normalizeStatus(s) {
+  const n = norm(s);
+  if (!n) return '';
+  if (n === 'hire' || n === 'hired') return 'hired';
+  if (['reject','rejected','archived'].includes(n)) return 'rejected';
+  if (['active','in process','in progress','open'].includes(n)) return 'active';
+  if (n === 'converted') return 'converted';
+  return n;
+}
+
+async function handleFiles(files) {
+  try {
+    const all = [];
+    let allHeaders = null;
+    for (const file of files) {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type:'array', cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: null, raw: true });
+      all.push(...rows);
+      if (!allHeaders && rows.length) allHeaders = Object.keys(rows[0]);
+    }
+    if (!all.length) { toast('No rows found in file'); return; }
+    const headers = Array.from(new Set(all.flatMap(r => Object.keys(r))));
+    const fp = fingerprint(headers);
+    state.fingerprint = fp;
+    state.fileMeta.fileNames = Array.from(files).map(f=>f.name);
+    state.fileMeta.uploadedAt = Date.now();
+
+    const saved = await idbKeyval.get('mapping:'+fp);
+    if (saved) {
+      state.mapping = saved.mapping;
+      state.customFields = saved.customFields || [];
+      state.stageOrder = saved.stageOrder || DEFAULT_STAGE_ORDER.slice();
+      finalizeIngest(all, headers);
+      toast('Applied saved mapping for this export. Open Settings to change.', 3500);
+    } else {
+      showMappingModal(headers, all);
+    }
+  } catch (e) {
+    console.error(e);
+    toast('Failed to parse file: ' + e.message);
+  }
+}
+
+function showMappingModal(headers, rows) {
+  const sample = rows.slice(0, 50);
+  const detected = autoDetectMapping(headers, sample);
+  const mapping = { ...detected.mapping };
+  const conf = { ...detected.confidence };
+
+  const root = $('#modal-root');
+  root.innerHTML = `
+    <div class="modal-bg">
+      <div class="modal">
+        <div class="modal-h">
+          <div>
+            <h3>Confirm field mapping</h3>
+            <div class="card-sub">Detected ${headers.length} columns across ${fmtN(rows.length)} rows.</div>
+          </div>
+          <button class="pillbtn" id="map-reset">Reset to auto-detect</button>
+        </div>
+        <div class="modal-body">
+          ${renderMappingSection('Required', 'req', headers, mapping, conf, sample)}
+          ${renderMappingSection('Recommended', 'rec', headers, mapping, conf, sample)}
+          ${renderMappingSection('Optional', 'opt', headers, mapping, conf, sample)}
+          <details>
+            <summary>Unmapped incoming columns (will be ignored unless kept as custom)</summary>
+            <div id="unmapped-list" style="margin-top:8px"></div>
+          </details>
+        </div>
+        <div class="modal-foot">
+          <span class="card-sub" id="map-status"></span>
+          <div>
+            <button class="pillbtn" id="map-cancel">Cancel</button>
+            <button class="pillbtn primary" id="map-confirm">Visualize →</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  function repaintUnmapped() {
+    const used = new Set(Object.values(mapping));
+    const un = headers.filter(h => !used.has(h));
+    const node = document.getElementById('unmapped-list');
+    if (!un.length) { node.innerHTML = '<div class="card-sub">All headers mapped.</div>'; return; }
+    node.innerHTML = un.map(h => `
+      <label class="mselect-item">
+        <input type="checkbox" class="custom-keep" data-h="${escapeHtml(h)}" ${state.customFields.includes(h)?'checked':''}>
+        <code>${escapeHtml(h)}</code>
+        <span class="card-sub" style="margin-left:auto;max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(String(sample.find(r=>r[h]!=null)?.[h] ?? ''))}</span>
+      </label>`).join('');
+    node.querySelectorAll('.custom-keep').forEach(cb => {
+      cb.addEventListener('change', e => {
+        const h = e.target.dataset.h;
+        if (e.target.checked) { if (!state.customFields.includes(h)) state.customFields.push(h); }
+        else { state.customFields = state.customFields.filter(x=>x!==h); }
+      });
+    });
+  }
+  function repaintStatus() {
+    const reqMissing = CANONICAL.filter(c => c[2]==='req' && !mapping[c[0]]).map(c=>c[1]);
+    const node = document.getElementById('map-status');
+    const btn = document.getElementById('map-confirm');
+    if (reqMissing.length) {
+      node.innerHTML = `<span style="color:var(--bad)">⚠ Missing required: ${reqMissing.join(', ')}</span>`;
+      btn.disabled = true; btn.style.opacity = 0.5; btn.style.cursor = 'not-allowed';
+    } else {
+      node.textContent = 'Ready.';
+      btn.disabled = false; btn.style.opacity = 1; btn.style.cursor = 'pointer';
+    }
+  }
+  root.querySelectorAll('select.map-sel').forEach(sel => {
+    sel.addEventListener('change', e => {
+      const f = e.target.dataset.field;
+      const v = e.target.value;
+      if (v) mapping[f] = v; else delete mapping[f];
+      repaintStatus(); repaintUnmapped();
+      const row = root.querySelector(`.map-row[data-field="${f}"] .map-preview`);
+      const prev = v ? sample.filter(r=>r[v]!=null).slice(0,3).map(r=>r[v]).join(' · ') : '';
+      if (row) row.textContent = prev || ' ';
+    });
+  });
+  document.getElementById('map-reset').addEventListener('click', () => {
+    Object.keys(mapping).forEach(k=>delete mapping[k]);
+    Object.assign(mapping, detected.mapping);
+    root.querySelectorAll('select.map-sel').forEach(sel => {
+      const f = sel.dataset.field;
+      sel.value = mapping[f] || '';
+      const row = root.querySelector(`.map-row[data-field="${f}"] .map-preview`);
+      const v = mapping[f];
+      const prev = v ? sample.filter(r=>r[v]!=null).slice(0,3).map(r=>r[v]).join(' · ') : '';
+      if (row) row.textContent = prev || ' ';
+    });
+    repaintStatus(); repaintUnmapped();
+  });
+  document.getElementById('map-cancel').addEventListener('click', () => { root.innerHTML = ''; });
+  document.getElementById('map-confirm').addEventListener('click', async () => {
+    state.mapping = mapping;
+    await idbKeyval.set('mapping:'+state.fingerprint, {
+      mapping, customFields: state.customFields, stageOrder: state.stageOrder,
+      savedAt: Date.now(),
+    });
+    root.innerHTML = '';
+    finalizeIngest(rows, headers);
+  });
+
+  repaintStatus(); repaintUnmapped();
+}
+
+function renderMappingSection(title, tier, headers, mapping, conf, sample) {
+  const items = CANONICAL.filter(c => c[2] === tier);
+  if (!items.length) return '';
+  return `
+    <div class="map-section-title">${title}</div>
+    ${items.map(c => {
+      const f = c[0], label = c[1], hint = c[4] || '';
+      const cur = mapping[f] || '';
+      const cf = conf[f] || 0;
+      const pillClass = cf >= 0.85 ? 'hi' : cf >= 0.6 ? 'md' : 'lo';
+      const pillText = cf > 0 ? Math.round(cf*100)+'%' : '—';
+      const previewVals = cur ? sample.filter(r=>r[cur]!=null).slice(0,3).map(r=>r[cur]).join(' · ') : '';
+      return `
+        <div class="map-row" data-field="${f}">
+          <div class="map-canon">
+            <div class="map-canon-name">
+              ${tier==='req' ? '<span class="map-canon-req">●</span>' : ''}
+              ${escapeHtml(label)}
+              <span class="card-sub" style="font-weight:400">${escapeHtml(f)}</span>
+            </div>
+            <div class="map-canon-hint">${escapeHtml(hint)}</div>
+          </div>
+          <div class="map-pick">
+            <div class="map-pick-row">
+              <select class="select map-sel" data-field="${f}" style="min-width:0">
+                <option value="">— Not mapped —</option>
+                ${headers.map(h=>`<option value="${escapeHtml(h)}" ${h===cur?'selected':''}>${escapeHtml(h)}</option>`).join('')}
+              </select>
+              <span class="conf-pill ${pillClass}">${pillText}</span>
+            </div>
+            <div class="map-preview">${escapeHtml(previewVals) || ' '}</div>
+          </div>
+        </div>`;
+    }).join('')}
+  `;
+}
+
+function finalizeIngest(rawRows, headers) {
+  const m = state.mapping;
+  let unparsedDates = 0, dupes = 0, missingStage = 0;
+  const unknownStatus = new Set();
+  const seen = new Map();
+  const rows = [];
+  for (const r of rawRows) {
+    const o = {};
+    for (const c of CANONICAL) {
+      const f = c[0], src = m[f];
+      if (!src) continue;
+      const v = r[src];
+      if (['applied_at','rejected_at','hired_at','last_activity_at','stage_entered_at'].includes(f)) {
+        if (v != null && v !== '') {
+          const d = parseDate(v);
+          if (d && d.isValid()) o[f] = d.toDate(); else unparsedDates++;
+        }
+      } else if (f === 'status') {
+        const ns = normalizeStatus(v);
+        if (ns && !['active','hired','rejected','converted'].includes(ns)) unknownStatus.add(ns);
+        o[f] = ns;
+      } else if (f === 'current_stage') {
+        if (v == null || v === '') {
+          const stat = normalizeStatus(r[m.status]);
+          if (stat === 'hired') o[f] = 'Hired';
+          else { missingStage++; o[f] = ''; }
+        } else o[f] = normalizeStage(v);
+      } else if (f === 'milestone') {
+        o[f] = v ? normalizeStage(v) : '';
+      } else if (f === 'pipeline_percent') {
+        const n = parseFloat(v); o[f] = isNaN(n) ? null : n;
+      } else {
+        o[f] = v == null ? '' : String(v).trim();
+      }
+    }
+    for (const cf of state.customFields) o['_'+cf] = r[cf];
+    if (o.application_id) {
+      const key = String(o.application_id);
+      if (seen.has(key)) { rows[seen.get(key)] = o; dupes++; continue; }
+      seen.set(key, rows.length);
+    }
+    rows.push(o);
+  }
+  state.rawRows = rows;
+
+  const warns = [];
+  if (unparsedDates) warns.push(`${unparsedDates} unparseable dates`);
+  if (dupes) warns.push(`${dupes} duplicates merged`);
+  if (missingStage) warns.push(`${missingStage} rows missing stage`);
+  if (unknownStatus.size) warns.push(`unknown status: ${[...unknownStatus].slice(0,4).join(', ')}`);
+  $('#upload-summary').innerHTML = `
+    <div class="upload-summary">
+      <span><b>${fmtN(rows.length)}</b> applications loaded from <b>${escapeHtml(state.fileMeta.fileNames.join(', '))}</b>.
+      ${warns.length ? `<span class="summary-warn">⚠ ${warns.join(' · ')}</span>` : ''}</span>
+      <button class="pillbtn danger" id="btn-clear">Clear data</button>
+    </div>`;
+  $('#btn-clear').addEventListener('click', clearData);
+
+  idbKeyval.set('rawRows', rows);
+  idbKeyval.set('fileMeta', state.fileMeta);
+  idbKeyval.set('stageOrder', state.stageOrder);
+
+  initDateRangeFromData();
+  rebuildFilterOptions();
+  $('#empty-stage').style.display = 'none';
+  $('#dashboard').style.display = '';
+  $('#filterbar').style.display = '';
+  refreshFreshness();
+  renderAll();
+}
+
+async function clearData() {
+  if (!confirm('Clear all uploaded data? Saved mappings are kept.')) return;
+  await idbKeyval.del('rawRows');
+  await idbKeyval.del('fileMeta');
+  state.rawRows = [];
+  Object.values(state.charts).forEach(c => c.dispose());
+  state.charts = {};
+  $('#dashboard').style.display = 'none';
+  $('#filterbar').style.display = 'none';
+  $('#empty-stage').style.display = '';
+}
+
+function refreshFreshness() {
+  if (!state.fileMeta.uploadedAt) { $('#freshness').textContent = ''; return; }
+  const mins = Math.round((Date.now() - state.fileMeta.uploadedAt) / 60000);
+  let s;
+  if (mins < 1) s = 'just now';
+  else if (mins < 60) s = `${mins}m ago`;
+  else if (mins < 1440) s = `${Math.round(mins/60)}h ago`;
+  else s = `${Math.round(mins/1440)}d ago`;
+  $('#freshness').textContent = `Uploaded ${s}`;
+}
+setInterval(refreshFreshness, 60000);
+
+function initDateRangeFromData() {
+  applyPreset(state.filters.preset || '90');
+}
+function applyPreset(p) {
+  state.filters.preset = p;
+  $$('.preset-btn').forEach(b => b.classList.toggle('active', b.dataset.preset === p));
+  const dates = state.rawRows.map(r => r.applied_at).filter(Boolean).map(d => d.getTime());
+  const dataMax = dates.length ? new Date(Math.max(...dates)) : new Date();
+  let from, to = dataMax;
+  if (p === 'all') {
+    from = dates.length ? new Date(Math.min(...dates)) : new Date();
+  } else if (p === 'ytd') {
+    from = new Date(dataMax.getFullYear(), 0, 1);
+  } else {
+    const d = parseInt(p, 10) || 90;
+    from = dayjs(dataMax).subtract(d-1, 'day').toDate();
+  }
+  state.filters.from = from; state.filters.to = to;
+  $('#date-from').valueAsDate = from;
+  $('#date-to').valueAsDate = to;
+}
+
+function buildMultiSelect(wrapId, label, field) {
+  const wrap = document.getElementById(wrapId);
+  if (!wrap) return;
+  const values = Array.from(new Set(state.rawRows.map(r => r[field]).filter(v => v != null && v !== ''))).sort();
+  if (!values.length) { wrap.innerHTML = ''; return; }
+  const id = 'ms-'+field;
+  wrap.innerHTML = `
+    <span class="filter-label">${label}</span>
+    <div class="mselect">
+      <button class="select" id="${id}-btn">All</button>
+      <div class="mselect-pop" id="${id}-pop" style="display:none">
+        <input class="mselect-search" placeholder="Search…" />
+        <label class="mselect-item"><input type="checkbox" class="ms-all"> <b>Select all</b></label>
+        <div class="ms-items"></div>
+      </div>
+    </div>`;
+  const btn = wrap.querySelector(`#${id}-btn`);
+  const pop = wrap.querySelector(`#${id}-pop`);
+  const items = wrap.querySelector('.ms-items');
+  const search = wrap.querySelector('.mselect-search');
+  const allChk = wrap.querySelector('.ms-all');
+  function repaint() {
+    const q = norm(search.value);
+    items.innerHTML = values
+      .filter(v => !q || norm(v).includes(q))
+      .map(v => `<label class="mselect-item"><input type="checkbox" value="${escapeHtml(v)}" ${state.filters[field].includes(v)?'checked':''}> ${escapeHtml(v)}</label>`)
+      .join('');
+    items.querySelectorAll('input[type=checkbox]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const sel = state.filters[field];
+        if (cb.checked) { if (!sel.includes(cb.value)) sel.push(cb.value); }
+        else state.filters[field] = sel.filter(x => x !== cb.value);
+        updateLabel();
+        renderAll();
+      });
+    });
+  }
+  function updateLabel() {
+    const sel = state.filters[field];
+    btn.textContent = !sel.length ? 'All' : sel.length === 1 ? sel[0] : `${sel.length} selected`;
+  }
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    document.querySelectorAll('.mselect-pop').forEach(p => { if (p !== pop) p.style.display = 'none'; });
+    pop.style.display = pop.style.display === 'none' ? 'block' : 'none';
+    if (pop.style.display === 'block') repaint();
+  });
+  search.addEventListener('input', repaint);
+  allChk.addEventListener('change', () => {
+    state.filters[field] = allChk.checked ? values.slice() : [];
+    updateLabel(); repaint(); renderAll();
+  });
+  document.addEventListener('click', e => { if (!wrap.contains(e.target)) pop.style.display = 'none'; });
+  updateLabel();
+}
+
+function rebuildFilterOptions() {
+  buildMultiSelect('ms-job-wrap','Job','job');
+  buildMultiSelect('ms-dept-wrap','Dept','department');
+  buildMultiSelect('ms-office-wrap','Office','office');
+  buildMultiSelect('ms-source-wrap','Source','source');
+  buildMultiSelect('ms-recruiter-wrap','Recruiter','recruiter');
+  const wrap = $('#ms-custom-wrap'); wrap.innerHTML = '';
+  for (const cf of state.customFields) {
+    const key = '_'+cf;
+    const vals = Array.from(new Set(state.rawRows.map(r=>r[key]).filter(v=>v!=null && v!=='')));
+    if (vals.length > 1 && vals.length <= 20) {
+      state.filters.custom[cf] = state.filters.custom[cf] || [];
+      const subWrap = document.createElement('div');
+      subWrap.className = 'filter-group';
+      subWrap.id = 'ms-cf-'+fnvHash(cf);
+      wrap.appendChild(subWrap);
+      buildCustomMultiSelect(subWrap.id, cf, key);
+    }
+  }
+}
+function buildCustomMultiSelect(wrapId, label, key) {
+  const wrap = document.getElementById(wrapId);
+  const values = Array.from(new Set(state.rawRows.map(r => r[key]).filter(v => v != null && v !== ''))).sort();
+  const id = 'ms-cf-'+fnvHash(label);
+  wrap.innerHTML = `<span class="filter-label">${escapeHtml(label)}</span>
+    <div class="mselect">
+      <button class="select" id="${id}-btn">All</button>
+      <div class="mselect-pop" id="${id}-pop" style="display:none">
+        <div class="ms-items"></div>
+      </div>
+    </div>`;
+  const btn = wrap.querySelector('button');
+  const pop = wrap.querySelector('.mselect-pop');
+  const items = wrap.querySelector('.ms-items');
+  function repaint() {
+    items.innerHTML = values.map(v => `<label class="mselect-item"><input type="checkbox" value="${escapeHtml(v)}" ${(state.filters.custom[label]||[]).includes(v)?'checked':''}> ${escapeHtml(v)}</label>`).join('');
+    items.querySelectorAll('input').forEach(cb => {
+      cb.addEventListener('change', () => {
+        let sel = state.filters.custom[label] || [];
+        if (cb.checked) sel.push(cb.value); else sel = sel.filter(x=>x!==cb.value);
+        state.filters.custom[label] = sel;
+        btn.textContent = !sel.length ? 'All' : sel.length===1 ? sel[0] : `${sel.length} sel`;
+        renderAll();
+      });
+    });
+  }
+  btn.addEventListener('click', e => { e.stopPropagation(); pop.style.display = pop.style.display==='none' ? 'block':'none'; if (pop.style.display==='block') repaint(); });
+  document.addEventListener('click', e => { if (!wrap.contains(e.target)) pop.style.display = 'none'; });
+}
+
+function endOfDay(d) { const x = new Date(d); x.setHours(23,59,59,999); return x; }
+function getFilteredRows() {
+  const f = state.filters;
+  return state.rawRows.filter(r => {
+    if (f.from && r.applied_at && r.applied_at < f.from) return false;
+    if (f.to && r.applied_at && r.applied_at > endOfDay(f.to)) return false;
+    if (f.status !== 'all' && r.status !== f.status) return false;
+    if (f.job.length && !f.job.includes(r.job)) return false;
+    if (f.department.length && !f.department.includes(r.department)) return false;
+    if (f.office.length && !f.office.includes(r.office)) return false;
+    if (f.source.length && !f.source.includes(r.source)) return false;
+    if (f.recruiter.length && !f.recruiter.includes(r.recruiter)) return false;
+    for (const cf of state.customFields) {
+      const sel = f.custom[cf];
+      if (sel && sel.length && !sel.includes(r['_'+cf])) return false;
+    }
+    return true;
+  });
+}
+function getPrevPeriodRows() {
+  const f = state.filters;
+  if (!f.from || !f.to) return [];
+  const span = f.to - f.from;
+  const prevFrom = new Date(f.from.getTime() - span - 86400000);
+  const prevTo = new Date(f.from.getTime() - 86400000);
+  return state.rawRows.filter(r => {
+    if (!r.applied_at) return false;
+    if (r.applied_at < prevFrom) return false;
+    if (r.applied_at > endOfDay(prevTo)) return false;
+    if (f.status !== 'all' && r.status !== f.status) return false;
+    if (f.job.length && !f.job.includes(r.job)) return false;
+    if (f.department.length && !f.department.includes(r.department)) return false;
+    if (f.office.length && !f.office.includes(r.office)) return false;
+    if (f.source.length && !f.source.includes(r.source)) return false;
+    if (f.recruiter.length && !f.recruiter.includes(r.recruiter)) return false;
+    return true;
+  });
+}
+
+function quantile(arr, q) {
+  if (!arr.length) return null;
+  const a = arr.slice().sort((x,y)=>x-y);
+  const pos = (a.length - 1) * q;
+  const base = Math.floor(pos), rest = pos - base;
+  return a[base+1] != null ? a[base] + rest * (a[base+1]-a[base]) : a[base];
+}
+const median = arr => quantile(arr, 0.5);
+const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+
+function knownStages() { return state.stageOrder.slice(); }
+function everReachedStages(row) {
+  const stages = knownStages();
+  let target = row.current_stage;
+  if (row.status === 'hired') target = 'Hired';
+  const idx = stages.indexOf(target);
+  if (idx < 0) return [];
+  return stages.slice(0, idx+1);
+}
+
+function renderAll() {
+  const rows = getFilteredRows();
+  renderKpis(rows);
+  renderFunnel(rows);
+  renderTimeInStage(rows);
+  renderThroughput(rows);
+  renderTimeToHire(rows);
+  renderSource(rows);
+  renderKanban();
+  renderRejection(rows);
+  renderRecruiter(rows);
+  renderCandidates(rows);
+  serializeFiltersToUrl();
+}
+
+function renderKpis(rows) {
+  const prev = getPrevPeriodRows();
+  const f = state.filters;
+
+  const totalApps = rows.length;
+  const prevApps = prev.length;
+
+  const hires = rows.filter(r => r.status === 'hired').length;
+  const prevHires = prev.filter(r => r.status === 'hired').length;
+
+  const offered = rows.filter(r => everReachedStages(r).includes('Offer'));
+  const acceptedOffers = offered.filter(r => r.status === 'hired').length;
+  const offerAccept = offered.length ? acceptedOffers / offered.length : null;
+
+  const tthDays = rows.filter(r => r.hired_at && r.applied_at).map(r => (r.hired_at - r.applied_at)/86400000);
+  const medTth = median(tthDays);
+  const p75Tth = quantile(tthDays, 0.75);
+  const p90Tth = quantile(tthDays, 0.90);
+
+  const active = state.rawRows.filter(r => r.status === 'active').length;
+
+  const rejRows = rows.filter(r => r.status === 'rejected');
+  const rejRate = rows.length ? rejRows.length / rows.length : 0;
+  const rejReasons = {};
+  for (const r of rejRows) { const k = r.rejection_reason || '(none)'; rejReasons[k] = (rejReasons[k]||0)+1; }
+  const topRej = Object.entries(rejReasons).sort((a,b)=>b[1]-a[1]).slice(0,3);
+
+  const sparkData = (filterFn, dateField='applied_at') => {
+    if (!f.from || !f.to) return [];
+    const from = dayjs(f.from), to = dayjs(f.to);
+    const days = to.diff(from, 'day') + 1;
+    const buckets = new Array(Math.min(days, 60)).fill(0);
+    const stride = Math.max(1, Math.ceil(days / buckets.length));
+    for (const r of rows) {
+      if (!filterFn(r)) continue;
+      const d = r[dateField]; if (!d) continue;
+      const offset = dayjs(d).diff(from, 'day');
+      if (offset < 0 || offset >= days) continue;
+      buckets[Math.min(buckets.length-1, Math.floor(offset/stride))]++;
+    }
+    return buckets;
+  };
+
+  const cards = [
+    { label: 'Applications', value: fmtN(totalApps), delta: deltaLabel(totalApps, prevApps),
+      spark: sparkData(()=>true), sub: `vs prev period: ${fmtN(prevApps)}`,
+      formula: `Count of applications with **applied_at** in the current date range. Δ compares to the equivalent prior window (${fmtN(prevApps)}).` },
+    { label: 'Hires', value: fmtN(hires), delta: deltaLabel(hires, prevHires),
+      spark: sparkData(r => r.status==='hired', 'hired_at'),
+      formula: `Candidates whose **status = hired**, counted by **hired_at** in range.` },
+    offered.length ? { label: 'Offer accept', value: offerAccept == null ? '—' : fmtPct(offerAccept),
+      delta: deltaLabel(acceptedOffers, prev.filter(r=>everReachedStages(r).includes('Offer') && r.status==='hired').length),
+      spark: [],
+      formula: `hired ÷ (candidates who ever reached **Offer** stage). Current: ${acceptedOffers} of ${offered.length}.` } : null,
+    { label: 'Median time to hire', value: medTth == null ? '—' : fmtDays(medTth),
+      delta: '', spark: [], sub: medTth == null ? '' : `p75 ${fmtDays(p75Tth)} · p90 ${fmtDays(p90Tth)}`,
+      formula: `median(**hired_at − applied_at**) in days, across hires in range. p75 and p90 describe the tail.` },
+    { label: 'Active in pipeline', value: fmtN(active), delta: '', spark: [], sub: 'snapshot · ignores date filter',
+      formula: `Live count where **status = active**, across all data. Not filtered by the date range.` },
+    { label: 'Rejection rate', value: fmtPct(rejRate), delta: '',
+      spark: sparkData(r=>r.status==='rejected','rejected_at'),
+      sub: topRej.length ? 'Top: ' + topRej.map(([k,v])=>`${k} (${v})`).join(', ') : '',
+      formula: `rejected ÷ total in range. Count: ${rejRows.length} of ${rows.length}.` },
+  ].filter(Boolean);
+
+  const row = $('#kpi-row');
+  row.innerHTML = cards.map((c, i) => `
+    <div class="kpi">
+      <div class="kpi-label">
+        <span>${escapeHtml(c.label)}</span>
+        ${c.formula ? tip(c.formula) : ''}
+      </div>
+      <div class="kpi-value num">${c.value}</div>
+      <div class="kpi-row">
+        <div>${c.delta || (c.sub ? '<span class="kpi-tooltip-row">'+escapeHtml(c.sub)+'</span>' : '')}</div>
+      </div>
+      <div class="kpi-spark" id="spark-${i}"></div>
+    </div>`).join('');
+  cards.forEach((c, i) => {
+    if (!c.spark || !c.spark.length) return;
+    const ch = echarts.init(document.getElementById('spark-'+i), null, { renderer:'canvas' });
+    ch.setOption({
+      grid: { top:2, bottom:2, left:0, right:0 },
+      xAxis: { show:false, type:'category', data: c.spark.map((_,i)=>i) },
+      yAxis: { show:false, type:'value' },
+      series: [{
+        type:'line', data:c.spark, smooth:true, symbol:'none',
+        lineStyle:{ width:1.5, color: cssVar('--accent') },
+        areaStyle:{ color: cssVar('--accent-soft') },
+      }],
+      tooltip: { show:false },
+      animation: false,
+    });
+  });
+}
+function deltaLabel(curr, prev) {
+  if (prev === 0 && curr === 0) return '';
+  if (prev === 0) return '<span class="kpi-delta up num">new</span>';
+  const d = (curr - prev) / prev;
+  const cls = d > 0.005 ? 'up' : d < -0.005 ? 'down' : 'flat';
+  const arrowSvg = d > 0.005
+    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 15 12 9 18 15"/></svg>'
+    : d < -0.005
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+  return `<span class="kpi-delta ${cls} num">${arrowSvg}${Math.abs(d*100).toFixed(0)}%</span>`;
+}
+
+function renderFunnel(rows) {
+  const stages = knownStages();
+  const counts = {};
+  for (const s of stages) counts[s] = 0;
+  for (const r of rows) for (const s of everReachedStages(r)) counts[s]++;
+  const visible = stages.filter(s => counts[s] > 0);
+  const data = visible.map((s, i) => {
+    const v = counts[s];
+    const prev = i === 0 ? null : counts[visible[i-1]];
+    const passRate = prev ? v / prev : null;
+    const cumRate = visible[0] && counts[visible[0]] ? v / counts[visible[0]] : null;
+    let color = cssVar('--cat-1');
+    if (prev) {
+      const key = visible[i-1] + '→' + s;
+      const band = HEALTH_BANDS[key];
+      if (band) {
+        if (passRate < band[0] || passRate > band[1]) color = cssVar('--bad');
+        else color = cssVar('--good');
+      }
+    }
+    return { name: s, value: v, passRate, cumRate, itemStyle: { color } };
+  });
+  const ch = chartInit('chart-funnel');
+  ch.setOption({
+    backgroundColor: 'transparent',
+    tooltip: { trigger:'item', formatter: p => {
+      const d = p.data;
+      return `<b>${d.name}</b><br>${fmtN(d.value)} candidates<br>` +
+        (d.passRate!=null ? `Pass-through: ${fmtPct1(d.passRate)}<br>` : '') +
+        (d.cumRate!=null ? `Cumulative: ${fmtPct1(d.cumRate)}` : '');
+    }, ...tooltipStyle() },
+    series: [{
+      type:'funnel', sort:'none', gap: 6, top:14, bottom:14, left:'8%', right:'8%',
+      width: '84%',
+      label: { show:true, position:'inside', color:'#fff', fontWeight: 600, fontFamily: 'Inter, sans-serif', fontSize: 12, formatter: p => {
+        const d = p.data;
+        return `${d.name}  ${fmtN(d.value)}` + (d.passRate!=null?`  ·  ${fmtPct(d.passRate)}`:'');
+      }},
+      labelLine: { show: false },
+      itemStyle: { borderColor: cssVar('--bg-elev'), borderWidth: 2 },
+      emphasis: { label: { fontSize: 13 } },
+      data,
+    }],
+  });
+}
+
+function renderTimeInStage(rows) {
+  const stages = knownStages();
+  const byStage = {};
+  for (const s of stages) byStage[s] = [];
+  const now = Date.now();
+  for (const r of rows) {
+    const stage = r.current_stage;
+    if (!stage) continue;
+    if (!byStage[stage]) byStage[stage] = [];
+    let entered = r.stage_entered_at || r.applied_at;
+    if (!entered) continue;
+    let until;
+    if (r.status === 'hired' && r.hired_at) until = r.hired_at;
+    else if (r.status === 'rejected' && r.rejected_at) until = r.rejected_at;
+    else until = new Date(now);
+    const days = (until - entered) / 86400000;
+    if (days >= 0 && days < 730) byStage[stage].push(days);
+  }
+  const items = Object.entries(byStage)
+    .filter(([_,v]) => v.length)
+    .map(([s, vals]) => ({
+      stage: s, med: median(vals), p25: quantile(vals,0.25), p75: quantile(vals,0.75),
+      p10: quantile(vals,0.10), p90: quantile(vals,0.90), n: vals.length,
+    }))
+    .sort((a,b) => b.med - a.med);
+  if (!items.length) {
+    document.getElementById('chart-tis').innerHTML = '<div class="card-sub" style="padding:40px;text-align:center">No time-in-stage data.</div>';
+    return;
+  }
+  const ch = chartInit('chart-tis');
+  ch.setOption({
+    backgroundColor:'transparent',
+    grid:{ left: 160, top: 14, bottom: 36, right: 24 },
+    xAxis: chartAxis({ type:'value', name:'Days', nameLocation:'middle', nameGap:26, nameTextStyle: chartTextStyle() }),
+    yAxis: chartAxis({ type:'category', data: items.map(i=>i.stage), axisLabel: { color: cssVar('--fg'), fontSize: 12, fontFamily: 'Inter, sans-serif' }, splitLine: { show: false } }),
+    tooltip:{ trigger:'item', formatter: p => {
+      const d = items[p.dataIndex];
+      return `<b>${d.stage}</b><br>n=${d.n}<br>median ${fmtDays(d.med)}<br>p25–p75: ${fmtDays(d.p25)}–${fmtDays(d.p75)}<br>p10–p90: ${fmtDays(d.p10)}–${fmtDays(d.p90)}`;
+    }, ...tooltipStyle() },
+    series: [{
+      type:'custom',
+      renderItem: function(params, api) {
+        const cat = api.value(0);
+        const p10 = api.coord([api.value(1), cat]);
+        const p25 = api.coord([api.value(2), cat]);
+        const med = api.coord([api.value(3), cat]);
+        const p75 = api.coord([api.value(4), cat]);
+        const p90 = api.coord([api.value(5), cat]);
+        const h = 14;
+        return {
+          type:'group',
+          children:[
+            { type:'line', shape:{ x1:p10[0], y1:p10[1], x2:p90[0], y2:p90[1] }, style:{ stroke: cssVar('--fg-muted'), lineWidth:1 } },
+            { type:'rect', shape:{ x:p25[0], y:p25[1]-h/2, width: p75[0]-p25[0], height: h }, style:{ fill: cssVar('--accent'), opacity:0.7 } },
+            { type:'line', shape:{ x1:med[0], y1:med[1]-h/2, x2:med[0], y2:med[1]+h/2 }, style:{ stroke:'#fff', lineWidth:2 } },
+          ]
+        };
+      },
+      encode: { x: [1,2,3,4,5], y: 0 },
+      data: items.map((d,i) => [i, d.p10, d.p25, d.med, d.p75, d.p90]),
+    }],
+  });
+  ch.off('click'); ch.on('click', p => {
+    const item = items[p.dataIndex]; if (!item) return;
+    showStuckCandidatesModal(item, rows);
+  });
+}
+
+function showStuckCandidatesModal(item, rows) {
+  const now = Date.now();
+  const stuck = rows
+    .filter(r => r.current_stage === item.stage)
+    .map(r => {
+      const entered = r.stage_entered_at || r.applied_at;
+      if (!entered) return null;
+      const until = r.status==='hired'&&r.hired_at ? r.hired_at : r.status==='rejected'&&r.rejected_at ? r.rejected_at : new Date(now);
+      return Object.assign({}, r, { _days: (until - entered)/86400000 });
+    })
+    .filter(r => r && r._days > item.p90)
+    .sort((a,b) => b._days - a._days);
+  const root = $('#modal-root');
+  root.innerHTML = `
+    <div class="modal-bg" onclick="if(event.target===this) this.remove()">
+      <div class="modal">
+        <div class="modal-h">
+          <h3>Stuck in ${escapeHtml(item.stage)} <span class="card-sub">>p90 = ${fmtDays(item.p90)}</span></h3>
+          <button class="pillbtn" onclick="this.closest('.modal-bg').remove()">Close</button>
+        </div>
+        <div class="modal-body">
+          ${stuck.length ? `<table class="tbl"><thead><tr><th>Candidate</th><th>Job</th><th class="num">Days</th><th>Recruiter</th></tr></thead><tbody>
+            ${stuck.map(c => `<tr><td>${escapeHtml(c.candidate_name||'—')}</td><td>${escapeHtml(c.job||'—')}</td><td class="num">${fmtDays(c._days)}</td><td>${escapeHtml(c.recruiter||'—')}</td></tr>`).join('')}
+          </tbody></table>` : '<div class="card-sub">No candidates above the p90 threshold.</div>'}
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderThroughput(rows) {
+  const f = state.filters;
+  if (!f.from || !f.to) return;
+  const startWeek = dayjs(f.from).startOf('week');
+  const endWeek = dayjs(f.to).endOf('week');
+  const weeks = [];
+  for (let d = startWeek; d.isBefore(endWeek); d = d.add(1, 'week')) weeks.push(d);
+  const buckets = weeks.map(w => ({ w, applied:0, rejected:0, hired:0 }));
+  for (const r of rows) {
+    if (r.applied_at) {
+      const i = Math.floor(dayjs(r.applied_at).diff(startWeek, 'day')/7);
+      if (i>=0 && i<buckets.length) buckets[i].applied++;
+    }
+    if (r.rejected_at) {
+      const i = Math.floor(dayjs(r.rejected_at).diff(startWeek, 'day')/7);
+      if (i>=0 && i<buckets.length) buckets[i].rejected++;
+    }
+    if (r.hired_at) {
+      const i = Math.floor(dayjs(r.hired_at).diff(startWeek, 'day')/7);
+      if (i>=0 && i<buckets.length) buckets[i].hired++;
+    }
+  }
+  const labels = buckets.map(b => b.w.format('MMM D'));
+  const ch = chartInit('chart-throughput');
+  ch.setOption({
+    backgroundColor:'transparent',
+    grid:{ left: 40, right: 20, top: 36, bottom: 40 },
+    legend:{ data:['Applied','Rejected','Hired','Net'], top:0, textStyle: chartTextStyle(), itemHeight: 8, itemWidth: 14, icon: 'roundRect' },
+    tooltip:{ trigger:'axis', ...tooltipStyle(), axisPointer: { type: 'line', lineStyle: { color: cssVar('--border-strong'), width: 1, type: 'dashed' } } },
+    xAxis: chartAxis({ type:'category', data: labels, boundaryGap: false }),
+    yAxis: chartAxis({ type:'value' }),
+    series:[
+      { name:'Applied', type:'line', areaStyle:{ opacity:0.18 }, smooth:true, symbol:'none', data: buckets.map(b=>b.applied), itemStyle:{ color: cssVar('--cat-1') }, lineStyle:{ width:2, color: cssVar('--cat-1') } },
+      { name:'Rejected', type:'line', areaStyle:{ opacity:0.14 }, smooth:true, symbol:'none', data: buckets.map(b=>b.rejected), itemStyle:{ color: cssVar('--cat-5') }, lineStyle:{ width:2, color: cssVar('--cat-5') } },
+      { name:'Hired', type:'line', areaStyle:{ opacity:0.16 }, smooth:true, symbol:'none', data: buckets.map(b=>b.hired), itemStyle:{ color: cssVar('--good') }, lineStyle:{ width:2, color: cssVar('--good') } },
+      { name:'Net', type:'line', smooth:true, symbol:'circle', symbolSize:5,
+        data: buckets.map(b => b.applied - b.rejected - b.hired),
+        itemStyle:{ color: cssVar('--fg') }, lineStyle:{ width:1.5, type:'dashed', color: cssVar('--fg-muted') } },
+    ],
+  });
+}
+
+function renderTimeToHire(rows) {
+  const hires = rows.filter(r => r.hired_at && r.applied_at);
+  if (!hires.length) {
+    document.getElementById('chart-tth').innerHTML = '<div class="card-sub" style="padding:40px;text-align:center">No hires in this filter.</div>';
+    return;
+  }
+  const byMonth = {};
+  for (const r of hires) {
+    const m = dayjs(r.hired_at).format('YYYY-MM');
+    if (!byMonth[m]) byMonth[m] = { all: [], byDept: {} };
+    const d = (r.hired_at - r.applied_at) / 86400000;
+    byMonth[m].all.push(d);
+    if (r.department) {
+      if (!byMonth[m].byDept[r.department]) byMonth[m].byDept[r.department] = [];
+      byMonth[m].byDept[r.department].push(d);
+    }
+  }
+  const months = Object.keys(byMonth).sort();
+  const medData = months.map(m => median(byMonth[m].all));
+  const p75Data = months.map(m => quantile(byMonth[m].all, 0.75));
+  const lowSampleMarks = months.map((m,i) => byMonth[m].all.length < 3 ? medData[i] : null);
+
+  const series = [
+    { name:'p75 band', type:'line', data: p75Data, lineStyle:{ width:0 }, areaStyle:{ color: cssVar('--accent-soft') }, symbol:'none', smooth:true },
+    { name:'Median', type:'line', data: medData, smooth:true, lineStyle:{ width:2, color: cssVar('--accent') }, itemStyle:{ color: cssVar('--accent') }, symbol:'circle', symbolSize:5 },
+    { name:'Low n', type:'scatter', data: lowSampleMarks, symbolSize:8, itemStyle:{ color: cssVar('--warn') } },
+  ];
+  const depts = state.filters.department.length;
+  if (depts && depts <= 5) {
+    for (let i=0; i<state.filters.department.length; i++) {
+      const dept = state.filters.department[i];
+      const data = months.map(m => median((byMonth[m].byDept[dept])||[]));
+      series.push({ name:dept, type:'line', data, smooth:true, lineStyle:{ width:1.5, color: cssVar('--cat-'+((i%8)+1)) }, symbol:'circle', symbolSize:4 });
+    }
+  }
+
+  const ch = chartInit('chart-tth');
+  ch.setOption({
+    backgroundColor:'transparent',
+    grid:{ left: 40, right: 20, top: 36, bottom: 40 },
+    legend:{ top:0, textStyle: chartTextStyle(), itemHeight: 8, itemWidth: 14, icon: 'roundRect' },
+    tooltip:{ trigger:'axis', ...tooltipStyle(), axisPointer: { type: 'line', lineStyle: { color: cssVar('--border-strong'), width: 1, type: 'dashed' } }, formatter: items => {
+      const m = items[0].axisValue;
+      const lines = [`<b>${m}</b>`];
+      for (const it of items) if (it.value != null) lines.push(`${it.marker} ${it.seriesName}: ${fmtDays(it.value)}`);
+      return lines.join('<br>');
+    }},
+    xAxis: chartAxis({ type:'category', data: months, boundaryGap: false }),
+    yAxis: chartAxis({ type:'value', name:'Days', nameTextStyle: chartTextStyle() }),
+    series,
+  });
+}
+
+function renderSource(rows) {
+  const bySource = {};
+  for (const r of rows) {
+    const s = r.source || '(unknown)';
+    if (!bySource[s]) bySource[s] = { applications:0, interviews:0, offers:0, hires:0, tthDays:[], offerDecisions:0, offerAccepts:0 };
+    const b = bySource[s];
+    b.applications++;
+    const reached = everReachedStages(r);
+    if (reached.includes('Hiring Manager Screen')) b.interviews++;
+    if (reached.includes('Offer')) { b.offers++; b.offerDecisions++; if (r.status==='hired') b.offerAccepts++; }
+    if (r.status === 'hired') {
+      b.hires++;
+      if (r.hired_at && r.applied_at) b.tthDays.push((r.hired_at - r.applied_at)/86400000);
+    }
+  }
+  const sources = Object.entries(bySource).map(([s, b]) => ({
+    source: s, applications: b.applications, interviews: b.interviews, offers: b.offers, hires: b.hires,
+    hireRate: b.applications ? b.hires/b.applications : 0,
+    medTth: median(b.tthDays),
+    offerAccept: b.offerDecisions ? b.offerAccepts/b.offerDecisions : null,
+  }));
+  const sorted = sources.slice().sort((a,b)=>b.applications-a.applications).slice(0,20);
+  const ch = chartInit('chart-source');
+  ch.setOption({
+    backgroundColor:'transparent',
+    grid:{ left: 140, right: 20, top: 36, bottom: 30 },
+    tooltip:{ trigger:'axis', axisPointer:{ type:'shadow', shadowStyle: { color: cssVar('--accent-soft') } }, ...tooltipStyle() },
+    legend:{ data:['Applications','Hires'], top:0, textStyle: chartTextStyle(), itemHeight: 8, itemWidth: 14, icon: 'roundRect' },
+    xAxis: chartAxis({ type:'value' }),
+    yAxis: chartAxis({ type:'category', data: sorted.map(s=>s.source), axisLabel: { color: cssVar('--fg'), fontSize: 12, fontFamily: 'Inter, sans-serif', formatter: v => v.length>22?v.slice(0,20)+'…':v }, splitLine: { show: false } }),
+    series:[
+      { name:'Applications', type:'bar', stack:'a', barMaxWidth: 18, data: sorted.map(s=>s.applications - s.hires), itemStyle:{ color: cssVar('--cat-2'), borderRadius: [0, 0, 0, 0] } },
+      { name:'Hires', type:'bar', stack:'a', barMaxWidth: 18, data: sorted.map(s=>s.hires), itemStyle:{ color: cssVar('--good'), borderRadius: [0, 4, 4, 0] } },
+    ],
+  });
+
+  const dir = state.sourceSortDir === 'desc' ? -1 : 1;
+  const sortKey = state.sourceSort;
+  const sortedT = sources.slice().sort((a,b) => {
+    const av = a[sortKey], bv = b[sortKey];
+    if (av == null) return 1; if (bv == null) return -1;
+    if (typeof av === 'string') return dir * av.localeCompare(bv);
+    return dir * (av - bv);
+  });
+  const hireRates = sortedT.filter(s => s.applications >= 5).map(s=>s.hireRate);
+  const maxHr = hireRates.length ? Math.max(...hireRates) : 0;
+  const minHr = hireRates.length ? Math.min(...hireRates) : 1;
+  const tbl = $('#tbl-source');
+  const cols = [
+    ['source','Source','str','Origin tracked on the application (e.g. LinkedIn, Referral). Empty values bucketed as “(unknown)”.'],
+    ['applications','Apps','num','Total applications from this source in the current date range.'],
+    ['interviews','Interviews','num','Applications that ever reached the **Hiring Manager Screen** stage (or later).'],
+    ['offers','Offers','num','Applications that ever reached the **Offer** stage (or later).'],
+    ['hires','Hires','num','Applications with **status = hired**, hired_at in range.'],
+    ['hireRate','Hire %','pct','**hires ÷ applications** for this source. Best/worst sources highlighted when applications ≥ 5.'],
+    ['medTth','Med TTH','days','Median **hired_at − applied_at** in days, across hires from this source. “—” = no hires.'],
+    ['offerAccept','Offer accept','pct','**hires ÷ offers** for this source — what fraction of offered candidates accepted and joined.'],
+  ];
+  tbl.innerHTML = `
+    <thead><tr>${cols.map(c => `<th class="${c[2]==='str'?'':'num'}" data-k="${c[0]}">${c[1]}${state.sourceSort===c[0]?(state.sourceSortDir==='desc'?' ↓':' ↑'):''}${c[3]?' '+tip(c[3], c[2]==='str'?'':'right'):''}</th>`).join('')}</tr></thead>
+    <tbody>${sortedT.map(s => {
+      const hl = s.applications >= 5 ? (s.hireRate === maxHr && maxHr>0 ? 'row-highlight-good' : s.hireRate === minHr ? 'row-highlight-bad' : '') : '';
+      return `<tr class="${hl}">
+        <td>${escapeHtml(s.source)}</td>
+        <td class="num">${fmtN(s.applications)}</td>
+        <td class="num">${fmtN(s.interviews)}</td>
+        <td class="num">${fmtN(s.offers)}</td>
+        <td class="num">${fmtN(s.hires)}</td>
+        <td class="num">${fmtPct1(s.hireRate)}</td>
+        <td class="num">${s.medTth==null?'—':fmtDays(s.medTth)}</td>
+        <td class="num">${s.offerAccept==null?'—':fmtPct(s.offerAccept)}</td>
+      </tr>`;
+    }).join('')}</tbody>`;
+  tbl.querySelectorAll('th[data-k]').forEach(th => th.addEventListener('click', () => {
+    const k = th.dataset.k;
+    if (state.sourceSort === k) state.sourceSortDir = state.sourceSortDir === 'desc' ? 'asc' : 'desc';
+    else { state.sourceSort = k; state.sourceSortDir = 'desc'; }
+    renderSource(rows);
+  }));
+}
+
+function renderKanban() {
+  const rows = state.rawRows.filter(r => r.status === 'active');
+  const stages = knownStages();
+  const byStage = {};
+  for (const s of stages) byStage[s] = [];
+  for (const r of rows) {
+    const s = r.current_stage; if (!s) continue;
+    if (!byStage[s]) byStage[s] = [];
+    byStage[s].push(r);
+  }
+  const k = $('#kanban');
+  const visible = stages.filter(s => byStage[s] && byStage[s].length);
+  if (!visible.length) { k.innerHTML = '<div class="card-sub" style="padding:30px">No active candidates.</div>'; return; }
+  k.innerHTML = visible.map((s, idx) => {
+    const list = byStage[s];
+    const top = list.slice(0, 10).map(r => {
+      const entered = r.stage_entered_at || r.applied_at;
+      const days = entered ? (Date.now() - entered)/86400000 : null;
+      const cls = days==null ? '' : days<3?'green':days<7?'yellow':days<14?'orange':'red';
+      return `<div class="k-card" data-id="${escapeHtml(r.application_id||r.candidate_name||'')}">
+        <div class="nm">${escapeHtml(r.candidate_name||'—')}</div>
+        <div class="jb">${escapeHtml(r.job||'')}</div>
+        <div class="ds ${cls}">${days==null?'':fmtDays(days)+' in stage'}</div>
+      </div>`;
+    }).join('');
+    const dotColor = `var(--cat-${(idx % 8) + 1})`;
+    return `<div class="kanban-col">
+      <div class="kanban-col-h"><span class="nm" style="--dot:${dotColor}">${escapeHtml(s)}</span><span class="ct num">${list.length}</span></div>
+      ${top}
+      ${list.length>10 ? `<button class="k-show-all" data-stage="${escapeHtml(s)}">Show all ${list.length}</button>` : ''}
+    </div>`;
+  }).join('');
+  k.querySelectorAll('.k-card').forEach(c => c.addEventListener('click', () => {
+    const id = c.dataset.id;
+    const row = state.rawRows.find(r => String(r.application_id) === id || r.candidate_name === id);
+    if (row) showCandidatePanel(row);
+  }));
+  k.querySelectorAll('button[data-stage]').forEach(b => b.addEventListener('click', () => {
+    const s = b.dataset.stage;
+    const all = byStage[s];
+    const root = $('#modal-root');
+    root.innerHTML = `<div class="modal-bg" onclick="if(event.target===this) this.remove()">
+      <div class="modal"><div class="modal-h"><h3>${escapeHtml(s)} (${all.length})</h3>
+      <button class="pillbtn" onclick="this.closest('.modal-bg').remove()">Close</button></div>
+      <div class="modal-body"><table class="tbl"><thead><tr><th>Candidate</th><th>Job</th><th class="num">Days</th><th>Recruiter</th></tr></thead><tbody>
+        ${all.map(r => {
+          const e = r.stage_entered_at||r.applied_at;
+          const d = e?(Date.now()-e)/86400000:null;
+          return `<tr><td>${escapeHtml(r.candidate_name||'—')}</td><td>${escapeHtml(r.job||'')}</td><td class="num">${d==null?'—':fmtDays(d)}</td><td>${escapeHtml(r.recruiter||'')}</td></tr>`;
+        }).join('')}
+      </tbody></table></div></div></div>`;
+  }));
+}
+
+function renderRejection(rows) {
+  const rej = rows.filter(r => r.status === 'rejected');
+  const counts = {};
+  for (const r of rej) { const k = r.rejection_reason || '(none)'; counts[k] = (counts[k]||0)+1; }
+  const data = Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([k,v],i)=>({ name:k, value:v, itemStyle:{ color: cssVar('--cat-'+((i%8)+1)) } }));
+  if (!data.length) {
+    document.getElementById('chart-rej-donut').innerHTML = '<div class="card-sub" style="padding:40px;text-align:center">No rejections.</div>';
+  } else {
+    const ch1 = chartInit('chart-rej-donut');
+    ch1.setOption({
+      backgroundColor:'transparent',
+      tooltip:{ trigger:'item', formatter: p => `${p.name}: ${fmtN(p.value)} (${p.percent}%)`, ...tooltipStyle() },
+      legend:{ orient:'vertical', right:0, top:'middle', textStyle: chartTextStyle({ fontSize: 12 }), itemHeight: 8, itemWidth: 12, icon: 'circle' },
+      series:[{
+        type:'pie', radius:['58%','78%'], center:['35%','50%'], data,
+        label:{ show: false },
+        labelLine: { show: false },
+        itemStyle: { borderColor: cssVar('--bg-elev'), borderWidth: 2 },
+        emphasis: { scale: true, scaleSize: 6 },
+      }],
+    });
+  }
+  const stages = knownStages();
+  const reasons = Object.keys(counts).slice(0, 8);
+  const byStage = {};
+  for (const s of stages) byStage[s] = Object.fromEntries(reasons.map(r=>[r,0]));
+  for (const r of rej) {
+    const s = r.current_stage; if (!s || !byStage[s]) continue;
+    const k = r.rejection_reason || '(none)';
+    if (!reasons.includes(k)) continue;
+    byStage[s][k] = (byStage[s][k]||0)+1;
+  }
+  const stagesWithData = stages.filter(s => Object.values(byStage[s]||{}).some(v => v>0));
+  if (!stagesWithData.length) {
+    document.getElementById('chart-rej-stage').innerHTML = '<div class="card-sub" style="padding:40px;text-align:center">No data.</div>';
+    return;
+  }
+  const ch2 = chartInit('chart-rej-stage');
+  ch2.setOption({
+    backgroundColor:'transparent',
+    grid:{ left:140, right:20, top:36, bottom:30 },
+    legend:{ top:0, textStyle: chartTextStyle(), itemHeight: 8, itemWidth: 14, icon: 'roundRect' },
+    tooltip:{ trigger:'axis', axisPointer:{ type:'shadow', shadowStyle: { color: cssVar('--accent-soft') } }, ...tooltipStyle() },
+    xAxis: chartAxis({ type:'value' }),
+    yAxis: chartAxis({ type:'category', data: stagesWithData, axisLabel: { color: cssVar('--fg'), fontSize: 12, fontFamily: 'Inter, sans-serif' }, splitLine: { show: false } }),
+    series: reasons.map((rs,i) => ({
+      name: rs, type:'bar', stack:'r', barMaxWidth: 18,
+      data: stagesWithData.map(s => byStage[s][rs] || 0),
+      itemStyle:{ color: cssVar('--cat-'+((i%8)+1)) },
+    })),
+  });
+}
+
+function renderRecruiter(rows) {
+  const byRec = {};
+  const allActiveByRec = {};
+  for (const r of state.rawRows) {
+    if (r.status === 'active' && r.recruiter) {
+      allActiveByRec[r.recruiter] = (allActiveByRec[r.recruiter]||0) + 1;
+    }
+  }
+  for (const r of rows) {
+    const k = r.recruiter || '(unassigned)';
+    if (!byRec[k]) byRec[k] = { active: allActiveByRec[k]||0, hires:0, rejected:0, total:0, tthDays:[] };
+    const b = byRec[k];
+    b.total++;
+    if (r.status === 'hired') {
+      b.hires++;
+      if (r.hired_at && r.applied_at) b.tthDays.push((r.hired_at - r.applied_at)/86400000);
+    }
+    if (r.status === 'rejected') b.rejected++;
+  }
+  const items = Object.entries(byRec).map(([rec, b]) => ({
+    recruiter: rec, active: b.active, hires: b.hires, rejected: b.rejected, total: b.total,
+    medTth: median(b.tthDays),
+    rejRate: b.total ? b.rejected/b.total : 0,
+  }));
+  if (!items.length) { $('#tbl-recruiter').innerHTML = '<tbody><tr><td class="card-sub" style="padding:30px">No recruiter data.</td></tr></tbody>'; return; }
+  const avgActive = avg(items.filter(i=>i.recruiter!=='(unassigned)').map(i=>i.active));
+
+  const dir = state.recruiterSortDir === 'desc' ? -1 : 1;
+  const sortKey = state.recruiterSort;
+  items.sort((a,b) => {
+    const av = a[sortKey], bv = b[sortKey];
+    if (av == null) return 1; if (bv == null) return -1;
+    if (typeof av === 'string') return dir * av.localeCompare(bv);
+    return dir * (av - bv);
+  });
+  const cols = [
+    ['recruiter','Recruiter','str','**recruiter_owner** on the application. Unowned applications grouped as “(unassigned)”.'],
+    ['active','Active','num','Live count where **status = active**, across all data (not date-filtered). Rows >2× the team average are flagged.'],
+    ['hires','Hires','num','Hires (status = hired) attributed to this recruiter, hired_at in range.'],
+    ['rejected','Rejected','num','Rejected applications attributed to this recruiter, rejected_at in range.'],
+    ['medTth','Med TTH','days','Median **hired_at − applied_at** across this recruiter’s hires in range.'],
+    ['rejRate','Rej %','pct','**rejected ÷ total touched** in the current date range.'],
+  ];
+  $('#tbl-recruiter').innerHTML = `
+    <thead><tr>${cols.map(c => `<th class="${c[2]==='str'?'':'num'}" data-k="${c[0]}">${c[1]}${state.recruiterSort===c[0]?(state.recruiterSortDir==='desc'?' ↓':' ↑'):''}${c[3]?' '+tip(c[3], c[2]==='str'?'':'right'):''}</th>`).join('')}</tr></thead>
+    <tbody>${items.map(s => {
+      const hl = avgActive>0 && s.active > avgActive*2 ? 'row-highlight-bad' : '';
+      return `<tr class="${hl}">
+        <td>${escapeHtml(s.recruiter)}</td>
+        <td class="num">${fmtN(s.active)}</td>
+        <td class="num">${fmtN(s.hires)}</td>
+        <td class="num">${fmtN(s.rejected)}</td>
+        <td class="num">${s.medTth==null?'—':fmtDays(s.medTth)}</td>
+        <td class="num">${fmtPct1(s.rejRate)}</td>
+      </tr>`;
+    }).join('')}</tbody>`;
+  $('#tbl-recruiter').querySelectorAll('th[data-k]').forEach(th => th.addEventListener('click', () => {
+    const k = th.dataset.k;
+    if (state.recruiterSort === k) state.recruiterSortDir = state.recruiterSortDir === 'desc' ? 'asc' : 'desc';
+    else { state.recruiterSort = k; state.recruiterSortDir = 'desc'; }
+    renderRecruiter(rows);
+  }));
+}
+
+function renderCandidates(rows) {
+  let arr = rows.slice();
+  if (state.candSearch) {
+    const q = norm(state.candSearch);
+    arr = arr.filter(r => norm(r.candidate_name||'').includes(q) || norm(r.job||'').includes(q));
+  }
+  const dir = state.candSortDir === 'desc' ? -1 : 1;
+  const sk = state.candSort;
+  arr.sort((a,b) => {
+    let av = a[sk], bv = b[sk];
+    if (av == null) return 1; if (bv == null) return -1;
+    if (av instanceof Date) av = av.getTime();
+    if (bv instanceof Date) bv = bv.getTime();
+    if (typeof av === 'string') return dir * av.localeCompare(bv);
+    return dir * (av - bv);
+  });
+  const totalPages = Math.max(1, Math.ceil(arr.length / state.candPageSize));
+  if (state.candPage >= totalPages) state.candPage = 0;
+  const slice = arr.slice(state.candPage * state.candPageSize, (state.candPage+1) * state.candPageSize);
+  const cols = [
+    ['candidate_name','Candidate','str','Full **candidate_name** on the application. Click a row to open the detail panel.'],
+    ['job','Job','str','**job** / requisition the candidate applied to.'],
+    ['current_stage','Stage','str','**current_stage** as of latest sync. For terminal applications, the last stage before hire/reject.'],
+    ['_days','Days in stage','num','**today − stage_entered_at** (falls back to applied_at). Color: green <3d, yellow <7d, orange <14d, red ≥14d.'],
+    ['source','Source','str','Application **source** (LinkedIn, referral, etc.).'],
+    ['recruiter','Recruiter','str','**recruiter_owner** assigned to the application.'],
+    ['applied_at','Applied','date','Original **applied_at** date (powers the date filter).'],
+    ['status','Status','str','One of **active**, **hired**, **rejected** — drives the colored pill.'],
+  ];
+  const now = Date.now();
+  const tbl = $('#tbl-cand');
+  tbl.innerHTML = `
+    <thead><tr>${cols.map(c => `<th class="${c[2]==='num'?'num':''}" data-k="${c[0]}">${c[1]}${state.candSort===c[0]?(state.candSortDir==='desc'?' ↓':' ↑'):''}${c[3]?' '+tip(c[3], c[2]==='str'?'':'right'):''}</th>`).join('')}</tr></thead>
+    <tbody>${slice.map((r,i) => {
+      const entered = r.stage_entered_at || r.applied_at;
+      const days = entered ? (now - entered)/86400000 : null;
+      const badgeClass = r.status==='hired'?'good':r.status==='rejected'?'bad':'warn';
+      return `<tr data-i="${i}">
+        <td>${escapeHtml(r.candidate_name||'—')}</td>
+        <td>${escapeHtml(r.job||'—')}</td>
+        <td>${escapeHtml(r.current_stage||'—')}</td>
+        <td class="num">${days==null?'—':fmtDays(days)}</td>
+        <td>${escapeHtml(r.source||'—')}</td>
+        <td>${escapeHtml(r.recruiter||'—')}</td>
+        <td>${r.applied_at?dayjs(r.applied_at).format('YYYY-MM-DD'):'—'}</td>
+        <td><span class="badge ${badgeClass}">${escapeHtml(r.status||'—')}</span></td>
+      </tr>`;
+    }).join('')}</tbody>`;
+  tbl.querySelectorAll('tr[data-i]').forEach(tr => tr.addEventListener('click', () => {
+    showCandidatePanel(slice[+tr.dataset.i]);
+  }));
+  tbl.querySelectorAll('th[data-k]').forEach(th => th.addEventListener('click', () => {
+    const k = th.dataset.k;
+    if (state.candSort === k) state.candSortDir = state.candSortDir === 'desc' ? 'asc' : 'desc';
+    else { state.candSort = k; state.candSortDir = 'desc'; }
+    renderCandidates(rows);
+  }));
+  $('#cand-count').textContent = `${fmtN(arr.length)} candidates`;
+  $('#cand-page-info').textContent = `Page ${state.candPage+1} / ${totalPages}`;
+}
+
+function showCandidatePanel(row) {
+  if (!row) return;
+  const sp = $('#side-panel');
+  const fields = [];
+  for (const c of CANONICAL) {
+    const v = row[c[0]];
+    if (v == null || v === '') continue;
+    let dv = v;
+    if (v instanceof Date) dv = dayjs(v).format('YYYY-MM-DD');
+    fields.push([c[1], dv]);
+  }
+  for (const cf of state.customFields) {
+    const v = row['_'+cf];
+    if (v != null && v !== '') fields.push([cf, v]);
+  }
+  sp.innerHTML = `
+    <button class="pillbtn closebtn" onclick="document.getElementById('side-panel').classList.remove('open')">Close</button>
+    <h3>${escapeHtml(row.candidate_name||'(unnamed)')}</h3>
+    <div class="card-sub" style="margin-bottom:12px">${escapeHtml(row.job||'')} · ${escapeHtml(row.current_stage||'')}</div>
+    ${fields.map(([k,v]) => `<div class="field"><div class="field-k">${escapeHtml(k)}</div><div>${escapeHtml(String(v))}</div></div>`).join('')}
+  `;
+  sp.classList.add('open');
+}
+
+function chartInit(id) {
+  if (state.charts[id]) state.charts[id].dispose();
+  const el = document.getElementById(id);
+  el.innerHTML = '';
+  const ch = echarts.init(el, null, { renderer: 'canvas' });
+  state.charts[id] = ch;
+  return ch;
+}
+function chartTextStyle(extra = {}) {
+  return { color: cssVar('--fg-muted'), fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 500, ...extra };
+}
+function chartAxis(extra = {}) {
+  return {
+    axisLabel: { color: cssVar('--fg-muted'), fontSize: 11, fontFamily: 'Inter, sans-serif' },
+    axisLine: { show: false },
+    axisTick: { show: false },
+    splitLine: { lineStyle: { color: cssVar('--border'), type: 'dashed' } },
+    ...extra,
+  };
+}
+function tooltipStyle() {
+  return {
+    backgroundColor: cssVar('--bg-elev'),
+    borderColor: cssVar('--border-strong'),
+    borderWidth: 1,
+    padding: [8, 12],
+    textStyle: { color: cssVar('--fg'), fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 500 },
+    extraCssText: 'box-shadow: 0 8px 24px rgba(0,0,0,0.12); border-radius: 8px;',
+  };
+}
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function setTheme(t) {
+  if (t === 'dark') document.documentElement.classList.add('dark');
+  else document.documentElement.classList.remove('dark');
+  localStorage.setItem('pipeline-theme', t);
+  if (state.rawRows.length) renderAll();
+}
+function initTheme() {
+  const saved = localStorage.getItem('pipeline-theme');
+  if (saved) setTheme(saved);
+  else if (matchMedia('(prefers-color-scheme: dark)').matches) setTheme('dark');
+}
+
+function serializeFiltersToUrl() {
+  const f = state.filters;
+  const obj = {
+    p: f.preset, s: f.status,
+    j: f.job, d: f.department, o: f.office, src: f.source, r: f.recruiter,
+  };
+  try { history.replaceState(null, '', '#'+btoa(unescape(encodeURIComponent(JSON.stringify(obj))))); } catch {}
+}
+function parseFiltersFromUrl() {
+  if (!location.hash) return;
+  try {
+    const obj = JSON.parse(decodeURIComponent(escape(atob(location.hash.slice(1)))));
+    if (obj.p) state.filters.preset = obj.p;
+    if (obj.s) state.filters.status = obj.s;
+    if (Array.isArray(obj.j)) state.filters.job = obj.j;
+    if (Array.isArray(obj.d)) state.filters.department = obj.d;
+    if (Array.isArray(obj.o)) state.filters.office = obj.o;
+    if (Array.isArray(obj.src)) state.filters.source = obj.src;
+    if (Array.isArray(obj.r)) state.filters.recruiter = obj.r;
+  } catch {}
+}
+
+$('#btn-upload').addEventListener('click', () => $('#file-input').click());
+$('#file-input').addEventListener('change', e => { if (e.target.files.length) handleFiles(e.target.files); });
+$('#btn-sample').addEventListener('click', loadSampleData);
+$('#btn-theme').addEventListener('click', () => setTheme(document.documentElement.classList.contains('dark')?'light':'dark'));
+$('#btn-help').addEventListener('click', showHelp);
+$('#btn-settings').addEventListener('click', showSettings);
+$('#btn-export-png').addEventListener('click', exportPng);
+$('#btn-export-csv').addEventListener('click', exportCsv);
+
+$('#btn-reset-filters').addEventListener('click', () => {
+  state.filters = { preset:'90', from:null, to:null, status:'all', job:[], department:[], office:[], source:[], recruiter:[], custom:{} };
+  $('#sel-status').value = 'all';
+  applyPreset('90');
+  rebuildFilterOptions();
+  renderAll();
+});
+$$('.preset-btn').forEach(b => b.addEventListener('click', () => { applyPreset(b.dataset.preset); renderAll(); }));
+$('#date-from').addEventListener('change', () => { state.filters.from = $('#date-from').valueAsDate; state.filters.preset = ''; $$('.preset-btn').forEach(b=>b.classList.remove('active')); renderAll(); });
+$('#date-to').addEventListener('change', () => { state.filters.to = $('#date-to').valueAsDate; state.filters.preset = ''; $$('.preset-btn').forEach(b=>b.classList.remove('active')); renderAll(); });
+$('#sel-status').addEventListener('change', e => { state.filters.status = e.target.value; renderAll(); });
+
+$('#search-cand').addEventListener('input', e => { state.candSearch = e.target.value; state.candPage = 0; renderCandidates(getFilteredRows()); });
+$('#cand-prev').addEventListener('click', () => { if (state.candPage>0){state.candPage--; renderCandidates(getFilteredRows()); }});
+$('#cand-next').addEventListener('click', () => { state.candPage++; renderCandidates(getFilteredRows()); });
+
+const dz = $('#dropzone');
+['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag'); }));
+['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag'); }));
+dz.addEventListener('drop', e => { e.preventDefault(); if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
+window.addEventListener('dragover', e => { e.preventDefault(); });
+window.addEventListener('drop', e => { if (e.dataTransfer.files.length) { e.preventDefault(); handleFiles(e.dataTransfer.files); }});
+
+window.addEventListener('resize', () => Object.values(state.charts).forEach(c => c.resize()));
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'u' || e.key === 'U') { $('#file-input').click(); }
+  else if (e.key === 'd' || e.key === 'D') { setTheme(document.documentElement.classList.contains('dark')?'light':'dark'); }
+  else if (e.key === '?') { showHelp(); }
+  else if (e.key === '/') { e.preventDefault(); $('#search-cand').focus(); }
+});
+
+function showHelp() {
+  const root = $('#modal-root');
+  root.innerHTML = `<div class="help-overlay" onclick="if(event.target===this) this.remove()">
+    <div class="modal">
+      <div class="modal-h"><h3>Keyboard shortcuts</h3>
+      <button class="pillbtn" onclick="this.closest('.help-overlay').remove()">Close</button></div>
+      <div class="modal-body">
+        <div class="row"><span>Upload data</span> <span class="kbd">U</span></div>
+        <div class="row"><span>Toggle dark mode</span> <span class="kbd">D</span></div>
+        <div class="row"><span>Focus search</span> <span class="kbd">/</span></div>
+        <div class="row"><span>This help</span> <span class="kbd">?</span></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function showSettings() {
+  const root = $('#modal-root');
+  root.innerHTML = `<div class="modal-bg" onclick="if(event.target===this) this.remove()">
+    <div class="modal">
+      <div class="modal-h"><h3>Settings</h3>
+      <button class="pillbtn" onclick="this.closest('.modal-bg').remove()">Close</button></div>
+      <div class="modal-body">
+        <div class="map-section-title">Stage ordering (drag to reorder)</div>
+        <ul class="stage-list" id="stage-list">
+          ${state.stageOrder.map(s => `<li draggable="true" data-s="${escapeHtml(s)}"><span class="grip">⋮⋮</span> ${escapeHtml(s)}</li>`).join('')}
+        </ul>
+        <div class="map-section-title" style="margin-top:24px">Saved mappings</div>
+        <div id="saved-mappings"><div class="card-sub">Loading…</div></div>
+        <div class="map-section-title" style="margin-top:24px">Re-map current data</div>
+        <button class="pillbtn" id="btn-remap">Open mapping editor</button>
+      </div>
+    </div>
+  </div>`;
+  const list = $('#stage-list');
+  let draggedEl = null;
+  list.querySelectorAll('li').forEach(li => {
+    li.addEventListener('dragstart', () => { draggedEl = li; li.classList.add('drag'); });
+    li.addEventListener('dragend', () => { draggedEl = null; li.classList.remove('drag'); persistStageOrder(); });
+    li.addEventListener('dragover', e => { e.preventDefault();
+      if (!draggedEl || draggedEl === li) return;
+      const r = li.getBoundingClientRect();
+      const before = e.clientY < r.top + r.height/2;
+      list.insertBefore(draggedEl, before ? li : li.nextSibling);
+    });
+  });
+  function persistStageOrder() {
+    state.stageOrder = Array.from(list.children).map(li => li.dataset.s);
+    idbKeyval.set('stageOrder', state.stageOrder);
+    if (state.fingerprint) idbKeyval.update('mapping:'+state.fingerprint, v => Object.assign({}, v||{}, { stageOrder: state.stageOrder }));
+    renderAll();
+  }
+  idbKeyval.keys().then(keys => {
+    const mappingKeys = keys.filter(k => typeof k === 'string' && k.startsWith('mapping:'));
+    const node = $('#saved-mappings');
+    if (!mappingKeys.length) { node.innerHTML = '<div class="card-sub">No saved mappings yet.</div>'; return; }
+    Promise.all(mappingKeys.map(k => idbKeyval.get(k).then(v => ({k, v}))))
+      .then(items => {
+        node.innerHTML = items.map(({k, v}) => `
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+            <div><code>${k.slice(8)}</code> <span class="card-sub">${Object.keys(v.mapping||{}).length} fields · saved ${dayjs(v.savedAt).format('YYYY-MM-DD')}</span></div>
+            <button class="pillbtn danger" data-k="${k}">Delete</button>
+          </div>`).join('');
+        node.querySelectorAll('button[data-k]').forEach(b => b.addEventListener('click', async () => {
+          await idbKeyval.del(b.dataset.k); b.closest('div').parentNode.removeChild(b.closest('div'));
+        }));
+      });
+  });
+  $('#btn-remap').addEventListener('click', () => {
+    root.innerHTML = '';
+    const headers = Array.from(new Set(Object.values(state.mapping)));
+    showMappingModal(headers, state.rawRows);
+  });
+}
+
+function exportPng() {
+  const entries = Object.entries(state.charts);
+  if (!entries.length) { toast('No charts to export'); return; }
+  toast('Downloading PNGs…');
+  entries.forEach(([id, ch], i) => {
+    setTimeout(() => {
+      try {
+        const url = ch.getDataURL({ type:'png', pixelRatio: 2, backgroundColor: cssVar('--bg-elev') });
+        const a = document.createElement('a'); a.href = url; a.download = `${id}.png`; a.click();
+      } catch(e) { console.warn(e); }
+    }, i*250);
+  });
+}
+
+function exportCsv() {
+  const rows = getFilteredRows();
+  if (!rows.length) { toast('No rows to export'); return; }
+  const cols = CANONICAL.map(c => c[0]).filter(f => state.mapping[f]);
+  const header = cols.join(',');
+  const body = rows.map(r => cols.map(c => {
+    let v = r[c];
+    if (v instanceof Date) v = dayjs(v).format('YYYY-MM-DD');
+    if (v == null) return '';
+    v = String(v).replace(/"/g, '""');
+    return /[,"\n]/.test(v) ? `"${v}"` : v;
+  }).join(',')).join('\n');
+  const blob = new Blob([header+'\n'+body], { type:'text/csv' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `pipeline-export-${dayjs().format('YYYYMMDD')}.csv`; a.click();
+}
+
+function loadSampleData() {
+  const rows = generateSampleRows();
+  const headers = ['ID','Candidate Name','Email','Job','Department','Office','Application Date','Stage','Status','Source','Source Type','Recruiter','Hiring Manager','Rejected At','Rejection Reason','Hired At','Last Activity','Stage Entered At'];
+  const csv = headers.join(',')+'\n'+rows.map(r=>headers.map(h=>{
+    const v = r[h]==null?'':String(r[h]);
+    return /[,"\n]/.test(v) ? `"${v.replace(/"/g,'""')}"` : v;
+  }).join(',')).join('\n');
+  const file = new File([csv], 'sample-greenhouse-export.csv', { type:'text/csv' });
+  handleFiles([file]);
+}
+
+function generateSampleRows() {
+  const rng = mulberry32(42);
+  const jobs = ['Senior Software Engineer','Product Designer','Data Scientist','Sales Manager','Customer Success Lead','Backend Engineer','Frontend Engineer','VP Engineering','Recruiter','Marketing Manager'];
+  const depts = ['Engineering','Engineering','Design','Data','GTM','GTM','Engineering','Engineering','People','Marketing'];
+  const offices = ['SF','NYC','Remote','London'];
+  const sources = ['LinkedIn','Referral','Greenhouse Inbound','Hired.com','Recruiter Outreach','Wellfound','GitHub'];
+  const sourceTypes = ['Job Board','Referral','Inbound','Agency','Outbound','Job Board','Outbound'];
+  const recruiters = ['Alex Chen','Jordan Park','Sam Rivera','Taylor Brooks'];
+  const hms = ['Casey Wong','Drew Patel','Jamie Liu','Pat Singh','Robin Cohen'];
+  const stages = ['Application Review','Preliminary Phone Screen','Hiring Manager Screen','Onsite','Offer','Hired'];
+  const stageWeights = [1.0, 0.20, 0.55, 0.55, 0.45, 0.85];
+  const rejReasons = ['Skills mismatch','Compensation','Better candidate','Withdrew','Communication','Location','Position closed'];
+  const rows = [];
+  for (let i=0; i<260; i++) {
+    const ji = Math.floor(rng()*jobs.length);
+    const job = jobs[ji], dept = depts[ji];
+    const sIdx = Math.floor(rng()*sources.length);
+    const applied = dayjs().subtract(Math.floor(rng()*180), 'day').subtract(Math.floor(rng()*24), 'hour');
+    let stageIdx = 0;
+    let lastStageEnter = applied;
+    for (let s=1; s<stages.length; s++) {
+      if (rng() < stageWeights[s]) {
+        stageIdx = s;
+        const gap = Math.max(1, Math.floor(rng()*14));
+        lastStageEnter = lastStageEnter.add(gap, 'day');
+      } else break;
+    }
+    let status = 'active';
+    let rejected_at = '';
+    let rejection_reason = '';
+    let hired_at = '';
+    if (stageIdx === stages.length-1) { status = 'hired'; hired_at = lastStageEnter.format('YYYY-MM-DD'); }
+    else if (rng() < 0.55) {
+      status = 'rejected';
+      rejected_at = lastStageEnter.add(Math.floor(rng()*7), 'day').format('YYYY-MM-DD');
+      rejection_reason = rejReasons[Math.floor(rng()*rejReasons.length)];
+    }
+    rows.push({
+      'ID': 1000+i,
+      'Candidate Name': sampleName(rng),
+      'Email': `cand${1000+i}@example.com`,
+      'Job': job,
+      'Department': dept,
+      'Office': offices[Math.floor(rng()*offices.length)],
+      'Application Date': applied.format('YYYY-MM-DD'),
+      'Stage': stages[stageIdx],
+      'Status': status,
+      'Source': sources[sIdx],
+      'Source Type': sourceTypes[sIdx],
+      'Recruiter': recruiters[Math.floor(rng()*recruiters.length)],
+      'Hiring Manager': hms[Math.floor(rng()*hms.length)],
+      'Rejected At': rejected_at,
+      'Rejection Reason': rejection_reason,
+      'Hired At': hired_at,
+      'Last Activity': lastStageEnter.format('YYYY-MM-DD'),
+      'Stage Entered At': lastStageEnter.format('YYYY-MM-DD'),
+    });
+  }
+  return rows;
+}
+function mulberry32(seed) {
+  return function() { let t = seed += 0x6D2B79F5; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+function sampleName(rng) {
+  const first = ['Alex','Sam','Jordan','Taylor','Casey','Drew','Robin','Morgan','Quinn','Riley','Jamie','Pat','Avery','Charlie','Dakota','Emerson','Finley','Greyson','Hayden','Indigo','Jules','Kai','Logan','Marlowe','Noor','Oakley','Phoenix','Rowan','Sage','Tatum','Aisha','Bilal','Camille','Dmitri','Elena','Fatima','Gabriel','Hana','Ines','Jiro','Kenji','Leila','Mateo','Niamh','Oscar'];
+  const last = ['Chen','Park','Patel','Singh','Cohen','Rivera','Brooks','Wong','Liu','Khan','Garcia','Müller','Rossi','Tanaka','Suzuki','Anderson','Olsen','Nguyen','Tran','Huang','Becker','Sato','Kim','Walker','Brown','Davis','Hall','Wright','Allen','Young','Hill','Scott','Green','Adams','Baker','Carter','Mitchell','Perez','Roberts','Turner','Phillips','Campbell','Parker','Evans','Edwards','Collins','Stewart','Sanchez','Morris','Rogers'];
+  return `${first[Math.floor(rng()*first.length)]} ${last[Math.floor(rng()*last.length)]}`;
+}
+
+async function boot() {
+  initTheme();
+  parseFiltersFromUrl();
+  const meta = await idbKeyval.get('fileMeta');
+  const rows = await idbKeyval.get('rawRows');
+  const stageOrder = await idbKeyval.get('stageOrder');
+  if (stageOrder) state.stageOrder = stageOrder;
+  if (rows && rows.length) {
+    for (const r of rows) {
+      for (const k of ['applied_at','rejected_at','hired_at','last_activity_at','stage_entered_at']) {
+        if (r[k] && !(r[k] instanceof Date)) r[k] = new Date(r[k]);
+      }
+    }
+    state.rawRows = rows;
+    state.fileMeta = meta || state.fileMeta;
+    initDateRangeFromData();
+    rebuildFilterOptions();
+    $('#empty-stage').style.display = 'none';
+    $('#dashboard').style.display = '';
+    $('#filterbar').style.display = '';
+    refreshFreshness();
+    $('#upload-summary').innerHTML = `<div class="upload-summary"><span><b>${fmtN(rows.length)}</b> applications loaded from previous session.</span><button class="pillbtn danger" id="btn-clear">Clear data</button></div>`;
+    $('#btn-clear').addEventListener('click', clearData);
+    renderAll();
+  }
+}
+boot();
+initFloatingTip();
+</script>
+</body>
+</html>
