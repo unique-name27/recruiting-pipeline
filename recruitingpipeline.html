@@ -609,7 +609,86 @@
   .chart { width: 100%; height: 320px; }
   .chart-tall { height: 380px; }
   .chart-sm { height: 240px; }
-  #chart-funnel { border-radius: var(--r-md); overflow: hidden; border: 1px solid var(--border); height: 420px; }
+  #chart-funnel { border-radius: var(--r-md); overflow: auto; border: 1px solid var(--border); background: var(--bg-soft); height: auto; min-height: 420px; padding: 18px 20px; }
+
+  /* ===== HTML funnel ===== */
+  .fnl { display: flex; flex-direction: column; gap: 4px; font-family: var(--font-sans); }
+  .fnl-stage {
+    padding: 10px 12px;
+    border-radius: var(--r-md);
+    transition: background var(--dur-fast);
+    cursor: default;
+  }
+  .fnl-stage:hover { background: color-mix(in srgb, var(--bg-elev) 60%, transparent); }
+  .fnl-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+  .fnl-name { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+  .fnl-idx {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--bg-elev); border: 1px solid var(--border-strong);
+    color: var(--fg-muted);
+    font-size: 11px; font-weight: 600;
+    flex-shrink: 0;
+    transform: translateY(2px);
+  }
+  .fnl-stage-name {
+    font-size: 14px; font-weight: 600; color: var(--fg);
+    letter-spacing: -0.005em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .fnl-meta { display: inline-flex; align-items: baseline; gap: 12px; flex-shrink: 0; }
+  .fnl-count { font-family: var(--font-mono); font-size: 16px; font-weight: 600; color: var(--fg); font-variant-numeric: tabular-nums; }
+  .fnl-cum { font-family: var(--font-mono); font-size: 11px; color: var(--fg-muted); font-variant-numeric: tabular-nums; min-width: 40px; text-align: right; }
+  .fnl-track {
+    height: 30px;
+    background: var(--bg-elev);
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .fnl-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--bar) 0%, color-mix(in srgb, var(--bar) 78%, transparent) 100%);
+    border-radius: 5px;
+    display: flex; align-items: center; justify-content: flex-end;
+    padding: 0 10px;
+    transition: width 280ms cubic-bezier(0.16, 1, 0.3, 1);
+    min-width: 2px;
+  }
+  .fnl-bar-label { color: #fff; font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; text-shadow: 0 1px 2px rgba(0,0,0,0.18); letter-spacing: 0.01em; }
+  html.dark .fnl-bar-label { color: var(--bg); text-shadow: none; }
+
+  .fnl-drop {
+    display: inline-flex; align-items: center; gap: 8px;
+    margin: 4px 0 4px 36px;
+    padding: 4px 10px;
+    border-left: 2px dashed var(--border-strong);
+    color: var(--fg-muted);
+    font-size: 11px;
+    font-family: var(--font-sans);
+    line-height: 1.6;
+  }
+  .fnl-drop-arrow { color: var(--fg-dim); display: inline-flex; align-items: center; }
+  .fnl-drop-pass { color: var(--fg); font-weight: 600; }
+  .fnl-drop-sep { opacity: 0.45; }
+  .fnl-drop-lost { color: var(--fg-muted); }
+  .fnl-drop-band {
+    margin-left: 6px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .fnl-drop-band.good { color: var(--good); background: var(--good-soft); }
+  .fnl-drop-band.bad  { color: var(--bad);  background: var(--bad-soft); }
+
+  .fnl-summary {
+    margin-top: 14px; padding-top: 12px;
+    border-top: 1px dashed var(--border-strong);
+    font-size: 12px; color: var(--fg-muted); text-align: right;
+  }
+  .fnl-summary .num { color: var(--fg); font-weight: 600; }
 
   /* ===== Rejection summary pills ===== */
   .rej-summary { display: flex; flex-wrap: wrap; gap: var(--s2); margin: 0 0 var(--s3); }
@@ -2159,54 +2238,67 @@ function renderFunnel(rows) {
   for (const s of stages) counts[s] = 0;
   for (const r of rows) for (const s of everReachedStages(r)) counts[s]++;
   const visible = stages.filter(s => counts[s] > 0);
-  const data = visible.map((s, i) => {
+  const container = document.getElementById('chart-funnel');
+  if (state.charts['chart-funnel']) { try { state.charts['chart-funnel'].dispose(); } catch(e){} delete state.charts['chart-funnel']; }
+  if (!visible.length) {
+    container.innerHTML = '<div class="card-sub" style="padding:40px;text-align:center">No candidates in this filter.</div>';
+    return;
+  }
+  const top = counts[visible[0]];
+  const stageColor = i => `var(--cat-${(i % 8) + 1})`;
+  const html = visible.map((s, i) => {
     const v = counts[s];
+    const widthPct = top ? (v / top) * 100 : 0;
+    const cumRate = top ? v / top : null;
     const prev = i === 0 ? null : counts[visible[i-1]];
     const passRate = prev ? v / prev : null;
-    const cumRate = visible[0] && counts[visible[0]] ? v / counts[visible[0]] : null;
-    let color = cssVar('--cat-1');
+    const dropped = prev ? prev - v : null;
+    let bandStatus = null;
     if (prev) {
       const key = visible[i-1] + '→' + s;
       const band = HEALTH_BANDS[key];
-      if (band) {
-        if (passRate < band[0] || passRate > band[1]) color = cssVar('--bad');
-        else color = cssVar('--good');
+      if (band && passRate != null) {
+        if (passRate < band[0]) bandStatus = { label: `below band (${fmtPct(band[0])}–${fmtPct(band[1])})`, kind: 'bad' };
+        else if (passRate > band[1]) bandStatus = { label: `above band (${fmtPct(band[0])}–${fmtPct(band[1])})`, kind: 'good' };
+        else bandStatus = { label: `within band (${fmtPct(band[0])}–${fmtPct(band[1])})`, kind: 'good' };
       }
     }
-    return { name: s, value: v, passRate, cumRate, itemStyle: { color } };
-  });
-  const ch = chartInit('chart-funnel');
-  ch.setOption({
-    backgroundColor: cssVar('--bg-soft'),
-    tooltip: { trigger:'item', formatter: p => {
-      const d = p.data;
-      return `<b>${d.name}</b><br>${fmtN(d.value)} candidates<br>` +
-        (d.passRate!=null ? `Pass-through: ${fmtPct1(d.passRate)}<br>` : '') +
-        (d.cumRate!=null ? `Cumulative: ${fmtPct1(d.cumRate)}` : '');
-    }, ...tooltipStyle() },
-    series: [{
-      type:'funnel', sort:'none', gap: 8, top: 24, bottom: 24, left: '6%',
-      width: '46%',
-      funnelAlign: 'left',
-      label: {
-        show: true,
-        position: 'right',
-        formatter: p => {
-          const d = p.data;
-          const pct = d.passRate != null ? `  ·  ${fmtPct(d.passRate)} pass` : '';
-          return `{nm|${d.name}}\n{ct|${fmtN(d.value)} candidates${pct}}`;
-        },
-        rich: {
-          nm: { color: cssVar('--fg'), fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600, lineHeight: 20 },
-          ct: { color: cssVar('--fg-muted'), fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 500, lineHeight: 16 },
-        },
-      },
-      labelLine: { show: true, length: 14, lineStyle: { color: cssVar('--border-strong'), width: 1, type: 'dashed' } },
-      itemStyle: { borderColor: cssVar('--bg-soft'), borderWidth: 2, borderRadius: 4 },
-      emphasis: { label: { rich: { nm: { fontSize: 15 } } }, itemStyle: { shadowBlur: 8, shadowColor: 'rgba(0,0,0,0.12)' } },
-      data,
-    }],
-  });
+    const dropBlock = i === 0 ? '' : `
+      <div class="fnl-drop">
+        <span class="fnl-drop-arrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+        </span>
+        <span class="fnl-drop-pass num">${fmtPct1(passRate)} pass-through</span>
+        <span class="fnl-drop-sep">·</span>
+        <span class="fnl-drop-lost num">${fmtN(dropped)} lost</span>
+        ${bandStatus ? `<span class="fnl-drop-band ${bandStatus.kind}">${bandStatus.label}</span>` : ''}
+      </div>`;
+    return `
+      ${dropBlock}
+      <div class="fnl-stage" data-stage="${escapeHtml(s)}" tabindex="0">
+        <div class="fnl-row">
+          <div class="fnl-name">
+            <span class="fnl-idx num">${i+1}</span>
+            <span class="fnl-stage-name">${escapeHtml(s)}</span>
+          </div>
+          <div class="fnl-meta">
+            <span class="fnl-count num">${fmtN(v)}</span>
+            <span class="fnl-cum num">${cumRate != null ? fmtPct(cumRate) : ''}</span>
+          </div>
+        </div>
+        <div class="fnl-track">
+          <div class="fnl-bar" style="width:${widthPct.toFixed(2)}%; --bar:${stageColor(i)}">
+            ${widthPct > 18 ? `<span class="fnl-bar-label num">${fmtN(v)}</span>` : ''}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+  const overall = visible.length > 1 && counts[visible[0]] ? counts[visible[visible.length-1]] / counts[visible[0]] : null;
+  container.innerHTML = `
+    <div class="fnl">
+      ${html}
+      ${overall != null ? `<div class="fnl-summary"><span>Overall conversion <span class="num">${fmtPct1(overall)}</span> · <span class="num">${fmtN(counts[visible[0]])}</span> &rarr; <span class="num">${fmtN(counts[visible[visible.length-1]])}</span></span></div>` : ''}
+    </div>`;
 }
 
 function renderTimeInStage(rows) {
