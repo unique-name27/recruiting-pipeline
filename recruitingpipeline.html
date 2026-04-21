@@ -236,6 +236,33 @@
   }
   .filterbar .mselect { position: relative; }
   .filterbar .mselect-pop { z-index: 60; }
+
+  /* ===== Saved-views dropdown ===== */
+  .preset-saved-wrap { position: relative; }
+  .preset-saved-pop {
+    position: absolute; top: calc(100% + 6px); right: 0;
+    min-width: 280px; max-width: 360px;
+    background: var(--bg-elev); border: 1px solid var(--border-strong); border-radius: var(--r-md);
+    box-shadow: var(--shadow-lg);
+    padding: 6px;
+    z-index: 70;
+    max-height: 400px; overflow-y: auto;
+  }
+  .preset-saved-empty { padding: 16px; color: var(--fg-muted); font-size: var(--t-sm); text-align: center; }
+  .preset-saved-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; border-radius: var(--r-sm);
+    cursor: pointer; color: var(--fg);
+  }
+  .preset-saved-item:hover { background: var(--bg-soft); }
+  .preset-saved-item .name { font-size: var(--t-sm); font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .preset-saved-item .meta { font-size: var(--t-xs); color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+  .preset-saved-item .del {
+    appearance: none; border: none; background: transparent;
+    color: var(--fg-muted); cursor: pointer; padding: 4px 6px; border-radius: 4px;
+    display: inline-flex; align-items: center;
+  }
+  .preset-saved-item .del:hover { background: var(--bad-soft); color: var(--bad); }
   .filter-group { display: flex; align-items: center; gap: 6px; }
   .filter-label {
     font-size: 10px; color: var(--fg-dim); font-weight: 600;
@@ -583,6 +610,25 @@
   .chart-tall { height: 380px; }
   .chart-sm { height: 240px; }
   #chart-funnel { border-radius: var(--r-md); overflow: hidden; border: 1px solid var(--border); height: 420px; }
+
+  /* ===== Rejection summary pills ===== */
+  .rej-summary { display: flex; flex-wrap: wrap; gap: var(--s2); margin: 0 0 var(--s3); }
+  .rej-summary:empty { display: none; }
+  .rej-summary-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 14px; border-radius: 999px;
+    font-size: var(--t-sm); font-weight: 500;
+    background: var(--bg-elev); border: 1px solid var(--border);
+    color: var(--fg);
+  }
+  .rej-summary-pill .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .rej-summary-pill .num { color: var(--fg-muted); font-variant-numeric: tabular-nums; font-size: var(--t-xs); }
+  .rej-summary-pill b { font-weight: 600; }
+  .rej-summary-pill.rej-company { background: color-mix(in srgb, var(--cat-2) 8%, var(--bg-elev)); border-color: color-mix(in srgb, var(--cat-2) 25%, var(--border)); }
+  .rej-summary-pill.rej-company .dot { background: var(--cat-2); }
+  .rej-summary-pill.rej-candidate { background: var(--bad-soft); border-color: color-mix(in srgb, var(--bad) 30%, var(--border)); }
+  .rej-summary-pill.rej-candidate .dot { background: var(--bad); }
+  .rej-summary-pill.rej-unspec .dot { background: var(--fg-muted); }
 
   /* ===== Tables ===== */
   table.tbl { width: 100%; border-collapse: collapse; font-size: var(--t-sm); }
@@ -1009,10 +1055,23 @@
   <div class="filter-group" id="ms-source-wrap"></div>
   <div class="filter-group" id="ms-recruiter-wrap"></div>
   <div class="filter-group" id="ms-custom-wrap"></div>
-  <button class="pillbtn ghost" id="btn-reset-filters" style="margin-left:auto" title="Reset all filters">
-    <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-    Reset
-  </button>
+  <div class="filter-actions" style="margin-left:auto; display:flex; gap:6px; align-items:center;">
+    <div class="preset-saved-wrap">
+      <button class="pillbtn ghost" id="btn-presets-menu" title="Load a saved filter view">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        Saved <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:10px;height:10px"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="preset-saved-pop" id="preset-saved-pop" hidden></div>
+    </div>
+    <button class="pillbtn ghost" id="btn-save-preset" title="Save current filters as a view">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Save view
+    </button>
+    <button class="pillbtn ghost" id="btn-reset-filters" title="Reset all filters">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+      Reset
+    </button>
+  </div>
 </div>
 
 <div id="empty-stage" class="empty-stage">
@@ -1141,13 +1200,14 @@
   </section>
 
   <h3 class="section-h">Rejection analysis</h3>
+  <div id="rej-summary" class="rej-summary"></div>
   <section class="grid grid-1-1">
     <div class="card">
-      <div class="card-title">Reasons <span class="tip" tabindex="0" aria-label="Rejection reasons calculation" data-tip="Distribution of **rejection_reason** across rejected candidates in the current filter. Empty/blank reasons are bucketed as “(none)”."></span></div>
+      <div class="card-title">Reasons <span class="card-sub">inner ring = who initiated</span> <span class="tip" tabindex="0" aria-label="Rejection reasons calculation" data-tip="Inner ring shows **who initiated** the rejection — Company-initiated vs Candidate-initiated (withdrew, accepted other offer, comp, etc.). Outer ring breaks down individual reasons, colored by initiator group. Classification is heuristic from the **rejection_reason** text."></span></div>
       <div id="chart-rej-donut" class="chart"></div>
     </div>
     <div class="card">
-      <div class="card-title">Reasons by stage <span class="tip" tabindex="0" aria-label="Reasons by stage calculation" data-tip="Top 8 rejection reasons (series) broken out by **current_stage** at time of rejection. Stacked horizontally."></span></div>
+      <div class="card-title">Initiator by stage <span class="tip" tabindex="0" aria-label="Initiator by stage" data-tip="Per **current_stage**: how many rejections were **company-initiated** vs **candidate-initiated** (withdrawals, accepted other offer, comp, etc.). Hover for share within stage."></span></div>
       <div id="chart-rej-stage" class="chart"></div>
     </div>
   </section>
@@ -1241,6 +1301,27 @@ const HEALTH_BANDS = {
   'Onsite→Offer': [0.30, 0.60],
   'Offer→Hired': [0.80, 0.95],
 };
+
+const CANDIDATE_INITIATED_KEYWORDS = [
+  'withdrew', 'withdrawn', 'withdraw',
+  'declined offer', 'rejected offer', 'turned down',
+  'accepted other', 'accepted another', 'other offer', 'better offer', 'competing offer', 'counter offer',
+  'no longer interested', 'lost interest', 'not interested',
+  'unresponsive', 'no response', 'ghost',
+  'compensation', 'salary', 'pay', 'comp expectations', 'comp too low',
+  'location', 'relocat',
+  'remote', 'wfh', 'hybrid',
+  'taking time', 'pausing search', 'pause search',
+  'candidate withdrew', 'candidate declined', 'candidate unresponsive',
+];
+function classifyRejection(reason) {
+  if (!reason || !String(reason).trim()) return 'Unspecified';
+  const n = norm(reason);
+  for (const kw of CANDIDATE_INITIATED_KEYWORDS) {
+    if (n.includes(kw)) return 'Candidate-initiated';
+  }
+  return 'Company-initiated';
+}
 
 const state = {
   rawRows: [],
@@ -2248,21 +2329,52 @@ function renderThroughput(rows) {
     }
   }
   const labels = buckets.map(b => b.w.format('MMM D'));
+  const appliedData = buckets.map(b => b.applied);
+  const rejectedData = buckets.map(b => -b.rejected);
+  const hiredData = buckets.map(b => -b.hired);
+  const netData = buckets.map(b => b.applied - b.rejected - b.hired);
+  const totalApplied = appliedData.reduce((a,b)=>a+b,0);
   const ch = chartInit('chart-throughput');
   ch.setOption({
     backgroundColor:'transparent',
-    grid:{ left: 40, right: 20, top: 36, bottom: 40 },
-    legend:{ data:['Applied','Rejected','Hired','Net'], top:0, textStyle: chartTextStyle(), itemHeight: 8, itemWidth: 14, icon: 'roundRect' },
-    tooltip:{ trigger:'axis', ...tooltipStyle(), axisPointer: { type: 'line', lineStyle: { color: cssVar('--border-strong'), width: 1, type: 'dashed' } } },
-    xAxis: chartAxis({ type:'category', data: labels, boundaryGap: false }),
-    yAxis: chartAxis({ type:'value' }),
+    grid:{ left: 56, right: 20, top: 44, bottom: 40 },
+    legend:{
+      data:[
+        { name:'Applied', icon:'roundRect' },
+        { name:'Rejected', icon:'roundRect' },
+        { name:'Hired', icon:'roundRect' },
+        { name:'Net change', icon:'circle' },
+      ],
+      top:0, textStyle: chartTextStyle({ fontSize: 12 }), itemHeight: 10, itemWidth: 14, itemGap: 18,
+    },
+    tooltip:{ trigger:'axis', ...tooltipStyle(),
+      axisPointer:{ type:'shadow', shadowStyle:{ color: cssVar('--accent-soft') } },
+      formatter: items => {
+        const idx = items[0].dataIndex;
+        const b = buckets[idx];
+        const net = b.applied - b.rejected - b.hired;
+        return `<b>Week of ${b.w.format('MMM D, YYYY')}</b><br>`
+          + `<span style="color:${cssVar('--cat-1')}">●</span> Applied: <b>${fmtN(b.applied)}</b><br>`
+          + `<span style="color:${cssVar('--bad')}">●</span> Rejected: <b>${fmtN(b.rejected)}</b><br>`
+          + `<span style="color:${cssVar('--good')}">●</span> Hired: <b>${fmtN(b.hired)}</b><br>`
+          + `<span style="color:${cssVar('--fg')}">━</span> Net change: <b>${net >= 0 ? '+' : ''}${fmtN(net)}</b>`;
+      },
+    },
+    xAxis: chartAxis({ type:'category', data: labels, boundaryGap: true, axisLabel:{ color: cssVar('--fg-muted'), fontSize: 11, fontFamily:'Inter, sans-serif' } }),
+    yAxis: chartAxis({ type:'value', axisLabel:{ formatter: v => Math.abs(v), color: cssVar('--fg-muted'), fontSize: 11, fontFamily:'Inter, sans-serif' } }),
     series:[
-      { name:'Applied', type:'line', areaStyle:{ opacity:0.18 }, smooth:true, symbol:'none', data: buckets.map(b=>b.applied), itemStyle:{ color: cssVar('--cat-1') }, lineStyle:{ width:2, color: cssVar('--cat-1') } },
-      { name:'Rejected', type:'line', areaStyle:{ opacity:0.14 }, smooth:true, symbol:'none', data: buckets.map(b=>b.rejected), itemStyle:{ color: cssVar('--cat-5') }, lineStyle:{ width:2, color: cssVar('--cat-5') } },
-      { name:'Hired', type:'line', areaStyle:{ opacity:0.16 }, smooth:true, symbol:'none', data: buckets.map(b=>b.hired), itemStyle:{ color: cssVar('--good') }, lineStyle:{ width:2, color: cssVar('--good') } },
-      { name:'Net', type:'line', smooth:true, symbol:'circle', symbolSize:5,
-        data: buckets.map(b => b.applied - b.rejected - b.hired),
-        itemStyle:{ color: cssVar('--fg') }, lineStyle:{ width:1.5, type:'dashed', color: cssVar('--fg-muted') } },
+      { name:'Applied', type:'bar', stack:'flow', barMaxWidth: 22,
+        data: appliedData, itemStyle:{ color: cssVar('--cat-1'), borderRadius:[3,3,0,0] } },
+      { name:'Rejected', type:'bar', stack:'flow', barMaxWidth: 22,
+        data: rejectedData, itemStyle:{ color: cssVar('--bad'), borderRadius:[0,0,3,3] } },
+      { name:'Hired', type:'bar', stack:'flow', barMaxWidth: 22,
+        data: hiredData, itemStyle:{ color: cssVar('--good'), borderRadius:[0,0,3,3] } },
+      { name:'Net change', type:'line', smooth: true, symbol:'circle', symbolSize: 6,
+        data: netData, z: 5,
+        itemStyle:{ color: cssVar('--fg'), borderColor: cssVar('--bg-elev'), borderWidth: 2 },
+        lineStyle:{ width: 2, color: cssVar('--fg') },
+        markLine: totalApplied ? { silent: true, symbol:'none', lineStyle:{ color: cssVar('--border-strong'), width: 1, type: 'dashed' }, data:[{ yAxis: 0 }] } : undefined,
+      },
     ],
   });
 }
@@ -2285,37 +2397,77 @@ function renderTimeToHire(rows) {
     }
   }
   const months = Object.keys(byMonth).sort();
-  const medData = months.map(m => median(byMonth[m].all));
-  const p75Data = months.map(m => quantile(byMonth[m].all, 0.75));
-  const lowSampleMarks = months.map((m,i) => byMonth[m].all.length < 3 ? medData[i] : null);
+  const monthLabels = months.map(m => dayjs(m + '-01').format('MMM YYYY'));
+  const stats = months.map(m => {
+    const arr = byMonth[m].all;
+    return {
+      n: arr.length,
+      p25: quantile(arr, 0.25),
+      med: median(arr),
+      p75: quantile(arr, 0.75),
+    };
+  });
+  const p25Data = stats.map(s => s.p25);
+  const iqrData = stats.map(s => s.p75 - s.p25);
+  const medData = stats.map(s => s.med);
+  const hireCounts = stats.map(s => s.n);
+  const overallMed = median(hires.map(r => (r.hired_at - r.applied_at)/86400000));
 
   const series = [
-    { name:'p75 band', type:'line', data: p75Data, lineStyle:{ width:0 }, areaStyle:{ color: cssVar('--accent-soft') }, symbol:'none', smooth:true },
-    { name:'Median', type:'line', data: medData, smooth:true, lineStyle:{ width:2, color: cssVar('--accent') }, itemStyle:{ color: cssVar('--accent') }, symbol:'circle', symbolSize:5 },
-    { name:'Low n', type:'scatter', data: lowSampleMarks, symbolSize:8, itemStyle:{ color: cssVar('--warn') } },
+    { name:'Hires', type:'bar', yAxisIndex: 1, barMaxWidth: 22, z: 1,
+      itemStyle:{ color: cssVar('--bg-deep'), borderRadius:[3,3,0,0] },
+      data: hireCounts, tooltip: { show: false } },
+    { name:'_iqr_base', type:'line', stack:'iqr', data: p25Data, symbol:'none', lineStyle:{ width:0, opacity:0 }, areaStyle:{ opacity: 0 }, tooltip: { show: false }, silent: true, z: 2 },
+    { name:'p25–p75 (IQR)', type:'line', stack:'iqr', data: iqrData, symbol:'none', lineStyle:{ width:0, opacity:0 }, areaStyle:{ color: cssVar('--accent-soft'), opacity: 0.85 }, smooth: true, z: 3,
+      tooltip: { show: false } },
+    { name:'Median TtH', type:'line', data: medData, smooth: true, z: 5,
+      lineStyle:{ width: 2.5, color: cssVar('--accent') },
+      itemStyle:{ color: cssVar('--accent'), borderColor: cssVar('--bg-elev'), borderWidth: 2 },
+      symbol:'circle', symbolSize: 7,
+      markLine: { silent: true, symbol:'none', lineStyle:{ color: cssVar('--fg-muted'), width: 1, type: 'dashed' },
+        label:{ formatter: `Overall ${fmtDays(overallMed)}`, color: cssVar('--fg-muted'), fontFamily:'Inter, sans-serif', fontSize: 11, position:'insideEndTop' },
+        data:[{ yAxis: overallMed }] },
+    },
   ];
   const depts = state.filters.department.length;
   if (depts && depts <= 5) {
     for (let i=0; i<state.filters.department.length; i++) {
       const dept = state.filters.department[i];
       const data = months.map(m => median((byMonth[m].byDept[dept])||[]));
-      series.push({ name:dept, type:'line', data, smooth:true, lineStyle:{ width:1.5, color: cssVar('--cat-'+((i%8)+1)) }, symbol:'circle', symbolSize:4 });
+      series.push({ name: dept, type:'line', data, smooth:true, z: 4,
+        lineStyle:{ width: 1.5, color: cssVar('--cat-'+((i%8)+1)), type:'dashed' },
+        itemStyle:{ color: cssVar('--cat-'+((i%8)+1)) }, symbol:'circle', symbolSize: 4 });
     }
   }
 
   const ch = chartInit('chart-tth');
   ch.setOption({
     backgroundColor:'transparent',
-    grid:{ left: 40, right: 20, top: 36, bottom: 40 },
-    legend:{ top:0, textStyle: chartTextStyle(), itemHeight: 8, itemWidth: 14, icon: 'roundRect' },
-    tooltip:{ trigger:'axis', ...tooltipStyle(), axisPointer: { type: 'line', lineStyle: { color: cssVar('--border-strong'), width: 1, type: 'dashed' } }, formatter: items => {
-      const m = items[0].axisValue;
-      const lines = [`<b>${m}</b>`];
-      for (const it of items) if (it.value != null) lines.push(`${it.marker} ${it.seriesName}: ${fmtDays(it.value)}`);
-      return lines.join('<br>');
-    }},
-    xAxis: chartAxis({ type:'category', data: months, boundaryGap: false }),
-    yAxis: chartAxis({ type:'value', name:'Days', nameTextStyle: chartTextStyle() }),
+    grid:{ left: 56, right: 56, top: 44, bottom: 40 },
+    legend:{ top: 0, textStyle: chartTextStyle({ fontSize: 12 }), itemHeight: 10, itemWidth: 14, itemGap: 18,
+      data: [{ name:'Median TtH', icon:'circle' }, { name:'p25–p75 (IQR)', icon:'roundRect' }, { name:'Hires', icon:'roundRect' }],
+    },
+    tooltip:{ trigger:'axis', ...tooltipStyle(), axisPointer:{ type:'line', lineStyle:{ color: cssVar('--border-strong'), width:1, type:'dashed' } },
+      formatter: items => {
+        const idx = items[0].dataIndex;
+        const s = stats[idx];
+        const lines = [`<b>${monthLabels[idx]}</b>`];
+        lines.push(`Hires: <b>${fmtN(s.n)}</b>`);
+        if (s.med != null) lines.push(`<span style="color:${cssVar('--accent')}">●</span> Median: <b>${fmtDays(s.med)}</b>`);
+        if (s.p25 != null && s.p75 != null) lines.push(`<span style="color:${cssVar('--fg-muted')}">▮</span> IQR: <b>${fmtDays(s.p25)}–${fmtDays(s.p75)}</b>`);
+        for (const it of items) {
+          if (['_iqr_base','Hires','p25–p75 (IQR)','Median TtH'].includes(it.seriesName)) continue;
+          if (it.value == null) continue;
+          lines.push(`${it.marker} ${it.seriesName}: <b>${fmtDays(it.value)}</b>`);
+        }
+        if (s.n < 3) lines.push(`<span style="color:${cssVar('--warn')}">⚠</span> low sample (n=${s.n})`);
+        return lines.join('<br>');
+      } },
+    xAxis: chartAxis({ type:'category', data: monthLabels, boundaryGap: true }),
+    yAxis: [
+      chartAxis({ type:'value', name:'Days', nameLocation:'middle', nameGap: 38, nameTextStyle: chartTextStyle({ fontSize: 11 }), axisLabel:{ color: cssVar('--fg-muted'), fontSize: 11, fontFamily:'Inter, sans-serif', formatter: v => v + 'd' } }),
+      chartAxis({ type:'value', name:'Hires', nameLocation:'middle', nameGap: 32, nameTextStyle: chartTextStyle({ fontSize: 11 }), splitLine:{ show: false }, axisLabel:{ color: cssVar('--fg-muted'), fontSize: 11, fontFamily:'Inter, sans-serif' } }),
+    ],
     series,
   });
 }
@@ -2457,37 +2609,75 @@ function renderKanban() {
 
 function renderRejection(rows) {
   const rej = rows.filter(r => r.status === 'rejected');
-  const counts = {};
-  for (const r of rej) { const k = r.rejection_reason || '(none)'; counts[k] = (counts[k]||0)+1; }
-  const data = Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([k,v],i)=>({ name:k, value:v, itemStyle:{ color: cssVar('--cat-'+((i%8)+1)) } }));
-  if (!data.length) {
+  const reasonCounts = {};
+  const initCounts = { 'Company-initiated': 0, 'Candidate-initiated': 0, 'Unspecified': 0 };
+  const reasonInit = {};
+  for (const r of rej) {
+    const k = r.rejection_reason || '(none)';
+    reasonCounts[k] = (reasonCounts[k]||0)+1;
+    const init = classifyRejection(r.rejection_reason);
+    initCounts[init]++;
+    reasonInit[k] = init;
+  }
+  const total = rej.length;
+  const summaryEl = document.getElementById('rej-summary');
+  if (summaryEl) {
+    if (!total) {
+      summaryEl.innerHTML = '';
+    } else {
+      const cPct = (initCounts['Company-initiated']/total*100).toFixed(0);
+      const kPct = (initCounts['Candidate-initiated']/total*100).toFixed(0);
+      const uPct = (initCounts['Unspecified']/total*100).toFixed(0);
+      summaryEl.innerHTML = `
+        <div class="rej-summary-pill rej-company"><span class="dot"></span>Company rejected <b>${cPct}%</b> <span class="num">(${fmtN(initCounts['Company-initiated'])})</span></div>
+        <div class="rej-summary-pill rej-candidate"><span class="dot"></span>Candidate withdrew <b>${kPct}%</b> <span class="num">(${fmtN(initCounts['Candidate-initiated'])})</span></div>
+        ${initCounts['Unspecified'] ? `<div class="rej-summary-pill rej-unspec"><span class="dot"></span>Unspecified <b>${uPct}%</b> <span class="num">(${fmtN(initCounts['Unspecified'])})</span></div>` : ''}`;
+    }
+  }
+  if (!total) {
     document.getElementById('chart-rej-donut').innerHTML = '<div class="card-sub" style="padding:40px;text-align:center">No rejections.</div>';
   } else {
+    const colorFor = init => init === 'Candidate-initiated' ? cssVar('--bad') : init === 'Company-initiated' ? cssVar('--cat-2') : cssVar('--fg-muted');
+    const inner = [
+      { name: 'Company rejected', value: initCounts['Company-initiated'], itemStyle: { color: cssVar('--cat-2') } },
+      { name: 'Candidate withdrew', value: initCounts['Candidate-initiated'], itemStyle: { color: cssVar('--bad') } },
+    ];
+    if (initCounts['Unspecified']) inner.push({ name: 'Unspecified', value: initCounts['Unspecified'], itemStyle: { color: cssVar('--fg-muted') } });
+    const sortedReasons = Object.entries(reasonCounts).sort((a,b) => {
+      const initOrder = { 'Company-initiated': 0, 'Candidate-initiated': 1, 'Unspecified': 2 };
+      const da = initOrder[reasonInit[a[0]]], db = initOrder[reasonInit[b[0]]];
+      return da !== db ? da - db : b[1] - a[1];
+    });
+    const outer = sortedReasons.map(([k,v]) => {
+      const init = reasonInit[k];
+      const base = colorFor(init);
+      return { name: k, value: v, itemStyle: { color: base, opacity: 0.78 } };
+    });
     const ch1 = chartInit('chart-rej-donut');
     ch1.setOption({
       backgroundColor:'transparent',
-      tooltip:{ trigger:'item', formatter: p => `${p.name}: ${fmtN(p.value)} (${p.percent}%)`, ...tooltipStyle() },
-      legend:{ orient:'vertical', right:0, top:'middle', textStyle: chartTextStyle({ fontSize: 12 }), itemHeight: 8, itemWidth: 12, icon: 'circle' },
-      series:[{
-        type:'pie', radius:['58%','78%'], center:['35%','50%'], data,
-        label:{ show: false },
-        labelLine: { show: false },
-        itemStyle: { borderColor: cssVar('--bg-elev'), borderWidth: 2 },
-        emphasis: { scale: true, scaleSize: 6 },
-      }],
+      tooltip:{ trigger:'item', formatter: p => `<b>${p.name}</b><br>${fmtN(p.value)} (${p.percent}%)`, ...tooltipStyle() },
+      series: [
+        { name:'By initiator', type:'pie', radius:[0,'42%'], center:['50%','50%'], data: inner,
+          label:{ show:true, position:'inside', formatter:'{d}%', color:'#fff', fontWeight:600, fontSize:12, fontFamily:'Inter, sans-serif' },
+          labelLine:{ show:false }, itemStyle:{ borderColor: cssVar('--bg-elev'), borderWidth: 2 } },
+        { name:'By reason', type:'pie', radius:['52%','78%'], center:['50%','50%'], data: outer,
+          label:{ show:true, formatter: p => p.percent >= 5 ? p.name : '', color: cssVar('--fg'), fontSize:11, fontFamily:'Inter, sans-serif' },
+          labelLine:{ show:true, lineStyle:{ color: cssVar('--border-strong') } },
+          itemStyle:{ borderColor: cssVar('--bg-elev'), borderWidth: 2 },
+          emphasis:{ scale:true, scaleSize:5 } },
+      ],
     });
   }
+
   const stages = knownStages();
-  const reasons = Object.keys(counts).slice(0, 8);
   const byStage = {};
-  for (const s of stages) byStage[s] = Object.fromEntries(reasons.map(r=>[r,0]));
+  for (const s of stages) byStage[s] = { 'Company-initiated': 0, 'Candidate-initiated': 0, 'Unspecified': 0 };
   for (const r of rej) {
     const s = r.current_stage; if (!s || !byStage[s]) continue;
-    const k = r.rejection_reason || '(none)';
-    if (!reasons.includes(k)) continue;
-    byStage[s][k] = (byStage[s][k]||0)+1;
+    byStage[s][classifyRejection(r.rejection_reason)]++;
   }
-  const stagesWithData = stages.filter(s => Object.values(byStage[s]||{}).some(v => v>0));
+  const stagesWithData = stages.filter(s => Object.values(byStage[s]).some(v => v>0));
   if (!stagesWithData.length) {
     document.getElementById('chart-rej-stage').innerHTML = '<div class="card-sub" style="padding:40px;text-align:center">No data.</div>';
     return;
@@ -2495,16 +2685,26 @@ function renderRejection(rows) {
   const ch2 = chartInit('chart-rej-stage');
   ch2.setOption({
     backgroundColor:'transparent',
-    grid:{ left:140, right:20, top:36, bottom:30 },
-    legend:{ top:0, textStyle: chartTextStyle(), itemHeight: 8, itemWidth: 14, icon: 'roundRect' },
-    tooltip:{ trigger:'axis', axisPointer:{ type:'shadow', shadowStyle: { color: cssVar('--accent-soft') } }, ...tooltipStyle() },
+    grid:{ left:160, right:20, top:36, bottom:30 },
+    legend:{ top:0, textStyle: chartTextStyle(), itemHeight: 8, itemWidth: 14, icon: 'roundRect',
+      data: ['Company rejected', 'Candidate withdrew', 'Unspecified'] },
+    tooltip:{ trigger:'axis', axisPointer:{ type:'shadow', shadowStyle: { color: cssVar('--accent-soft') } }, ...tooltipStyle(),
+      formatter: items => {
+        const lines = [`<b>${items[0].axisValue}</b>`];
+        let tot = 0; for (const it of items) tot += it.value || 0;
+        for (const it of items) if (it.value) lines.push(`${it.marker} ${it.seriesName}: <b>${fmtN(it.value)}</b> (${tot?Math.round(it.value/tot*100):0}%)`);
+        return lines.join('<br>');
+      } },
     xAxis: chartAxis({ type:'value' }),
     yAxis: chartAxis({ type:'category', data: stagesWithData, axisLabel: { color: cssVar('--fg'), fontSize: 12, fontFamily: 'Inter, sans-serif' }, splitLine: { show: false } }),
-    series: reasons.map((rs,i) => ({
-      name: rs, type:'bar', stack:'r', barMaxWidth: 18,
-      data: stagesWithData.map(s => byStage[s][rs] || 0),
-      itemStyle:{ color: cssVar('--cat-'+((i%8)+1)) },
-    })),
+    series: [
+      { name:'Company rejected', type:'bar', stack:'r', barMaxWidth: 22, itemStyle:{ color: cssVar('--cat-2'), borderRadius:[0,3,3,0] },
+        data: stagesWithData.map(s => byStage[s]['Company-initiated']) },
+      { name:'Candidate withdrew', type:'bar', stack:'r', barMaxWidth: 22, itemStyle:{ color: cssVar('--bad'), borderRadius:[0,3,3,0] },
+        data: stagesWithData.map(s => byStage[s]['Candidate-initiated']) },
+      { name:'Unspecified', type:'bar', stack:'r', barMaxWidth: 22, itemStyle:{ color: cssVar('--fg-muted'), borderRadius:[0,3,3,0] },
+        data: stagesWithData.map(s => byStage[s]['Unspecified']) },
+    ],
   });
 }
 
@@ -2740,6 +2940,137 @@ $('#btn-reset-filters').addEventListener('click', () => {
   applyPreset('90');
   rebuildFilterOptions();
   renderAll();
+});
+
+const NAMED_PRESETS_KEY = 'pipeline-named-presets';
+async function getNamedPresets() {
+  return (await idbKeyval.get(NAMED_PRESETS_KEY)) || [];
+}
+async function setNamedPresets(arr) {
+  await idbKeyval.set(NAMED_PRESETS_KEY, arr);
+}
+function snapshotFilters() {
+  const f = state.filters;
+  return {
+    preset: f.preset,
+    from: f.from ? f.from.toISOString() : null,
+    to: f.to ? f.to.toISOString() : null,
+    status: f.status,
+    job: f.job.slice(), department: f.department.slice(),
+    office: f.office.slice(), source: f.source.slice(),
+    recruiter: f.recruiter.slice(),
+    custom: JSON.parse(JSON.stringify(f.custom || {})),
+  };
+}
+function describeFilters(snap) {
+  const parts = [];
+  const range = snap.preset === 'all' ? 'all time' : snap.preset === 'ytd' ? 'YTD' : snap.preset ? `${snap.preset}d` : 'custom range';
+  parts.push(range);
+  if (snap.status && snap.status !== 'all') parts.push(snap.status);
+  const groups = [['job','job'],['department','dept'],['office','office'],['source','src'],['recruiter','recr']];
+  for (const [k,label] of groups) if (snap[k] && snap[k].length) parts.push(`${snap[k].length} ${label}`);
+  return parts.join(' · ');
+}
+function applyNamedPreset(snap) {
+  state.filters.status = snap.status || 'all';
+  state.filters.job = (snap.job || []).slice();
+  state.filters.department = (snap.department || []).slice();
+  state.filters.office = (snap.office || []).slice();
+  state.filters.source = (snap.source || []).slice();
+  state.filters.recruiter = (snap.recruiter || []).slice();
+  state.filters.custom = JSON.parse(JSON.stringify(snap.custom || {}));
+  $('#sel-status').value = state.filters.status;
+  if (snap.preset && snap.preset !== '') {
+    applyPreset(snap.preset);
+  } else {
+    state.filters.preset = '';
+    $$('.preset-btn').forEach(b => b.classList.remove('active'));
+    state.filters.from = snap.from ? new Date(snap.from) : null;
+    state.filters.to = snap.to ? new Date(snap.to) : null;
+    if (state.filters.from) $('#date-from').valueAsDate = state.filters.from;
+    if (state.filters.to) $('#date-to').valueAsDate = state.filters.to;
+  }
+  rebuildFilterOptions();
+  renderAll();
+}
+async function showSavePresetModal() {
+  const root = $('#modal-root');
+  root.innerHTML = `<div class="modal-bg" onclick="if(event.target===this) this.remove()">
+    <div class="modal" style="max-width:440px">
+      <div class="modal-h"><h3>Save current view</h3>
+        <button class="pillbtn" onclick="this.closest('.modal-bg').remove()">Close</button></div>
+      <div class="modal-body">
+        <div class="card-sub" style="margin-bottom:12px">${escapeHtml(describeFilters(snapshotFilters()))}</div>
+        <input type="text" id="preset-name-input" class="search" placeholder="View name (e.g. Eng Q2 hires)" style="width:100%; margin-bottom:14px" />
+        <div style="display:flex; gap:8px; justify-content:flex-end;">
+          <button class="pillbtn" onclick="this.closest('.modal-bg').remove()">Cancel</button>
+          <button class="pillbtn primary" id="preset-save-confirm">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  const input = $('#preset-name-input');
+  input.focus();
+  function commit() {
+    const name = input.value.trim();
+    if (!name) { input.focus(); return; }
+    getNamedPresets().then(list => {
+      list.unshift({ id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,7), name, filters: snapshotFilters(), createdAt: Date.now() });
+      return setNamedPresets(list);
+    }).then(() => {
+      root.innerHTML = '';
+      toast(`Saved view “${name}”`);
+    });
+  }
+  $('#preset-save-confirm').addEventListener('click', commit);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') commit(); });
+}
+async function renderPresetMenu() {
+  const pop = $('#preset-saved-pop');
+  const list = await getNamedPresets();
+  if (!list.length) {
+    pop.innerHTML = '<div class="preset-saved-empty">No saved views yet. Click <b>Save view</b> to capture the current filters.</div>';
+    return;
+  }
+  pop.innerHTML = list.map(p => `
+    <div class="preset-saved-item" data-id="${escapeHtml(p.id)}">
+      <div style="flex:1; min-width:0">
+        <div class="name">${escapeHtml(p.name)}</div>
+        <div class="meta">${escapeHtml(describeFilters(p.filters))}</div>
+      </div>
+      <button class="del" data-del="${escapeHtml(p.id)}" title="Delete">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>`).join('');
+  pop.querySelectorAll('.preset-saved-item').forEach(el => {
+    el.addEventListener('click', e => {
+      if (e.target.closest('.del')) return;
+      const id = el.dataset.id;
+      const found = list.find(p => p.id === id);
+      if (found) { applyNamedPreset(found.filters); pop.hidden = true; toast(`Loaded “${found.name}”`); }
+    });
+  });
+  pop.querySelectorAll('.del').forEach(b => {
+    b.addEventListener('click', async e => {
+      e.stopPropagation();
+      const id = b.dataset.del;
+      const next = list.filter(p => p.id !== id);
+      await setNamedPresets(next);
+      renderPresetMenu();
+    });
+  });
+}
+$('#btn-save-preset').addEventListener('click', showSavePresetModal);
+$('#btn-presets-menu').addEventListener('click', async e => {
+  e.stopPropagation();
+  const pop = $('#preset-saved-pop');
+  if (pop.hidden) { await renderPresetMenu(); pop.hidden = false; }
+  else pop.hidden = true;
+});
+document.addEventListener('click', e => {
+  const pop = $('#preset-saved-pop');
+  const wrap = pop && pop.closest('.preset-saved-wrap');
+  if (pop && !pop.hidden && wrap && !wrap.contains(e.target)) pop.hidden = true;
 });
 $$('.preset-btn').forEach(b => b.addEventListener('click', () => { applyPreset(b.dataset.preset); renderAll(); }));
 $('#date-from').addEventListener('change', () => { state.filters.from = $('#date-from').valueAsDate; state.filters.preset = ''; $$('.preset-btn').forEach(b=>b.classList.remove('active')); renderAll(); });
