@@ -582,6 +582,7 @@
   .chart { width: 100%; height: 320px; }
   .chart-tall { height: 380px; }
   .chart-sm { height: 240px; }
+  #chart-funnel { border-radius: var(--r-md); overflow: hidden; border: 1px solid var(--border); height: 420px; }
 
   /* ===== Tables ===== */
   table.tbl { width: 100%; border-collapse: collapse; font-size: var(--t-sm); }
@@ -2095,7 +2096,7 @@ function renderFunnel(rows) {
   });
   const ch = chartInit('chart-funnel');
   ch.setOption({
-    backgroundColor: 'transparent',
+    backgroundColor: cssVar('--bg-soft'),
     tooltip: { trigger:'item', formatter: p => {
       const d = p.data;
       return `<b>${d.name}</b><br>${fmtN(d.value)} candidates<br>` +
@@ -2103,15 +2104,25 @@ function renderFunnel(rows) {
         (d.cumRate!=null ? `Cumulative: ${fmtPct1(d.cumRate)}` : '');
     }, ...tooltipStyle() },
     series: [{
-      type:'funnel', sort:'none', gap: 6, top:14, bottom:14, left:'8%', right:'8%',
-      width: '84%',
-      label: { show:true, position:'inside', color:'#fff', fontWeight: 600, fontFamily: 'Inter, sans-serif', fontSize: 12, formatter: p => {
-        const d = p.data;
-        return `${d.name}  ${fmtN(d.value)}` + (d.passRate!=null?`  ·  ${fmtPct(d.passRate)}`:'');
-      }},
-      labelLine: { show: false },
-      itemStyle: { borderColor: cssVar('--bg-elev'), borderWidth: 2 },
-      emphasis: { label: { fontSize: 13 } },
+      type:'funnel', sort:'none', gap: 8, top: 24, bottom: 24, left: '6%',
+      width: '46%',
+      funnelAlign: 'left',
+      label: {
+        show: true,
+        position: 'right',
+        formatter: p => {
+          const d = p.data;
+          const pct = d.passRate != null ? `  ·  ${fmtPct(d.passRate)} pass` : '';
+          return `{nm|${d.name}}\n{ct|${fmtN(d.value)} candidates${pct}}`;
+        },
+        rich: {
+          nm: { color: cssVar('--fg'), fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600, lineHeight: 20 },
+          ct: { color: cssVar('--fg-muted'), fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 500, lineHeight: 16 },
+        },
+      },
+      labelLine: { show: true, length: 14, lineStyle: { color: cssVar('--border-strong'), width: 1, type: 'dashed' } },
+      itemStyle: { borderColor: cssVar('--bg-soft'), borderWidth: 2, borderRadius: 4 },
+      emphasis: { label: { rich: { nm: { fontSize: 15 } } }, itemStyle: { shadowBlur: 8, shadowColor: 'rgba(0,0,0,0.12)' } },
       data,
     }],
   });
