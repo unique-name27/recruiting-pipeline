@@ -270,6 +270,22 @@ svg.comp .comp-baseline{ stroke:var(--hairline); stroke-width:1; }
 svg.comp .comp-band{ stroke:var(--paper); stroke-width:0.75; cursor:pointer; }
 svg.comp .comp-marker{ stroke:var(--ink); stroke-width:1; stroke-dasharray:3 3; }
 @media print{ .tm-control, .tm-noteline{ display:none !important; } }
+/* replay dots: flat data marks drifting between pools during history replay */
+.replay-dot{
+  position:absolute; width:3px; height:3px; border-radius:50%;
+  background:var(--flow-4); opacity:0; pointer-events:none; z-index:5;
+  transition:transform 380ms linear, opacity 160ms linear;
+}
+html.dark .replay-dot{ background:var(--flow-2); }
+/* replay is motion — honor the OS preference */
+@media (prefers-reduced-motion: reduce){ .tm-motion{ display:none !important; } }
+@media print{
+  .proc-split{ display:none !important; }
+  #forecast-chart svg, #comp-chart svg, #survival-chart svg, #aging-board svg{ max-width:100%; height:auto; }
+  #velocity-heatmap table{ font-size:10px; }
+  #velocity-heatmap td, #velocity-heatmap th{ padding:4px 6px; }
+  #velocity-heatmap td.vh-1, #velocity-heatmap td.vh-2, #velocity-heatmap td.vh-3{ print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+}
 /* ============================================================
    PROCESS ANALYTICS (lab) — survival curves + velocity heatmap
    ============================================================ */
@@ -690,6 +706,7 @@ html.dark .sheet-overlay{ background:rgba(0,0,0,0.6); }
       </div>
       <div id="forecast-chart"></div>
       <div class="forecast-stats" id="forecast-stats"></div>
+      <p class="river-caption" id="forecast-caption"></p>
     </section>
 
     <!-- ========== BY THE NUMBERS ========== -->
@@ -710,9 +727,11 @@ html.dark .sheet-overlay{ background:rgba(0,0,0,0.6); }
         <span class="kicker">Flow</span>
         <span class="river-filtered hidden" id="river-filtered"></span>
         <span class="tm-control hidden" id="tm-control">
+          <button class="tm-step tm-motion" id="tm-play" type="button" aria-label="replay pipeline history">▶</button>
+          <button class="tm-step tm-motion" id="tm-speed" type="button" aria-label="replay speed">1×</button>
           <span class="tm-aslabel" id="tm-aslabel">as of ▸</span>
           <button class="tm-step" id="tm-back" type="button" aria-label="one week earlier">◂</button>
-          <input type="range" id="tm-range" min="0" max="100" value="100" aria-label="pipeline as-of date" />
+          <input type="range" id="tm-range" min="0" max="100" value="100" aria-label="pipeline as-of date and replay progress" />
           <button class="tm-step" id="tm-fwd" type="button" aria-label="one week later">▸</button>
           <span class="tm-readout" id="tm-readout">today</span>
           <button class="underline-btn muted hidden" id="tm-today" type="button">today</button>
@@ -736,6 +755,7 @@ html.dark .sheet-overlay{ background:rgba(0,0,0,0.6); }
     <section class="section hidden" id="section-composition">
       <div class="section-head"><span class="kicker" id="comp-kicker">Composition</span><span class="section-note" id="comp-note"></span></div>
       <div id="comp-chart"></div>
+      <p class="river-caption" id="comp-caption"></p>
     </section>
 
     <!-- ========== STATEMENT OF FLOW ========== -->
@@ -760,6 +780,7 @@ html.dark .sheet-overlay{ background:rgba(0,0,0,0.6); }
       <p class="proc-explainer">Fast-dropping curves resolve candidates quickly — pair with pass rates to judge quality.</p>
       <div class="section-head" style="margin-top:30px;"><span class="kicker" id="velocity-kicker">Velocity</span><span class="section-note" id="vh-note"></span></div>
       <div id="velocity-heatmap"></div>
+      <p class="river-caption" id="vh-caption"></p>
     </section>
 
     <!-- ========== SOURCES & PEOPLE ========== -->
@@ -2922,6 +2943,7 @@ function renderForecast(){
   });
   const t90 = fc.totals.d90;
   stats.appendChild(el('span', { class:'muted-pct' }, ` (range ${Math.round(t90.lo)}–${Math.round(t90.hi)})`));
+  $('#forecast-caption').textContent = `Fig. Cumulative expected hires over the next 90 days, from ${fmtN(fc.per.length)} active candidates' stage-by-stage odds.`;
 }
 
 /* ============================================================
@@ -3330,7 +3352,7 @@ function renderRiver(){
       const odN = poolRows.filter(r => agingTier(r) != null).length;
       if (n > 0) {
         const isSel = state.selection && state.selection.type==='active' && state.selection.stage===f.stage;
-        const rect = svgEl('rect', { class:'corridor'+(floored?' floored':'')+selCls(isSel), x, y, width:poolW, height:h, fill:'var(--flow-3)' });
+        const rect = svgEl('rect', { class:'corridor'+(floored?' floored':'')+selCls(isSel), x, y, width:poolW, height:h, fill:'var(--flow-3)', 'data-stage': f.stage });
         rect.addEventListener('click', () => setSelection({ type:'active', stage: f.stage }));
         rect.addEventListener('mousemove', e => showRiverTooltip(e, `<b>${f.stage}</b><br>${fmtN(n)} active${odN?` · ${fmtN(odN)} overdue`:''} (${fmtPctSafe(n, totalActive)} of actives)<br>Median days in stage: ${fmtDays(f.medianDays)}${f.oldest!=null?`<br>Oldest: ${fmtDays(f.oldest)}`:''}`));
         rect.addEventListener('mouseleave', hideRiverTooltip);
@@ -3694,6 +3716,100 @@ function renderTimeMachine(){
     note.classList.add('hidden');
   }
 }
+/* ============================================================
+   FLOW REPLAY (lab) — animates the time machine from dataset start to today.
+   The replay drives state.asOfDate through stepped full re-renders (~3/s);
+   the scrubber thumb and readout interpolate smoothly every frame between
+   steps. Candidates whose stage changed between steps drift as small dots
+   between the river pools (capped, skipped entirely when the last step
+   render exceeded budget). Honors prefers-reduced-motion.
+   ============================================================ */
+const replay = { playing:false, speed:1, raf:null, progress:0, lastTs:0, lastStepAt:0, prevMap:null, lastStepMs:0, dotsOn:true };
+const REPLAY_BASE_MS = 20000; // ~20s at 1×
+function reducedMotion(){ return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+function startReplay(){
+  if (replay.playing || reducedMotion() || impliedMode() !== 'snapshot' || !state.rawRows.length) return;
+  const start = datasetSpanStart().getTime();
+  const span = Math.max(1, Date.now() - start);
+  replay.progress = state.asOfDate ? Math.min(0.999, (state.asOfDate.getTime() - start) / span) : 0;
+  if (replay.progress >= 0.999) replay.progress = 0; // at today → replay from the beginning
+  replay.playing = true;
+  replay.lastTs = 0; replay.lastStepAt = 0; replay.prevMap = null; replay.dotsOn = true;
+  $('#tm-play').textContent = '⏸';
+  replay.raf = requestAnimationFrame(replayFrame);
+}
+function stopReplay(landOnToday){
+  if (replay.raf) cancelAnimationFrame(replay.raf);
+  replay.raf = null;
+  const wasPlaying = replay.playing;
+  replay.playing = false;
+  replay.prevMap = null;
+  const play = $('#tm-play');
+  if (play) play.textContent = '▶';
+  document.querySelectorAll('.replay-dot').forEach(d => d.remove());
+  if (landOnToday && wasPlaying) { state.asOfDate = null; renderAll(); } // land exactly on the live view
+}
+function replayFrame(ts){
+  if (!replay.playing) return;
+  if (!replay.lastTs) replay.lastTs = ts;
+  const dt = Math.min(100, ts - replay.lastTs);
+  replay.lastTs = ts;
+  replay.progress = Math.min(1, replay.progress + (dt * replay.speed) / REPLAY_BASE_MS);
+  const start = datasetSpanStart().getTime();
+  const span = Math.max(1, Date.now() - start);
+  const curMs = start + replay.progress * span;
+  // smooth scrubber + readout every frame (cheap DOM writes, no re-render)
+  const range = $('#tm-range');
+  range.value = Math.round((curMs - start) / 86400000);
+  $('#tm-readout').textContent = dayjs(curMs).format('MMM D, YYYY');
+  // stepped snapshot re-render ~3/s
+  if (ts - replay.lastStepAt > 320 && replay.progress < 1) {
+    replay.lastStepAt = ts;
+    const t0 = performance.now();
+    const before = replay.prevMap;
+    const d = new Date(curMs); d.setHours(23,59,59,999);
+    state.asOfDate = d;
+    renderAll();
+    replay.lastStepMs = performance.now() - t0;
+    const after = new Map((state.snapshotRows || []).map(r => [rowKey(r), r.current_stage]));
+    // dot drift: only while the step budget holds (~2 frames)
+    if (replay.dotsOn && replay.lastStepMs > 34) replay.dotsOn = false;
+    if (replay.dotsOn && before) spawnReplayDots(before, after);
+    replay.prevMap = after;
+  }
+  if (replay.progress >= 1) { stopReplay(true); return; }
+  replay.raf = requestAnimationFrame(replayFrame);
+}
+function spawnReplayDots(before, after){
+  const wrap = document.getElementById('river-wrap');
+  const svg = wrap ? wrap.querySelector('svg') : null;
+  if (!svg) return;
+  const poolPos = {};
+  svg.querySelectorAll('rect.corridor[data-stage]').forEach(rc => {
+    poolPos[rc.getAttribute('data-stage')] = {
+      x: (+rc.getAttribute('x')) + (+rc.getAttribute('width')) / 2,
+      y: (+rc.getAttribute('y')) + Math.min(36, +rc.getAttribute('height')) / 2,
+    };
+  });
+  let spawned = 0;
+  for (const [key, toStage] of after) {
+    if (spawned >= 40) break;
+    const fromStage = before.get(key);
+    if (!fromStage || fromStage === toStage) continue;
+    const a = poolPos[fromStage], b = poolPos[toStage];
+    if (!a || !b) continue;
+    const dot = el('div', { class:'replay-dot', style:`left:${a.x}px; top:${a.y}px;` });
+    wrap.appendChild(dot);
+    requestAnimationFrame(() => {
+      dot.style.opacity = '0.9';
+      dot.style.transform = `translate(${b.x - a.x}px, ${b.y - a.y}px)`;
+    });
+    // cleanup timers live outside the rAF so dots never leak (rAF is throttled in hidden tabs)
+    setTimeout(() => { dot.style.opacity = '0'; }, 320);
+    setTimeout(() => dot.remove(), 580);
+    spawned++;
+  }
+}
 let _compCache = null;
 function renderComposition(){
   const section = $('#section-composition');
@@ -3793,6 +3909,7 @@ function renderComposition(){
     setTimeout(() => document.getElementById('section-river').scrollIntoView({ behavior:'smooth', block:'start' }), 120);
   });
   wrap.appendChild(svg);
+  $('#comp-caption').textContent = `Fig. Candidates in process each week by stage, ${dayjs(data[0].d).format('MMM YYYY')} to today.`;
 }
 /* ============================================================
    RENDER: PROCESS ANALYTICS (lab) — survival curves + velocity heatmap
@@ -4031,11 +4148,13 @@ function renderVelocity(){
       if (th.p90 != null && med > th.p90) cls = 'vh-3';
       else if (th.p75 != null && med > th.p75) cls = 'vh-2';
       else if (th.p50 != null && med > th.p50) cls = 'vh-1';
-      const td = el('td', { class: (cls ? cls + ' ' : '') + 'vh-click' }, Math.round(med) + 'd');
+      const td = el('td', { class: (cls ? cls + ' ' : '') + 'vh-click', tabindex:'0', role:'button' }, Math.round(med) + 'd');
       const allMed = median(allDurs[ti]);
       attachTip(td, tipHtml(`${label} · ${t.label}: median ${med.toFixed(1)}d (n=${arr.length}) vs ${allMed != null ? allMed.toFixed(1) : '—'}d all-time.`,
         'full-span view — comparison period not applied; click to see this cohort'));
-      td.addEventListener('click', (e) => { e.stopPropagation(); hideRiverTooltip(); drillCohortCell(key, t.i + 1); });
+      const go = (e) => { e.stopPropagation(); hideRiverTooltip(); drillCohortCell(key, t.i + 1); };
+      td.addEventListener('click', go);
+      td.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(e); } });
       tr.appendChild(td);
     });
     tr.appendChild(el('td', { class:'vh-n' }, fmtN(c.n)));
@@ -4049,6 +4168,7 @@ function renderVelocity(){
   tbody.appendChild(ref);
   table.appendChild(tbody);
   wrap.appendChild(table);
+  $('#vh-caption').textContent = 'Fig. Median days per stage transition by apply-month cohort; tints mark cohorts past the all-time p50 / p75 / p90.';
 }
 /* ============================================================
    RENDER: STATEMENT OF FLOW
@@ -4569,6 +4689,8 @@ function renderAll(){
   renderFootnote();
 }
 function queueRender(){
+  // any user-driven change pauses the replay (the replay itself calls renderAll directly)
+  if (replay.playing) stopReplay(false);
   if (state.renderQueued) return;
   state.renderQueued = true;
   const run = () => { state.renderQueued = false; renderAll(); };
@@ -4759,6 +4881,12 @@ function wireEvents(){
   });
   $('#tm-today').addEventListener('click', () => setAsOf(null));
   $('#tm-note-reset').addEventListener('click', () => setAsOf(null));
+  // flow replay (lab)
+  $('#tm-play').addEventListener('click', () => { if (replay.playing) stopReplay(false); else startReplay(); });
+  $('#tm-speed').addEventListener('click', (e) => {
+    replay.speed = replay.speed === 1 ? 2 : replay.speed === 2 ? 4 : 1;
+    e.target.textContent = replay.speed + '×';
+  });
   $('#btn-add-filters').addEventListener('click', (e) => {
     e.stopPropagation();
     const panel = $('#fd-addfilters-panel');
@@ -4772,6 +4900,7 @@ function wireEvents(){
   // Escape chain: open popovers/panels > expanded trend fig > expanded ledger row > drill pop
   window.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
+    if (replay.playing) { stopReplay(false); return; } // pause the replay first
     const openPops = $$('.popover:not(.hidden), .fd-panel:not(.hidden)');
     if (openPops.length) { openPops.forEach(p=>p.classList.add('hidden')); return; }
     if (state.trendExpanded) { state.trendExpanded = null; renderTrends(); return; }
