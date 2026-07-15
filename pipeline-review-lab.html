@@ -246,6 +246,30 @@ main{ display:block; }
 .drill-back:hover{ color:var(--muted); border-bottom-color:var(--muted); }
 .river-filtered{ font-size:11.5px; color:var(--ink); }
 .river-filtered .drill-back{ font-size:11.5px; }
+/* ============================================================
+   TIME MACHINE control (lab) — thin-rule scrubber + serif readout
+   ============================================================ */
+.tm-control{ display:inline-flex; align-items:center; gap:8px; margin-left:14px; }
+.tm-aslabel{ font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); font-weight:600; }
+.tm-step{ color:var(--muted); font-size:11px; padding:0 2px; }
+.tm-step:hover{ color:var(--ink); }
+.tm-control input[type=range]{ -webkit-appearance:none; appearance:none; width:150px; height:14px; background:transparent; cursor:pointer; }
+.tm-control input[type=range]::-webkit-slider-runnable-track{ height:1px; background:var(--hairline); }
+.tm-control input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; appearance:none; width:9px; height:9px; background:var(--ink); border:none; border-radius:0; margin-top:-4px; }
+.tm-control input[type=range]::-moz-range-track{ height:1px; background:var(--hairline); }
+.tm-control input[type=range]::-moz-range-thumb{ width:9px; height:9px; background:var(--ink); border:none; border-radius:0; }
+.tm-control input[type=range]:focus{ outline:none; }
+.tm-readout{ font-family:var(--serif); font-style:italic; font-size:12px; color:var(--ink); min-width:80px; font-variant-numeric:tabular-nums; }
+.tm-noteline{ font-size:12px; color:var(--warn); margin:6px 0 10px; }
+.tm-noteline button{ color:var(--warn); text-decoration:underline; text-underline-offset:2px; }
+.tm-noteline button:hover{ color:var(--ink); }
+/* composition history chart */
+svg.comp text{ font-family:var(--sans); font-variant-numeric:tabular-nums; }
+svg.comp .comp-axis{ font-size:9.5px; fill:var(--muted); }
+svg.comp .comp-baseline{ stroke:var(--hairline); stroke-width:1; }
+svg.comp .comp-band{ stroke:var(--paper); stroke-width:0.75; cursor:pointer; }
+svg.comp .comp-marker{ stroke:var(--ink); stroke-width:1; stroke-dasharray:3 3; }
+@media print{ .tm-control, .tm-noteline{ display:none !important; } }
 .muted-pct{ color:var(--muted); font-size:11px; }
 .ledger-close{ color:var(--muted); font-size:12px; flex-shrink:0; }
 .ledger-close:hover{ color:var(--ink); }
@@ -647,7 +671,20 @@ html.dark .sheet-overlay{ background:rgba(0,0,0,0.6); }
 
     <!-- ========== THE RIVER ========== -->
     <section class="section" id="section-river">
-      <div class="section-head"><span class="kicker">Flow</span><span class="river-filtered hidden" id="river-filtered"></span><span class="section-note" id="river-note"></span></div>
+      <div class="section-head">
+        <span class="kicker">Flow</span>
+        <span class="river-filtered hidden" id="river-filtered"></span>
+        <span class="tm-control hidden" id="tm-control">
+          <span class="tm-aslabel" id="tm-aslabel">as of ▸</span>
+          <button class="tm-step" id="tm-back" type="button" aria-label="one week earlier">◂</button>
+          <input type="range" id="tm-range" min="0" max="100" value="100" aria-label="pipeline as-of date" />
+          <button class="tm-step" id="tm-fwd" type="button" aria-label="one week later">▸</button>
+          <span class="tm-readout" id="tm-readout">today</span>
+          <button class="underline-btn muted hidden" id="tm-today" type="button">today</button>
+        </span>
+        <span class="section-note" id="river-note"></span>
+      </div>
+      <div class="tm-noteline hidden" id="tm-noteline">Viewing pipeline as of <span id="tm-note-date"></span> — <button id="tm-note-reset" type="button">return to today</button></div>
       <div class="river-scroll">
         <div class="river-svg-wrap" id="river-wrap"></div>
       </div>
@@ -658,6 +695,12 @@ html.dark .sheet-overlay{ background:rgba(0,0,0,0.6); }
     <section class="section hidden" id="section-aging">
       <div class="section-head"><span class="kicker">Aging</span><span class="section-note" id="aging-note"></span></div>
       <div id="aging-board"></div>
+    </section>
+
+    <!-- ========== COMPOSITION HISTORY (Current pipeline only) ========== -->
+    <section class="section hidden" id="section-composition">
+      <div class="section-head"><span class="kicker" id="comp-kicker">Composition</span><span class="section-note" id="comp-note"></span></div>
+      <div id="comp-chart"></div>
     </section>
 
     <!-- ========== STATEMENT OF FLOW ========== -->
@@ -769,6 +812,7 @@ const state = {
   attnOpen: null,            // id of the Attention flag whose investigation panel is expanded
   visibleDims: null,         // Set of dim keys shown in the filter desk (null = default set); persisted per fingerprint
   reqTargets: {},            // lab: per-req hire targets { jobName: n }, persisted per fingerprint
+  asOfDate: null,            // lab time machine: Date the pipeline is reconstructed at (null = today/live); session-only
   ledger: { page: 0, pageSize: 100, sortCol: 'daysInStage', sortDir: 'desc', expanded: new Set() },
   sourcesSort: { col: 'hireRate', dir: 'desc' },
   recruitersSort: { col: 'activeCount', dir: 'desc' },
@@ -1461,6 +1505,8 @@ function persistDimPrefs(){
 }
 function applyDimPrefs(){
   _extraColsCache = null;
+  _intervalsCache = null; _spanStartCache = null; _compCache = null; // time-machine caches follow the dataset
+  state.asOfDate = null;
   state.visibleDims = defaultVisibleDims();
   loadReqTargets(); // lab: per-req hire targets travel with the dataset prefs
   const fp = state.fingerprint;
@@ -1544,8 +1590,11 @@ function applyFilters(){
   const [from,to] = getPeriodRange(f);
   state.periodRange = (from && to) ? [from,to] : null;
   if (f.periodPreset === 'current') {
-    // Current pipeline: only today's actives, no date filtering, no comparison.
-    state.snapshotRows = rows.filter(r => r.status === 'active');
+    // Current pipeline: only today's actives (or the reconstructed actives when
+    // the time machine is set), no date filtering, no comparison.
+    state.snapshotRows = state.asOfDate
+      ? asOfActiveRows(state.asOfDate, rows)
+      : rows.filter(r => r.status === 'active');
     state.rows = state.snapshotRows;
     state.prevRange = null; state.prevRows = null;
     return;
@@ -1564,7 +1613,7 @@ function facetedCounts(dimField){
   const f = state.filters;
   let rows = baseFilteredRows(dimField);
   if (f.periodPreset === 'current') {
-    rows = rows.filter(r => r.status === 'active');
+    rows = state.asOfDate ? asOfActiveRows(state.asOfDate, rows) : rows.filter(r => r.status === 'active');
   } else {
     const [from,to] = getPeriodRange(f);
     if (from && to) rows = rows.filter(r => { const d=r[f.dateField]; return d && d>=from && d<=to; });
@@ -1621,8 +1670,8 @@ function periodPresetLabel(p){
   return map[p] || p;
 }
 function setPeriodPreset(p){
-  // crossing the snapshot/cohort boundary invalidates sankey selections + drill history
-  if ((state.filters.periodPreset === 'current') !== (p === 'current')) { state.selection = null; state.drill.length = 0; }
+  // crossing the snapshot/cohort boundary invalidates sankey selections + drill history + time machine
+  if ((state.filters.periodPreset === 'current') !== (p === 'current')) { state.selection = null; state.drill.length = 0; state.asOfDate = null; }
   state.filters.periodPreset = p;
   queueRender();
 }
@@ -1632,7 +1681,7 @@ function setPeriodPreset(p){
    ============================================================ */
 function computeStageFlow(rows, canonicalStages, snapshotRows, forceMode){
   const isSnapshot = (forceMode || impliedMode()) === 'snapshot';
-  const now = new Date();
+  const now = nowRef();
   return canonicalStages.map((stage, i) => {
     if (isSnapshot) {
       const activeHere = (snapshotRows||[]).filter(r => r.current_stage === stage);
@@ -1718,6 +1767,9 @@ function computeKPIs(rows, prevRows){
   ];
 }
 /* ---- attention flag engine ---- */
+// "now" for every snapshot-view computation: the time-machine date when
+// time-traveling, else the real present. Historical norms keep the real clock.
+function nowRef(){ return state.asOfDate ? new Date(state.asOfDate) : new Date(); }
 function daysInCurrentStage(r, now){
   const s = r.stage_entered_at || r.applied_at;
   return s ? (now - s)/86400000 : null;
@@ -1747,7 +1799,7 @@ function histStageMedians(){
 function stageNorm(stage){ return histStageMedians()[stage] || 14; }
 function agingTier(r, now){
   if (r.status !== 'active') return null;
-  const d = daysInCurrentStage(r, now || new Date());
+  const d = daysInCurrentStage(r, now || nowRef());
   if (d == null) return null;
   const m = stageNorm(r.current_stage);
   if (d > 2.5 * m) return 'red';
@@ -1755,8 +1807,83 @@ function agingTier(r, now){
   return null;
 }
 function overdueActives(){
-  const now = new Date();
+  const now = nowRef();
   return (state.snapshotRows || []).filter(r => agingTier(r, now) != null);
+}
+/* ============================================================
+   TIME MACHINE — as-of pipeline reconstruction (lab)
+   Per candidate we precompute stage-entry timestamps for every stage they
+   reached: applied_at anchors stage 0, per-stage timestamp columns / hired_at /
+   stage_entered_at anchor the rest. Missing intermediate entries are
+   interpolated evenly between the nearest known anchors (marked approximated).
+   pipelineAsOf(date) then answers "who was in process on that date, and where".
+   ============================================================ */
+let _intervalsCache = null;
+function stageIntervals(){
+  if (_intervalsCache && _intervalsCache.n === state.rawRows.length && _intervalsCache.stages === state.canonicalStages.join('|')) {
+    return _intervalsCache.map;
+  }
+  const stages = state.canonicalStages;
+  const N = stages.length;
+  const now = new Date();
+  const map = new Map();
+  for (const r of state.rawRows) {
+    const K = stageIndex(r.current_stage);
+    if (K < 0 || !r.applied_at) continue;
+    const terminalAt = r.status === 'active' ? null : (r.rejected_at || r.hired_at || r.last_activity_at || null);
+    const end = terminalAt || now;
+    const entries = new Array(K + 1).fill(null);
+    entries[0] = r.applied_at;
+    for (let i = 1; i <= K; i++) {
+      const sname = stages[i].toLowerCase();
+      let t = null;
+      if (r.stageDates) for (const kw in r.stageDates) { if (r.stageDates[kw] && sname.includes(kw)) { t = r.stageDates[kw]; break; } }
+      if (!t && i === N - 1 && r.hired_at) t = r.hired_at;
+      if (!t && i === K && r.stage_entered_at) t = r.stage_entered_at;
+      entries[i] = t;
+    }
+    let approx = false;
+    for (let i = 1; i <= K; i++) {
+      if (entries[i]) continue;
+      approx = true;
+      let j = i - 1; while (entries[j] == null) j--;
+      let k = i + 1; while (k <= K && entries[k] == null) k++;
+      const t0 = entries[j];
+      const t1 = (k <= K && entries[k]) ? entries[k] : end;
+      const stop = (k <= K && entries[k]) ? k : K + 1;
+      const span = Math.max(0, t1 - t0);
+      for (let m = j + 1; m < stop; m++) {
+        entries[m] = new Date(t0.getTime() + span * (m - j) / (stop - j));
+      }
+    }
+    for (let i = 1; i <= K; i++) if (entries[i] < entries[i - 1]) entries[i] = entries[i - 1];
+    map.set(r, { entries, terminalAt, approx, K });
+  }
+  _intervalsCache = { n: state.rawRows.length, stages: stages.join('|'), map };
+  return map;
+}
+// synthetic active rows as of `date`, from an already dim/search-filtered base
+function asOfActiveRows(date, baseRows){
+  const iv = stageIntervals();
+  const out = [];
+  for (const r of baseRows) {
+    const info = iv.get(r);
+    if (!info) continue;
+    if (!r.applied_at || r.applied_at > date) continue;              // not applied yet
+    if (info.terminalAt && info.terminalAt <= date) continue;        // already exited
+    if (r.hired_at && r.hired_at <= date) continue;                  // already hired
+    let idx = 0;
+    for (let i = info.K; i >= 0; i--) if (info.entries[i] && info.entries[i] <= date) { idx = i; break; }
+    if (idx === state.canonicalStages.length - 1) continue;          // terminal stage = hired, never "active"
+    out.push({ ...r, status:'active', current_stage: state.canonicalStages[idx],
+      stage_entered_at: info.entries[idx], _approx: info.approx, _asOf: true });
+  }
+  return out;
+}
+// share of as-of actives whose stage position relied on interpolation
+function asOfApproxShare(rows){
+  if (!rows || !rows.length) return 0;
+  return rows.filter(r => r._approx).length / rows.length;
 }
 /* ============================================================
    FORECAST MODEL (lab)
@@ -1774,6 +1901,7 @@ function overdueActives(){
    ============================================================ */
 function computeForecast(){
   if (impliedMode() !== 'snapshot') return null;
+  if (state.asOfDate) return null; // forecasting from the past invites confusion — today only
   const stages = state.canonicalStages;
   const N = stages.length;
   if (N < 2) return null;
@@ -2018,7 +2146,7 @@ function decompose(population, affected, opts){
 }
 /* per-flag investigation: contributors + evidence + trend + suggested action */
 function investigateFlag(flag){
-  const now = new Date();
+  const now = nowRef();
   const dd = r => daysInCurrentStage(r, now);
   const inv = { contributors: [], evidence: [], evidenceText: r => r.candidate_name || '—', trend: null, suggested: '', viewAllN: 0, viewAll: flag.apply };
   const joinDays = rows => rows.map(r => Math.round(dd(r) || 0)).join(', ');
@@ -2757,7 +2885,7 @@ function renderReqs(){
   if (!state.mapping.job) { section.classList.add('hidden'); return; }
   section.classList.remove('hidden');
   const isSnapshot = impliedMode() === 'snapshot';
-  const now = new Date();
+  const now = nowRef();
   const overdueSet = new Set(overdueActives());
   const stages = state.canonicalStages;
   const byJob = new Map();
@@ -2889,7 +3017,7 @@ function renderReqs(){
 
 function computeSnapshotStats(){
   const rows = state.snapshotRows || [];
-  const now = new Date();
+  const now = nowRef();
   const daysFor = r => { const s = r.stage_entered_at || r.applied_at; return s ? (now-s)/86400000 : null; };
   const items = [{ label:'Active now', value: fmtN(rows.length),
     tip: tipHtml('Active now — all candidates currently in process under the current filters.', `status = active (${fmtN(rows.length)})`),
@@ -3380,7 +3508,7 @@ function renderAging(){
   const rows = state.snapshotRows || [];
   section.classList.remove('hidden');
   const wrap = $('#aging-board'); wrap.innerHTML = '';
-  const now = new Date();
+  const now = nowRef();
   const stages = state.canonicalStages.filter(s => rows.some(r => r.current_stage === s));
   if (!stages.length) {
     $('#aging-note').textContent = '';
@@ -3469,6 +3597,150 @@ function renderAging(){
   wrap.appendChild(svg);
 }
 /* ============================================================
+   RENDER: TIME MACHINE control + COMPOSITION history (lab)
+   ============================================================ */
+let _spanStartCache = null;
+function datasetSpanStart(){
+  if (_spanStartCache && _spanStartCache.n === state.rawRows.length) return _spanStartCache.d;
+  let min = null;
+  for (const r of state.rawRows) if (r.applied_at && (!min || r.applied_at < min)) min = r.applied_at;
+  _spanStartCache = { n: state.rawRows.length, d: min || new Date() };
+  return _spanStartCache.d;
+}
+// set the as-of date (normalized to end-of-day); within a day of now = back to live
+function setAsOf(date){
+  if (date) {
+    const today = new Date();
+    if (today.getTime() - date.getTime() < 86400000) date = null;
+    else { date = new Date(date); date.setHours(23,59,59,999); }
+  }
+  state.asOfDate = date;
+  queueRender(); // rAF-batched — scrubbing coalesces into one render per frame
+}
+function renderTimeMachine(){
+  const ctl = $('#tm-control'), note = $('#tm-noteline');
+  const isSnap = impliedMode() === 'snapshot' && state.rawRows.length > 0;
+  ctl.classList.toggle('hidden', !isSnap);
+  if (!isSnap) { note.classList.add('hidden'); return; }
+  const start = datasetSpanStart();
+  const days = Math.max(1, Math.round((new Date() - start) / 86400000));
+  const range = $('#tm-range');
+  range.max = days;
+  range.value = state.asOfDate ? Math.max(0, Math.min(days, Math.round((state.asOfDate - start) / 86400000))) : days;
+  $('#tm-readout').textContent = state.asOfDate ? dayjs(state.asOfDate).format('MMM D, YYYY') : 'today';
+  $('#tm-today').classList.toggle('hidden', !state.asOfDate);
+  if (state.asOfDate) {
+    note.classList.remove('hidden');
+    $('#tm-note-date').textContent = dayjs(state.asOfDate).format('MMM D, YYYY');
+    const share = asOfApproxShare(state.snapshotRows);
+    if (share > 0.005) {
+      $('#river-caption').textContent += ` ${fmtPct(share,0)} of positions interpolated from sparse timestamps.`;
+    }
+  } else {
+    note.classList.add('hidden');
+  }
+}
+let _compCache = null;
+function renderComposition(){
+  const section = $('#section-composition');
+  if (impliedMode() !== 'snapshot' || !state.rawRows.length) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+  attachTipOnce($('#comp-kicker'), tipHtml(
+    'Composition — candidates in process each week, stacked by stage, reconstructed from stage timestamps (interpolated where sparse).',
+    'click any point to jump the pipeline view to that date'));
+  $('#comp-note').textContent = 'weekly actives by stage · click to time-travel';
+  const stages = state.canonicalStages;
+  const N = stages.length;
+  const base = baseFilteredRows(null);
+  const start = datasetSpanStart();
+  const today = new Date();
+  const weeks = [];
+  for (let t = start.getTime(); t < today.getTime(); t += 7 * 86400000) {
+    const d = new Date(t);
+    d.setHours(23,59,59,999); // align bins with the time machine's end-of-day instants
+    weeks.push(d);
+  }
+  weeks.push(today);
+  // memoize the expensive per-week reconstruction; scrubbing doesn't change it
+  const key = state.rawRows.length + '|' + base.length + '|' + stages.join(',') + '|' + weeks.length + '|' +
+    JSON.stringify(Object.entries(state.filters.dims).map(([k,v]) => [k, Array.from(v).sort()])) + '|' + JSON.stringify(state.selection);
+  let data;
+  if (_compCache && _compCache.key === key) {
+    data = _compCache.data;
+  } else {
+    const iv = stageIntervals();
+    data = weeks.map(d => {
+      const counts = new Array(N).fill(0);
+      for (const r of base) {
+        const info = iv.get(r);
+        if (!info) continue;
+        if (!r.applied_at || r.applied_at > d) continue;
+        if (info.terminalAt && info.terminalAt <= d) continue;
+        if (r.hired_at && r.hired_at <= d) continue;
+        let idx = 0;
+        for (let i = info.K; i >= 0; i--) if (info.entries[i] && info.entries[i] <= d) { idx = i; break; }
+        if (idx === N - 1) continue;
+        counts[idx]++;
+      }
+      return { d, counts, total: counts.reduce((a,b) => a+b, 0) };
+    });
+    _compCache = { key, data };
+  }
+  const wrap = $('#comp-chart'); wrap.innerHTML = '';
+  const width = Math.max(700, wrap.clientWidth || 900);
+  const height = 200;
+  const padL = 40, padR = 24, padT = 12, padB = 26;
+  const plotW = width - padL - padR, plotH = height - padT - padB;
+  const maxY = Math.max(1, ...data.map(p => p.total));
+  const x = i => padL + (i / Math.max(1, data.length - 1)) * plotW;
+  const y = v => padT + plotH - (v / maxY) * plotH;
+  const svg = svgEl('svg', { class:'comp', width, height, viewBox:`0 0 ${width} ${height}` });
+  // stacked bands, first stage at the bottom, flat flow-ramp fills
+  const cumAt = (p, uptoIdx) => { let s = 0; for (let i = 0; i <= uptoIdx; i++) s += p.counts[i]; return s; };
+  for (let si = 0; si < N - 1; si++) {
+    if (!data.some(p => p.counts[si] > 0)) continue;
+    let dPath = `M${x(0)},${y(cumAt(data[0], si))}`;
+    for (let i = 1; i < data.length; i++) dPath += ` L${x(i)},${y(cumAt(data[i], si))}`;
+    for (let i = data.length - 1; i >= 0; i--) dPath += ` L${x(i)},${y(si === 0 ? 0 : cumAt(data[i], si - 1))}`;
+    const band = svgEl('path', { class:'comp-band', d: dPath + ' Z', fill:`var(--flow-${(si % 5) + 1})`, 'fill-opacity':'0.55' });
+    svg.appendChild(band);
+  }
+  svg.appendChild(svgEl('line', { class:'comp-baseline', x1:padL, y1:padT+plotH, x2:padL+plotW, y2:padT+plotH }));
+  svg.appendChild(svgEl('text', { class:'comp-axis', x:padL, y:height-8, 'text-anchor':'start' }, textNode(dayjs(data[0].d).format('MMM YYYY'))));
+  svg.appendChild(svgEl('text', { class:'comp-axis', x:padL+plotW, y:height-8, 'text-anchor':'end' }, textNode('today')));
+  svg.appendChild(svgEl('text', { class:'comp-axis', x:padL-5, y:y(maxY)+4, 'text-anchor':'end' }, textNode(String(maxY))));
+  // marker at the current as-of date
+  if (state.asOfDate) {
+    const ti = (state.asOfDate - data[0].d) / Math.max(1, data[data.length-1].d - data[0].d) * (data.length - 1);
+    const mx = x(Math.max(0, Math.min(data.length - 1, ti)));
+    svg.appendChild(svgEl('line', { class:'comp-marker', x1:mx, y1:padT, x2:mx, y2:padT+plotH }));
+  }
+  // hover: nearest week tooltip; click: jump the time machine there
+  const guide = svgEl('line', { class:'trend-guide', x1:0, y1:padT, x2:0, y2:padT+plotH, style:'display:none' });
+  svg.appendChild(guide);
+  const nearestIdx = (e) => {
+    const rect = svg.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (width / rect.width);
+    return Math.max(0, Math.min(data.length - 1, Math.round((mx - padL) / plotW * (data.length - 1))));
+  };
+  svg.addEventListener('mousemove', (e) => {
+    const i = nearestIdx(e);
+    guide.setAttribute('x1', x(i)); guide.setAttribute('x2', x(i));
+    guide.style.display = 'block';
+    const p = data[i];
+    const perStage = stages.slice(0, N-1).map((s, si) => p.counts[si] ? `${escapeHtml(s)}: ${p.counts[si]}` : null).filter(Boolean).join('<br>');
+    showRiverTooltip(e, `<b>${dayjs(p.d).format('MMM D, YYYY')}</b><br>${perStage || 'empty'}<br><span class="tt-muted">total in process: ${p.total} · click to view</span>`);
+  });
+  svg.addEventListener('mouseleave', () => { guide.style.display = 'none'; hideRiverTooltip(); });
+  svg.addEventListener('click', (e) => {
+    const i = nearestIdx(e);
+    hideRiverTooltip();
+    setAsOf(new Date(data[i].d));
+    setTimeout(() => document.getElementById('section-river').scrollIntoView({ behavior:'smooth', block:'start' }), 120);
+  });
+  wrap.appendChild(svg);
+}
+/* ============================================================
    RENDER: STATEMENT OF FLOW
    ============================================================ */
 function renderStatement(){
@@ -3481,7 +3753,7 @@ function renderStatement(){
   const table = el('table', { class:'report-table' });
   const th = (label, tip) => { const t = el('th', {}, label); if (tip) attachTip(t, tip); return t; };
   if (isSnapshot) {
-    const now = new Date();
+    const now = nowRef();
     table.appendChild(el('thead', {}, el('tr', {},
       th('Stage', tipHtml('Canonical pipeline stage, in order.')),
       th('Active now', tipHtml('Candidates currently sitting in this stage.', 'status = active, current stage = row')),
@@ -3803,7 +4075,7 @@ function renderSourcesAndPeople(){
       const active = rs.filter(r=>r.status==='active');
       const hires = rs.filter(r=>r.status==='hired').length;
       const offersOut = rs.filter(r=>r.current_stage==='Offer' && r.status==='active').length;
-      const now = new Date();
+      const now = nowRef();
       const waits = active.map(r => { const s=r.stage_entered_at||r.applied_at; return s?(now-s)/86400000:null; }).filter(x=>x!=null);
       return { recruiter, activeCount: active.length, hires, offersOut, medianWait: median(waits) };
     });
@@ -3851,7 +4123,7 @@ function renderSourcesAndPeople(){
    RENDER: LEDGER
    ============================================================ */
 function ledgerDaysInStage(r){
-  const now = new Date();
+  const now = nowRef();
   const start = r.stage_entered_at || r.applied_at;
   if (!start) return null;
   const end = r.status==='active' ? now : (r.rejected_at || r.hired_at || r.last_activity_at || now);
@@ -3975,8 +4247,10 @@ function renderAll(){
   renderStats();
   renderReqs();
   renderRiver();
+  renderTimeMachine(); // after the river so the approximation note can extend its caption
   setupRiverResize();
   renderAging();
+  renderComposition();
   renderStatement();
   renderTrends();
   renderSourcesAndPeople();
@@ -4157,6 +4431,23 @@ function wireEvents(){
   $('#fd-date-to').addEventListener('change', (e) => { state.filters.customTo = e.target.value ? new Date(e.target.value+'T23:59:59') : null; queueRender(); });
   $$('.fd-datefield button').forEach(b => b.addEventListener('click', () => { state.filters.dateField = b.dataset.datefield; queueRender(); }));
   $('#fd-search').addEventListener('input', debounce((e) => { state.filters.search = e.target.value; queueRender(); }, 150));
+  // time machine (lab): scrubber, week steps, resets
+  $('#tm-range').addEventListener('input', (e) => {
+    const start = datasetSpanStart();
+    const v = parseInt(e.target.value, 10) || 0;
+    setAsOf(new Date(start.getTime() + v * 86400000));
+  });
+  $('#tm-back').addEventListener('click', () => {
+    const cur = state.asOfDate || new Date();
+    const start = datasetSpanStart();
+    setAsOf(new Date(Math.max(start.getTime(), cur.getTime() - 7 * 86400000)));
+  });
+  $('#tm-fwd').addEventListener('click', () => {
+    if (!state.asOfDate) return;
+    setAsOf(new Date(state.asOfDate.getTime() + 7 * 86400000)); // setAsOf snaps to live near today
+  });
+  $('#tm-today').addEventListener('click', () => setAsOf(null));
+  $('#tm-note-reset').addEventListener('click', () => setAsOf(null));
   $('#btn-add-filters').addEventListener('click', (e) => {
     e.stopPropagation();
     const panel = $('#fd-addfilters-panel');
