@@ -321,6 +321,30 @@ svg.river .bottleneck-text{ fill:var(--warn); font-size:10.5px; font-weight:600;
 .river-caption{ font-family:var(--serif); font-style:italic; font-size:12px; color:var(--muted); margin-top:8px; }
 
 /* ============================================================
+   AGING BOARD — dot-strip plot of days-in-stage per active
+   ============================================================ */
+svg.aging text{ font-family:var(--sans); }
+svg.aging .aging-baseline{ stroke:var(--hairline); stroke-width:1; }
+svg.aging .aging-thresh{ stroke:var(--warn); stroke-width:1; stroke-dasharray:3 3; opacity:0.65; }
+svg.aging .aging-thresh-label{ font-size:9.5px; fill:var(--muted); }
+svg.aging .aging-stage{ font-size:11.5px; font-weight:600; fill:var(--ink); }
+svg.aging .aging-count{ font-size:10px; fill:var(--muted); font-variant-numeric:tabular-nums; }
+svg.aging .aging-dot{ fill:var(--flow-3); cursor:pointer; }
+svg.aging .aging-dot.amber{ fill:var(--warn); }
+svg.aging .aging-dot.red{ fill:var(--neg); }
+svg.aging .aging-dot:hover{ stroke:var(--ink); stroke-width:1.25; }
+svg.aging .aging-overdue{ font-size:11px; font-weight:600; cursor:pointer; font-variant-numeric:tabular-nums; }
+svg.aging .aging-overdue.amber{ fill:var(--warn); }
+svg.aging .aging-overdue.red{ fill:var(--neg); }
+svg.aging .aging-overdue:hover{ text-decoration:underline; }
+svg.aging .aging-cluster-count{ font-size:9px; fill:var(--muted); font-variant-numeric:tabular-nums; }
+svg.aging .aging-axis{ font-size:9.5px; fill:var(--muted); font-variant-numeric:tabular-nums; }
+.stat-value.alert, .stat-value.alert .numlink{ color:var(--neg); }
+table.report-table td.alert .numlink{ color:var(--neg); }
+table.report-table td.warn-cell .numlink{ color:var(--warn); }
+svg.river .pool-sep{ stroke:var(--paper); stroke-width:1; }
+
+/* ============================================================
    TABLES — statement of flow, sources, recruiters, ledger
    ============================================================ */
 table.report-table{ width:100%; border-collapse:collapse; font-size:12.5px; }
@@ -592,6 +616,12 @@ html.dark .sheet-overlay{ background:rgba(0,0,0,0.6); }
         <div class="river-svg-wrap" id="river-wrap"></div>
       </div>
       <p class="river-caption" id="river-caption"></p>
+    </section>
+
+    <!-- ========== AGING BOARD (Current pipeline only) ========== -->
+    <section class="section hidden" id="section-aging">
+      <div class="section-head"><span class="kicker">Aging</span><span class="section-note" id="aging-note"></span></div>
+      <div id="aging-board"></div>
     </section>
 
     <!-- ========== STATEMENT OF FLOW ========== -->
@@ -1344,10 +1374,8 @@ function rowMatchesSelection(r){
   if (s.type === 'decline') return r.status === 'declined';
   if (s.type === 'active') return r.status === 'active' && r.current_stage === s.stage;
   if (s.type === 'overdue') {
-    if (r.status !== 'active') return false;
-    const d = daysInCurrentStage(r, new Date());
-    const hist = histStageMedians();
-    return d != null && d > 1.5 * (hist[r.current_stage] || 14);
+    if (s.stage && r.current_stage !== s.stage) return false;
+    return agingTier(r, new Date()) != null;
   }
   if (s.type === 'status') return r.status === s.status;
   if (s.type === 'row') return rowKey(r) === s.key;
@@ -1467,7 +1495,7 @@ function selectionLabel(s){
   if (s.type==='withdraw') return `Withdrawn at ${s.stage}`;
   if (s.type==='decline') return `Offer declined`;
   if (s.type==='active') return `In process · ${s.stage}`;
-  if (s.type==='overdue') return 'Overdue to advance';
+  if (s.type==='overdue') return s.stage ? `Overdue · ${s.stage}` : 'Overdue to advance';
   if (s.type==='status') return ({ hired:'Hired', active:'Active', declined:'Offer declined', withdrawn:'Withdrawn', rejected:'Rejected' })[s.status] || s.status;
   if (s.type==='row') return s.name || 'Single candidate';
   return 'Filtered';
@@ -1596,13 +1624,23 @@ function histStageMedians(){
   _histMedianCache = { n: state.rawRows.length, map };
   return map;
 }
+/* ---- shared aging definition ----
+   ONE source of truth used by the overdue flag, the aging board, the Overdue
+   stat, the ledger tint, the pool overlay and the statement column:
+   amber past 1.5× the stage's historical median, red past 2.5× (14d fallback). */
+function stageNorm(stage){ return histStageMedians()[stage] || 14; }
+function agingTier(r, now){
+  if (r.status !== 'active') return null;
+  const d = daysInCurrentStage(r, now || new Date());
+  if (d == null) return null;
+  const m = stageNorm(r.current_stage);
+  if (d > 2.5 * m) return 'red';
+  if (d > 1.5 * m) return 'amber';
+  return null;
+}
 function overdueActives(){
   const now = new Date();
-  const hist = histStageMedians();
-  return (state.snapshotRows || []).filter(r => {
-    const d = daysInCurrentStage(r, now);
-    return d != null && d > 1.5 * (hist[r.current_stage] || 14);
-  });
+  return (state.snapshotRows || []).filter(r => agingTier(r, now) != null);
 }
 function computeFlags(){
   const flags = [];
@@ -2418,6 +2456,10 @@ function computeSnapshotStats(){
   const items = [{ label:'Active now', value: fmtN(rows.length),
     tip: tipHtml('Active now — all candidates currently in process under the current filters.', `status = active (${fmtN(rows.length)})`),
     drill: () => drillTo({ type:'status', status:'active' }) }];
+  const odAll = overdueActives();
+  items.push({ label:'Overdue', value: fmtN(odAll.length), cls: odAll.length ? 'alert' : '',
+    tip: tipHtml('Overdue — actives waiting past 1.5× their stage\'s historical median.', `${fmtN(odAll.length)} of ${fmtN(rows.length)} actives; red dots on the aging board are past 2.5×`),
+    drill: odAll.length ? () => drillTo({ type:'overdue' }) : null });
   for (const stage of state.canonicalStages) {
     const n = rows.filter(r => r.current_stage === stage).length;
     // skip a terminal stage that can never hold actives (e.g. "Hired") to keep the strip meaningful
@@ -2439,16 +2481,16 @@ function computeSnapshotStats(){
 }
 function renderStats(){
   const wrap = $('#stats-row');
-  const statEl = (label, valueText, drill, tip, deltaHtml) => {
+  const statEl = (label, valueText, drill, tip, deltaHtml, cls) => {
     const labelEl = el('div', { class:'stat-label' }, label);
     if (tip) attachTip(labelEl, tip);
-    const valueEl = el('div', { class:'stat-value' },
+    const valueEl = el('div', { class:'stat-value'+(cls ? ' '+cls : '') },
       drill && valueText !== '—' ? numlink(valueText, drill, tip) : valueText);
     return el('div', { class:'stat' }, labelEl, valueEl, el('div', { html: deltaHtml || '' }));
   };
   if (impliedMode() === 'snapshot') {
     wrap.innerHTML = '';
-    for (const it of computeSnapshotStats()) wrap.appendChild(statEl(it.label, it.value, it.drill, it.tip));
+    for (const it of computeSnapshotStats()) wrap.appendChild(statEl(it.label, it.value, it.drill, it.tip, '', it.cls));
     return;
   }
   const kpis = computeKPIs(state.rows, state.prevRows);
@@ -2653,14 +2695,22 @@ function renderRiver(){
       const floored = n > 0 && n*scale < MIN;
       const y = topY;
       lockup(svg, cx, topY, f.stage, fmtN(n)); // zero pools keep their axis lockup with "0"
+      // two-tone pool: normal fill + subtle amber overlay for the overdue portion
+      const poolRows = (state.snapshotRows||[]).filter(r => r.current_stage === f.stage);
+      const odN = poolRows.filter(r => agingTier(r) != null).length;
       if (n > 0) {
         const isSel = state.selection && state.selection.type==='active' && state.selection.stage===f.stage;
         const rect = svgEl('rect', { class:'corridor'+(floored?' floored':'')+selCls(isSel), x, y, width:poolW, height:h, fill:'var(--flow-3)' });
         rect.addEventListener('click', () => setSelection({ type:'active', stage: f.stage }));
-        rect.addEventListener('mousemove', e => showRiverTooltip(e, `<b>${f.stage}</b><br>Active now: ${fmtN(n)} (${fmtPctSafe(n, totalActive)} of actives)<br>Median days in stage: ${fmtDays(f.medianDays)}${f.oldest!=null?`<br>Oldest: ${fmtDays(f.oldest)}`:''}`));
+        rect.addEventListener('mousemove', e => showRiverTooltip(e, `<b>${f.stage}</b><br>${fmtN(n)} active${odN?` · ${fmtN(odN)} overdue`:''} (${fmtPctSafe(n, totalActive)} of actives)<br>Median days in stage: ${fmtDays(f.medianDays)}${f.oldest!=null?`<br>Oldest: ${fmtDays(f.oldest)}`:''}`));
         rect.addEventListener('mouseleave', hideRiverTooltip);
         wireFlowHover(svg, rect);
         svg.appendChild(rect);
+        if (odN > 0) {
+          const oh = Math.min(Math.max(odN * scale, 2), h);
+          svg.appendChild(svgEl('rect', { x, y, width:poolW, height:oh, fill:'var(--warn)', opacity:0.45, 'pointer-events':'none' }));
+          if (oh < h) svg.appendChild(svgEl('line', { class:'pool-sep', x1:x, y1:y+oh, x2:x+poolW, y2:y+oh, 'pointer-events':'none' }));
+        }
         if (h >= 16 && !floored) {
           svg.appendChild(svgEl('text', { class:'corridor-label on-flow', x:cx, y:y+h/2+4, 'text-anchor':'middle' }, textNode(fmtPctSafe(n, totalActive))));
         }
@@ -2868,9 +2918,107 @@ let riverResizeObs = null;
 function setupRiverResize(){
   if (riverResizeObs) return;
   const wrap = $('#river-wrap');
-  const debounced = debounce(() => renderRiver(), 150);
+  const debounced = debounce(() => { renderRiver(); renderAging(); }, 150);
   riverResizeObs = new ResizeObserver(debounced);
   riverResizeObs.observe(wrap.parentElement);
+}
+/* ============================================================
+   RENDER: AGING BOARD — one row per stage, one dot per active
+   ============================================================ */
+function renderAging(){
+  const section = $('#section-aging');
+  // a now-view: omitted entirely in cohort/historical modes
+  if (impliedMode() !== 'snapshot') { section.classList.add('hidden'); return; }
+  const rows = state.snapshotRows || [];
+  section.classList.remove('hidden');
+  const wrap = $('#aging-board'); wrap.innerHTML = '';
+  const now = new Date();
+  const stages = state.canonicalStages.filter(s => rows.some(r => r.current_stage === s));
+  if (!stages.length) {
+    $('#aging-note').textContent = '';
+    wrap.appendChild(el('div', { class:'attn-none' }, 'No active candidates.'));
+    return;
+  }
+  $('#aging-note').textContent = 'each dot is an active candidate · days in current stage';
+  const width = Math.max(700, wrap.clientWidth || 900);
+  const labelW = 140, rightW = 96, rowH = 42, axisH = 28;
+  const height = stages.length * rowH + axisH;
+  const plotW = width - labelW - rightW;
+  const dd = r => daysInCurrentStage(r, now) || 0;
+  const allDays = rows.map(dd);
+  const trueMax = Math.max(...allDays, 1);
+  const maxD = Math.max(trueMax, ...stages.map(s => stageNorm(s) * 1.5)) * 1.08;
+  const x = d => labelW + (d / maxD) * plotW;
+  const svg = svgEl('svg', { class:'aging', width, height, viewBox:`0 0 ${width} ${height}` });
+  // deterministic vertical jitter so overlapping dots separate without dancing between renders
+  const jitterFor = key => ((parseInt(fnvHash(key), 16) % 1000) / 1000 - 0.5) * 16;
+  const clusterMode = rows.length > 150;
+  stages.forEach((s, i) => {
+    const y0 = i * rowH;
+    const cy = y0 + rowH / 2 + 5;
+    const inStage = rows.filter(r => r.current_stage === s);
+    const norm = stageNorm(s);
+    const thr = norm * 1.5;
+    svg.appendChild(svgEl('line', { class:'aging-baseline', x1:labelW, y1:cy, x2:labelW + plotW, y2:cy }));
+    // dashed threshold marker at 1.5× the historical median
+    const tx = x(thr);
+    svg.appendChild(svgEl('line', { class:'aging-thresh', x1:tx, y1:y0 + 8, x2:tx, y2:y0 + rowH - 4 }));
+    svg.appendChild(svgEl('text', { class:'aging-thresh-label', x:tx + 4, y:y0 + 12 }, textNode('norm ' + Math.round(thr) + 'd')));
+    // stage lockup on the left
+    svg.appendChild(svgEl('text', { class:'aging-stage', x:labelW - 12, y:cy - 1, 'text-anchor':'end' }, textNode(s)));
+    svg.appendChild(svgEl('text', { class:'aging-count', x:labelW - 12, y:cy + 11, 'text-anchor':'end' }, textNode(fmtN(inStage.length) + ' active')));
+    if (!clusterMode) {
+      for (const r of inStage) {
+        const d = dd(r);
+        const tier = agingTier(r, now);
+        const dot = svgEl('circle', { class:'aging-dot' + (tier ? ' ' + tier : ''), cx:x(d), cy:cy + jitterFor(rowKey(r)), r:3.5 });
+        dot.addEventListener('mousemove', e => showRiverTooltip(e,
+          `<b>${escapeHtml(r.candidate_name || '—')}</b><br>${escapeHtml(r.job || '—')} · ${escapeHtml(r.recruiter || '—')}<br>${Math.round(d)}d in ${escapeHtml(s)} — median ${Math.round(norm)}d`));
+        dot.addEventListener('mouseleave', hideRiverTooltip);
+        dot.addEventListener('click', () => {
+          const key = rowKey(r);
+          state.ledger.expanded.add(key);
+          hideRiverTooltip();
+          drillTo({ type:'row', key, name: r.candidate_name || 'Candidate' });
+        });
+        svg.appendChild(dot);
+      }
+    } else {
+      // >150 actives: cluster into count-labeled dots per rounded day
+      const buckets = new Map();
+      inStage.forEach(r => { const d = Math.round(dd(r)); if (!buckets.has(d)) buckets.set(d, []); buckets.get(d).push(r); });
+      for (const [d, rs] of buckets) {
+        const worst = rs.some(r => agingTier(r, now) === 'red') ? 'red' : (rs.some(r => agingTier(r, now) === 'amber') ? 'amber' : '');
+        const dot = svgEl('circle', { class:'aging-dot' + (worst ? ' ' + worst : ''), cx:x(d), cy, r:4.5 });
+        dot.addEventListener('mousemove', e => showRiverTooltip(e, `<b>${rs.length} candidate${rs.length===1?'':'s'}</b><br>${d}d in ${escapeHtml(s)} — median ${Math.round(norm)}d`));
+        dot.addEventListener('mouseleave', hideRiverTooltip);
+        dot.addEventListener('click', () => drillTo({ type:'active', stage:s }));
+        svg.appendChild(dot);
+        if (rs.length > 1) svg.appendChild(svgEl('text', { class:'aging-cluster-count', x:x(d), y:cy - 8, 'text-anchor':'middle' }, textNode(String(rs.length))));
+      }
+    }
+    // right margin: overdue count, clickable → that stage's overdue candidates
+    const odIn = inStage.filter(r => agingTier(r, now) != null);
+    if (odIn.length) {
+      const anyRed = odIn.some(r => agingTier(r, now) === 'red');
+      const t = svgEl('text', { class:'aging-overdue ' + (anyRed ? 'red' : 'amber'), x:labelW + plotW + 12, y:cy + 3.5, 'text-anchor':'start' },
+        textNode(odIn.length + ' overdue'));
+      t.addEventListener('click', () => drillTo({ type:'overdue', stage:s }));
+      t.addEventListener('mousemove', e => showRiverTooltip(e, tipHtml(`${odIn.length} of ${inStage.length} ${s} actives are past 1.5× the stage's historical median (${Math.round(norm)}d). Click to see them.`)));
+      t.addEventListener('mouseleave', hideRiverTooltip);
+      svg.appendChild(t);
+    }
+  });
+  // shared axis: 0 / overall median / max
+  const ay = stages.length * rowH + 12;
+  svg.appendChild(svgEl('line', { class:'aging-baseline', x1:labelW, y1:ay, x2:labelW + plotW, y2:ay }));
+  const medAll = median(allDays) || 0;
+  svg.appendChild(svgEl('text', { class:'aging-axis', x:labelW, y:ay + 13, 'text-anchor':'start' }, textNode('0d')));
+  if (medAll > 0 && medAll < trueMax * 0.85) {
+    svg.appendChild(svgEl('text', { class:'aging-axis', x:x(medAll), y:ay + 13, 'text-anchor':'middle' }, textNode('median ' + Math.round(medAll) + 'd')));
+  }
+  svg.appendChild(svgEl('text', { class:'aging-axis', x:x(trueMax), y:ay + 13, 'text-anchor':'end' }, textNode('max ' + Math.round(trueMax) + 'd')));
+  wrap.appendChild(svg);
 }
 /* ============================================================
    RENDER: STATEMENT OF FLOW
@@ -2885,20 +3033,27 @@ function renderStatement(){
   const table = el('table', { class:'report-table' });
   const th = (label, tip) => { const t = el('th', {}, label); if (tip) attachTip(t, tip); return t; };
   if (isSnapshot) {
+    const now = new Date();
     table.appendChild(el('thead', {}, el('tr', {},
       th('Stage', tipHtml('Canonical pipeline stage, in order.')),
       th('Active now', tipHtml('Candidates currently sitting in this stage.', 'status = active, current stage = row')),
+      th('Overdue', tipHtml('Actives waiting past 1.5× this stage\'s historical median.', 'red when any are past 2.5×')),
       th('Median days in stage', tipHtml('Median time actives have been waiting in this stage.', 'stage entered date → today, 50th percentile')),
       th('Oldest', tipHtml('Longest current wait in this stage.', 'max of days-in-stage among actives')),
       th('Δ active vs prior', tipHtml('Change in active count vs the comparison period.', 'no comparison in Current-pipeline view')))));
     const tbody = el('tbody');
     flow.forEach(f => {
       const isBottleneck = bottleneck && bottleneck.stage===f.stage;
+      const inStage = (state.snapshotRows||[]).filter(r => r.current_stage === f.stage);
+      const odIn = inStage.filter(r => agingTier(r, now) != null);
+      const odRed = odIn.some(r => agingTier(r, now) === 'red');
       const tr = el('tr', { class:'clickable'+(state.selection&&state.selection.type==='active'&&state.selection.stage===f.stage?' selected':'') });
       tr.addEventListener('click', () => setSelection({ type:'active', stage:f.stage }));
       tr.append(
         el('td', {}, f.stage),
         el('td', {}, f.activeNow > 0 ? numlink(fmtN(f.activeNow), () => drillTo({ type:'active', stage:f.stage })) : el('span', { class:'zero' }, '—')),
+        el('td', { class: odIn.length ? (odRed ? 'alert' : 'warn-cell') : '' },
+          odIn.length ? numlink(fmtN(odIn.length), () => drillTo({ type:'overdue', stage:f.stage })) : el('span', { class:'zero' }, '—')),
         el('td', { class:isBottleneck?'warn-cell':'' }, f.medianDays!=null?fmtDays(f.medianDays):'—'),
         el('td', {}, f.oldest!=null?fmtDays(f.oldest):'—'), el('td', {}, '—'));
       tbody.appendChild(tr);
@@ -3295,9 +3450,14 @@ function renderLedger(){
     const key = r.application_id ?? (r.candidate_id+'|'+r.job);
     const tr = el('tr', { class:'clickable' });
     const days = ledgerDaysInStage(r);
+    // aging tint on days-in-stage for actives, with vs-median context on hover
+    const tier = agingTier(r);
+    const daysTd = el('td', { class: tier === 'red' ? 'alert' : tier === 'amber' ? 'warn-cell' : '' }, days!=null?fmtDays(days):'—');
+    if (tier) attachTip(daysTd, tipHtml(`${Math.round(days)}d — ${r.current_stage} norm is ${Math.round(stageNorm(r.current_stage))}d.`,
+      'amber past 1.5×, red past 2.5× the stage\'s historical median'));
     tr.append(
       el('td', {}, r.candidate_name||'—'), el('td', {}, r.job||'—'), el('td', {}, r.current_stage||'—'),
-      el('td', {}, r.status||'—'), el('td', {}, days!=null?fmtDays(days):'—'),
+      el('td', {}, r.status||'—'), daysTd,
       el('td', {}, r.source||'—'), el('td', {}, r.recruiter||'—'), el('td', {}, fmtDate(r.applied_at)));
     tr.addEventListener('click', () => {
       if (state.ledger.expanded.has(key)) state.ledger.expanded.delete(key); else state.ledger.expanded.add(key);
@@ -3366,6 +3526,7 @@ function renderAll(){
   renderReqs();
   renderRiver();
   setupRiverResize();
+  renderAging();
   renderStatement();
   renderTrends();
   renderSourcesAndPeople();
