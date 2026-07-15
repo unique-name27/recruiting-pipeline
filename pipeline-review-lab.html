@@ -349,6 +349,24 @@ table.report-table td.warn-cell .numlink{ color:var(--warn); }
 svg.river .pool-sep{ stroke:var(--paper); stroke-width:1; }
 
 /* ============================================================
+   FORECAST — fan chart + req targets (lab)
+   ============================================================ */
+svg.forecast text{ font-family:var(--sans); font-variant-numeric:tabular-nums; }
+svg.forecast .fc-band{ fill:var(--flow-1); opacity:0.35; }
+svg.forecast .fc-line{ fill:none; stroke:var(--flow-3); stroke-width:1.6; }
+svg.forecast .fc-marker{ stroke:var(--muted); stroke-width:1; stroke-dasharray:3 3; }
+svg.forecast .fc-label{ font-size:10.5px; fill:var(--ink); font-weight:600; }
+svg.forecast .fc-axis{ font-size:9.5px; fill:var(--muted); }
+svg.forecast .fc-baseline{ stroke:var(--hairline); stroke-width:1; }
+.forecast-stats{ font-size:12.5px; margin-top:8px; font-variant-numeric:tabular-nums; }
+.forecast-stats .muted-pct{ font-size:11.5px; }
+.req-target-btn{ color:var(--ink); border-bottom:1px dashed var(--hairline); padding-bottom:1px; font-variant-numeric:tabular-nums; }
+.req-target-btn.unset{ color:var(--muted); }
+.req-target-btn:hover{ border-bottom:1px solid var(--ink); }
+.target-input{ width:44px; border:none; border-bottom:1px solid var(--ink); background:transparent; color:var(--ink); font:inherit; text-align:right; font-variant-numeric:tabular-nums; }
+.target-input:focus{ outline:none; }
+
+/* ============================================================
    TABLES — statement of flow, sources, recruiters, ledger
    ============================================================ */
 table.report-table{ width:100%; border-collapse:collapse; font-size:12.5px; }
@@ -605,6 +623,16 @@ html.dark .sheet-overlay{ background:rgba(0,0,0,0.6); }
       <div id="attention-list"></div>
     </section>
 
+    <!-- ========== FORECAST (Current pipeline only) ========== -->
+    <section class="section hidden" id="section-forecast">
+      <div class="section-head">
+        <span class="kicker" id="forecast-kicker">Forecast</span>
+        <span class="section-note" id="forecast-note"></span>
+      </div>
+      <div id="forecast-chart"></div>
+      <div class="forecast-stats" id="forecast-stats"></div>
+    </section>
+
     <!-- ========== BY THE NUMBERS ========== -->
     <section class="section" id="section-stats">
       <div class="section-head"><span class="kicker">By the numbers</span></div>
@@ -740,6 +768,7 @@ const state = {
   drill: [],                 // history stack of pre-drill snapshots for "← Back" (viz clicks only)
   attnOpen: null,            // id of the Attention flag whose investigation panel is expanded
   visibleDims: null,         // Set of dim keys shown in the filter desk (null = default set); persisted per fingerprint
+  reqTargets: {},            // lab: per-req hire targets { jobName: n }, persisted per fingerprint
   ledger: { page: 0, pageSize: 100, sortCol: 'daysInStage', sortDir: 'desc', expanded: new Set() },
   sourcesSort: { col: 'hireRate', dir: 'desc' },
   recruitersSort: { col: 'activeCount', dir: 'desc' },
@@ -1433,6 +1462,7 @@ function persistDimPrefs(){
 function applyDimPrefs(){
   _extraColsCache = null;
   state.visibleDims = defaultVisibleDims();
+  loadReqTargets(); // lab: per-req hire targets travel with the dataset prefs
   const fp = state.fingerprint;
   idbKeyval.get('lab:dimprefs:'+fp).then(p => {
     if (p && state.fingerprint === fp) {
@@ -1463,6 +1493,7 @@ function rowMatchesSelection(r){
   }
   if (s.type === 'status') return r.status === s.status;
   if (s.type === 'row') return rowKey(r) === s.key;
+  if (s.type === 'rows') return s.keys.has(rowKey(r)); // arbitrary candidate set (e.g. forecast pool)
   return true;
 }
 function rowKey(r){ return String(r.application_id ?? (r.candidate_id + '|' + r.job)); }
@@ -1582,6 +1613,7 @@ function selectionLabel(s){
   if (s.type==='overdue') return s.stage ? `Overdue · ${s.stage}` : 'Overdue to advance';
   if (s.type==='status') return ({ hired:'Hired', active:'Active', declined:'Offer declined', withdrawn:'Withdrawn', rejected:'Rejected' })[s.status] || s.status;
   if (s.type==='row') return s.name || 'Single candidate';
+  if (s.type==='rows') return s.label || 'Candidate set';
   return 'Filtered';
 }
 function periodPresetLabel(p){
@@ -1726,6 +1758,102 @@ function overdueActives(){
   const now = new Date();
   return (state.snapshotRows || []).filter(r => agingTier(r, now) != null);
 }
+/* ============================================================
+   FORECAST MODEL (lab)
+   Deterministic per-candidate hire forecast:
+   - P(hire) = product of historical pass rates for the candidate's current and
+     remaining stages. Rates come from the ALL-TIME cohort stage flow, computed
+     as advanced ÷ resolved (resolved = entered − still-active), so open
+     candidates don't bias the denominator. Stages with <10 resolved fall back
+     to 0.5 and mark the whole forecast "low confidence".
+   - Expected days to hire = (median duration of current stage − days already
+     served, floored at 0) + Σ median durations of remaining stages.
+   - Uncertainty: each stage rate gets a ±1.28σ binomial band
+     (σ = √(p(1−p)/n)); the lo/hi products give the range. This approximates
+     the 10th–90th percentile; treat it as a pacing band, not a strict CI.
+   ============================================================ */
+function computeForecast(){
+  if (impliedMode() !== 'snapshot') return null;
+  const stages = state.canonicalStages;
+  const N = stages.length;
+  if (N < 2) return null;
+  const flow = computeStageFlow(state.rawRows, stages, null, 'cohort'); // all-time history
+  const now = new Date();
+  let lowConfidence = false;
+  const rates = [];
+  for (let i = 0; i < N-1; i++) {
+    const f = flow[i];
+    const resolved = Math.max(0, (f.entered||0) - (f.active||0));
+    let p, n = resolved;
+    if (resolved >= 10) {
+      p = (f.advanced||0) / resolved;
+    } else {
+      p = 0.5; n = Math.max(resolved, 4); lowConfidence = true;
+    }
+    p = Math.min(Math.max(p, 0.02), 0.98);
+    const sigma = Math.sqrt(p * (1-p) / Math.max(n, 1));
+    rates.push({
+      stage: f.stage, p, n: resolved,
+      lo: Math.max(0.01, p - 1.28*sigma),
+      hi: Math.min(0.99, p + 1.28*sigma),
+      med: f.medianDays != null ? f.medianDays : stageNorm(f.stage),
+    });
+  }
+  const per = [];
+  for (const r of (state.snapshotRows || [])) {
+    const k = stageIndex(r.current_stage);
+    if (k < 0 || k >= N-1) continue;
+    let p = 1, lo = 1, hi = 1;
+    for (let i = k; i < N-1; i++) { p *= rates[i].p; lo *= rates[i].lo; hi *= rates[i].hi; }
+    const served = daysInCurrentStage(r, now) || 0;
+    let days = Math.max(0, rates[k].med - served);
+    for (let i = k+1; i < N-1; i++) days += rates[i].med;
+    per.push({ r, p, lo, hi, days });
+  }
+  // cumulative expected hires per day 0..90 (bucket + prefix sum)
+  const addM = new Array(91).fill(0), addL = new Array(91).fill(0), addH = new Array(91).fill(0);
+  for (const c of per) {
+    if (c.days > 90) continue;
+    const d0 = Math.min(90, Math.max(0, Math.ceil(c.days)));
+    addM[d0] += c.p; addL[d0] += c.lo; addH[d0] += c.hi;
+  }
+  const series = [];
+  let m = 0, l = 0, h = 0;
+  for (let d = 0; d <= 90; d++) { m += addM[d]; l += addL[d]; h += addH[d]; series.push({ d, mid:m, lo:l, hi:h }); }
+  const totals = {};
+  for (const d of [30, 60, 90]) totals['d'+d] = { mid: series[d].mid, lo: series[d].lo, hi: series[d].hi };
+  const byJob = {};
+  for (const c of per) if (c.days <= 90) { const j = c.r.job || '—'; byJob[j] = (byJob[j] || 0) + c.p; }
+  return { per, rates, lowConfidence, series, totals, byJob };
+}
+/* req targets: persisted per fingerprint under lab: keys */
+function persistReqTargets(){
+  if (state.fingerprint) idbKeyval.set('lab:targets:'+state.fingerprint, state.reqTargets).catch(()=>{});
+}
+function loadReqTargets(){
+  const fp = state.fingerprint;
+  state.reqTargets = {};
+  idbKeyval.get('lab:targets:'+fp).then(t => {
+    if (t && state.fingerprint === fp) { state.reqTargets = t; queueRender(); }
+  }).catch(()=>{});
+}
+// gap analysis: projected 90d hires vs target; back-solve top-of-funnel need
+// from the req's historical end-to-end conversion (hires ÷ resolved)
+function reqGap(job){
+  const fc = state._forecast;
+  if (!fc) return null;
+  const t = state.reqTargets[job];
+  if (!t || t <= 0) return null;
+  const proj = fc.byJob[job] || 0;
+  if (proj >= t) return { ok:true, proj, t };
+  const need = t - proj;
+  const reqRows = state.rawRows.filter(r => (r.job||'—') === job);
+  const resolved = reqRows.filter(r => r.status !== 'active');
+  const hires = reqRows.filter(r => r.status === 'hired').length;
+  const conv = resolved.length >= 10 ? Math.max(hires / resolved.length, 0.01) : 0.05;
+  const applicants = Math.ceil(need / conv);
+  return { ok:false, proj, t, need, applicants, conv };
+}
 function computeFlags(){
   const flags = [];
   const isSnapshot = impliedMode() === 'snapshot';
@@ -1819,6 +1947,19 @@ function computeFlags(){
         severity:'red', score: 70 + empty.length,
         text: empty.length === 1 ? `${listTxt}: no candidates past ${secondStage}.` : `${empty.length} reqs with no candidates past ${secondStage}: ${listTxt}.`,
         apply: () => { pushDrill(); state.filters.dims.job = new Set(empty); queueRender(); } });
+    }
+  }
+  // 7. (lab) pacing gaps: reqs with a target whose 90-day projection falls short
+  if (isSnapshot && state._forecast && state.mapping.job) {
+    for (const job of Object.keys(state.reqTargets)) {
+      const g = reqGap(job);
+      if (g && !g.ok) {
+        flags.push({ id:'pacing:'+job, data:{ job, ...g },
+          ruleTip: tipHtml('Fires when a req\'s projected hires over the next 90 days fall short of its target.', 'projected = Σ hire probabilities of its active candidates; shortfall back-solved via historical conversion'),
+          severity: g.proj < g.t * 0.5 ? 'red' : 'amber', score: 80 + (g.t - g.proj),
+          text: `${job} pacing ${g.proj.toFixed(1)} of ${g.t} hire${g.t===1?'':'s'} — top-of-funnel short ~${fmtN(g.applicants)} applicants.`,
+          apply: () => drillCombo({ job }, { type:'status', status:'active' }) });
+      }
     }
   }
   flags.sort((a,b) => ((a.severity==='red'?0:1) - (b.severity==='red'?0:1)) || (b.score - a.score));
@@ -1987,6 +2128,38 @@ function investigateFlag(flag){
     inv.trend = { title:`${topSrc} applications`,
       fn: rows => rows.filter(r => r.source === topSrc).length };
     inv.suggested = `Suggested: re-engage ${topSrc} — applications fell ${Math.round((1 - flag.data.cur/flag.data.prev)*100)}% vs the comparison period (${fmtN(flag.data.cur)} from ${fmtN(flag.data.prev)}).`;
+  }
+
+  else if (flag.id.startsWith('pacing:')) {
+    const job = flag.data.job;
+    const stages = state.canonicalStages;
+    // where does this req's funnel leak vs everyone else? per-stage pass rates, all-time
+    const reqRows = state.rawRows.filter(r => (r.job||'—') === job);
+    const otherRows = state.rawRows.filter(r => (r.job||'—') !== job);
+    const reqFlow = computeStageFlow(reqRows, stages, null, 'cohort');
+    const otherFlow = computeStageFlow(otherRows, stages, null, 'cohort');
+    const leaks = [];
+    for (let i = 0; i < stages.length-1; i++) {
+      const a = reqFlow[i], b = otherFlow[i];
+      const aRes = Math.max(0, (a.entered||0) - (a.active||0));
+      const bRes = Math.max(0, (b.entered||0) - (b.active||0));
+      if (aRes < 3 || bRes < 3) continue;
+      const ap = (a.advanced||0) / aRes, bp = (b.advanced||0) / bRes;
+      if (bp - ap <= 0.03) continue;
+      leaks.push({ stage: stages[i], impact: (bp-ap) * aRes, small: aRes < 10, n: aRes,
+        text: `${stages[i]}: passes ${fmtPct(ap,0)} vs ${fmtPct(bp,0)} for other reqs (${fmtN(aRes)} resolved)`,
+        onClick: () => drillCombo({ job }, { type:'stage', stage: stages[i] }) });
+    }
+    leaks.sort((x,y) => y.impact - x.impact);
+    inv.contributors = leaks.slice(0,5);
+    const actives = (state.snapshotRows||[]).filter(r => (r.job||'—') === job);
+    inv.viewAllN = actives.length;
+    inv.evidence = actives.slice().sort((a,b) => (dd(b)||0) - (dd(a)||0)).slice(0,3);
+    inv.evidenceText = r => `${r.candidate_name||'—'} · ${Math.round(dd(r)||0)}d in ${r.current_stage}`;
+    inv.trend = { title:`${job} applications`, fn: rows => rows.filter(r => (r.job||'—') === job).length };
+    const worst = inv.contributors[0];
+    inv.suggested = `Suggested: add ~${fmtN(flag.data.applicants)} ${job} applicants at current conversion` +
+      (worst ? `, or lift ${worst.stage} pass-through — that's where this funnel leaks vs other reqs.` : '.');
   }
 
   return inv;
@@ -2463,6 +2636,11 @@ function buildExecSummary(){
       lines.push(s);
     }
   }
+  if (state._forecast) {
+    const t = state._forecast.totals;
+    lines.push('');
+    lines.push(`Forecast: ~${Math.round(t.d30.mid)} hires in 30d · ~${Math.round(t.d60.mid)} in 60d · ~${Math.round(t.d90.mid)} in 90d (range ${Math.round(t.d90.lo)}–${Math.round(t.d90.hi)})${state._forecast.lowConfidence ? ' — low confidence' : ''}`);
+  }
   const flags = state._flags || [];
   if (flags.length) {
     lines.push('');
@@ -2486,6 +2664,89 @@ async function copyExecSummary(){
       toast('Executive summary copied.');
     } catch (e2) { toast('Copy failed — clipboard unavailable.'); }
   }
+}
+
+/* ============================================================
+   RENDER: FORECAST — fan chart of cumulative expected hires (lab)
+   ============================================================ */
+function forecastPoolDrill(windowDays){
+  const fc = state._forecast;
+  if (!fc) return;
+  const keys = new Set(fc.per.filter(c => c.days <= windowDays).map(c => rowKey(c.r)));
+  drillTo({ type:'rows', keys, label: windowDays + '-day forecast pool' });
+}
+function renderForecast(){
+  const section = $('#section-forecast');
+  const fc = state._forecast;
+  if (!fc) { section.classList.add('hidden'); return; } // Current-pipeline mode only
+  section.classList.remove('hidden');
+  attachTipOnce($('#forecast-kicker'), tipHtml(
+    'Forecast — P(hire) per active = product of historical pass rates for current + remaining stages (all-time cohort, advanced ÷ resolved); expected timing = remaining median stage durations minus time served. Band: stage rates ±1.28σ (binomial), roughly a 10th–90th percentile pacing band.',
+    'stages with <10 resolved candidates fall back to 50% and mark the forecast low-confidence'));
+  $('#forecast-note').textContent =
+    (fc.lowConfidence ? 'low confidence — thin history on some stages · ' : '') +
+    'cumulative expected hires over the next 90 days';
+
+  const wrap = $('#forecast-chart'); wrap.innerHTML = '';
+  const width = Math.max(700, wrap.clientWidth || 900);
+  const height = 190;
+  const padL = 46, padR = 90, padT = 18, padB = 26;
+  const plotW = width - padL - padR, plotH = height - padT - padB;
+  const maxY = Math.max(fc.series[90].hi, 1);
+  const x = d => padL + (d/90) * plotW;
+  const y = v => padT + plotH - (v/maxY) * plotH;
+  const svg = svgEl('svg', { class:'forecast', width, height, viewBox:`0 0 ${width} ${height}` });
+  // uncertainty band (flat tint): hi curve forward, lo curve back
+  let band = `M${x(0)},${y(fc.series[0].hi)}`;
+  for (let d=1; d<=90; d++) band += ` L${x(d)},${y(fc.series[d].hi)}`;
+  for (let d=90; d>=0; d--) band += ` L${x(d)},${y(fc.series[d].lo)}`;
+  svg.appendChild(svgEl('path', { class:'fc-band', d: band + ' Z' }));
+  // central expected line
+  let line = `M${x(0)},${y(fc.series[0].mid)}`;
+  for (let d=1; d<=90; d++) line += ` L${x(d)},${y(fc.series[d].mid)}`;
+  svg.appendChild(svgEl('path', { class:'fc-line', d: line }));
+  // baseline + axis dates
+  svg.appendChild(svgEl('line', { class:'fc-baseline', x1:padL, y1:padT+plotH, x2:padL+plotW, y2:padT+plotH }));
+  svg.appendChild(svgEl('text', { class:'fc-axis', x:padL, y:height-8, 'text-anchor':'start' }, textNode('today')));
+  // dashed markers at 30/60/90 with expected count labels
+  for (const d of [30,60,90]) {
+    const t = fc.totals['d'+d];
+    svg.appendChild(svgEl('line', { class:'fc-marker', x1:x(d), y1:padT, x2:x(d), y2:padT+plotH }));
+    svg.appendChild(svgEl('text', { class:'fc-label', x:x(d), y:padT-5, 'text-anchor':'middle' },
+      textNode(`~${Math.round(t.mid)} by ${dayjs().add(d,'day').format('MMM D')}`)));
+    svg.appendChild(svgEl('text', { class:'fc-axis', x:x(d), y:height-8, 'text-anchor':'middle' }, textNode(d+'d')));
+  }
+  // y max label
+  svg.appendChild(svgEl('text', { class:'fc-axis', x:padL-6, y:y(maxY)+4, 'text-anchor':'end' }, textNode(String(Math.ceil(maxY)))));
+  // hover: nearest day → date + expected cumulative + range
+  const guide = svgEl('line', { class:'trend-guide', x1:0, y1:padT, x2:0, y2:padT+plotH, style:'display:none' });
+  svg.appendChild(guide);
+  svg.addEventListener('mousemove', (e) => {
+    const rect = svg.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (width / rect.width);
+    const d = Math.min(90, Math.max(0, Math.round((mx - padL) / plotW * 90)));
+    guide.setAttribute('x1', x(d)); guide.setAttribute('x2', x(d));
+    guide.style.display = 'block';
+    const s = fc.series[d];
+    showRiverTooltip(e, `<b>${dayjs().add(d,'day').format('MMM D, YYYY')}</b><br>Expected cumulative hires: ${s.mid.toFixed(1)}<br><span class="tt-muted">range ${s.lo.toFixed(1)}–${s.hi.toFixed(1)}</span>`);
+  });
+  svg.addEventListener('mouseleave', () => { guide.style.display = 'none'; hideRiverTooltip(); });
+  wrap.appendChild(svg);
+
+  // stats line — window numbers drill to the candidates driving each projection
+  const stats = $('#forecast-stats'); stats.innerHTML = '';
+  stats.appendChild(document.createTextNode('Expected hires: '));
+  [[30,'30d'],[60,'60d'],[90,'90d']].forEach(([d,lab],i) => {
+    const t = fc.totals['d'+d];
+    const n = fc.per.filter(c => c.days <= d).length;
+    if (i) stats.appendChild(document.createTextNode(' · '));
+    stats.appendChild(document.createTextNode(lab + ' '));
+    stats.appendChild(numlink('~'+Math.round(t.mid), () => forecastPoolDrill(d),
+      tipHtml(`~${t.mid.toFixed(1)} expected hires within ${d} days, from ${n} active candidate${n===1?'':'s'} whose expected completion lands in the window. Click to see them.`,
+        'sum of those candidates\' hire probabilities')));
+  });
+  const t90 = fc.totals.d90;
+  stats.appendChild(el('span', { class:'muted-pct' }, ` (range ${Math.round(t90.lo)}–${Math.round(t90.hi)})`));
 }
 
 /* ============================================================
@@ -2548,7 +2809,10 @@ function renderReqs(){
     th('Hires', tipHtml('Candidates hired on this req in the period.')),
     th('Offer accept', tipHtml('Accepted offers ÷ resolved offers for this req.', 'hired ÷ (hired + declined)')),
     th('Median TTH', tipHtml('Median days from application to hire on this req.')));
-  headCells.push(th('Flag', tipHtml('Empty funnel (red): no actives past the second stage. Overdue (amber): actives waiting over 1.5× the historical stage median.')));
+  if (isSnapshot && state._forecast) headCells.push(
+    th('Target', tipHtml('Hire target for this req. Click a cell to set it; stored locally per dataset.', 'drives the pacing-gap flag when the projection falls short')),
+    th('Projected', tipHtml('Expected hires within 90 days for this req.', 'sum of its active candidates\' hire probabilities')));
+  headCells.push(th('Flag', tipHtml('Empty funnel (red): no actives past the second stage. Overdue (amber): actives waiting over 1.5× the historical stage median. Pacing gap: projected hires short of target.')));
   table.appendChild(el('thead', {}, el('tr', {}, ...headCells)));
   const tbody = el('tbody');
   for (const e of entries) {
@@ -2568,9 +2832,54 @@ function renderReqs(){
         el('td', {}, e.offerAccept != null ? fmtPct(e.offerAccept,0) : '—'),
         el('td', {}, e.tth != null ? fmtDays(e.tth) : '—'));
     }
-    cells.push(e.flag
-      ? el('td', {}, el('span', { class:'flag-dot '+e.flag.sev }), e.flag.word)
-      : el('td', { class:'zero' }, '—'));
+    let gap = null;
+    if (isSnapshot && state._forecast) {
+      gap = reqGap(e.job);
+      // inline-editable target
+      const targetTd = el('td', {});
+      const tVal = state.reqTargets[e.job];
+      const targetBtn = el('button', { class:'req-target-btn'+(tVal ? '' : ' unset'), type:'button' }, tVal ? fmtN(tVal) : 'set');
+      targetBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        const input = el('input', { class:'target-input', type:'number', min:'0', value: tVal || '' });
+        let done = false; // guard: Enter commits directly, blur may fire after
+        const commit = () => {
+          if (done) return;
+          done = true;
+          const n = parseInt(input.value, 10);
+          if (!isNaN(n) && n > 0) state.reqTargets[e.job] = n;
+          else delete state.reqTargets[e.job];
+          persistReqTargets();
+          queueRender();
+        };
+        input.addEventListener('click', ev2 => ev2.stopPropagation());
+        input.addEventListener('keydown', ev2 => {
+          if (ev2.key === 'Enter') commit();
+          if (ev2.key === 'Escape') { done = true; queueRender(); } // cancel — re-render restores the cell
+          ev2.stopPropagation();
+        });
+        input.addEventListener('blur', commit);
+        targetTd.innerHTML = '';
+        targetTd.appendChild(input);
+        input.focus(); input.select();
+      });
+      targetTd.appendChild(targetBtn);
+      const projVal = (state._forecast.byJob[e.job] || 0);
+      const projTd = el('td', { class: gap && !gap.ok ? (gap.proj < gap.t*0.5 ? 'alert' : 'warn-cell') : '' }, projVal > 0 ? projVal.toFixed(1) : el('span', { class:'zero' }, '—'));
+      if (gap && !gap.ok) attachTip(projTd, tipHtml(
+        `Target ${gap.t}: projected ${gap.proj.toFixed(1)} — need ~${fmtN(gap.applicants)} more applicants at current pass rates.`,
+        `historical end-to-end conversion ${fmtPct(gap.conv, gap.conv < 0.1 ? 1 : 0)}`));
+      cells.push(targetTd, projTd);
+    }
+    const flagBits = [];
+    if (e.flag) flagBits.push(el('span', {}, el('span', { class:'flag-dot '+e.flag.sev }), e.flag.word));
+    if (gap && !gap.ok) {
+      const sevCls = gap.proj < gap.t*0.5 ? 'red' : 'amber';
+      const gapSpan = el('span', {}, (flagBits.length ? ' · ' : ''), el('span', { class:'flag-dot '+sevCls }), 'pacing gap');
+      attachTip(gapSpan, tipHtml(`Target ${gap.t}: projected ${gap.proj.toFixed(1)} — need ~${fmtN(gap.applicants)} more applicants at current pass rates.`));
+      flagBits.push(gapSpan);
+    }
+    cells.push(flagBits.length ? el('td', {}, ...flagBits) : el('td', { class:'zero' }, '—'));
     tr.append(...cells);
     tbody.appendChild(tr);
   }
@@ -2716,6 +3025,16 @@ function drillCombo(dims, sel){
 function attachTip(elm, htmlOrFn){
   elm.classList.add('has-tip');
   elm.addEventListener('mousemove', e => showRiverTooltip(e, typeof htmlOrFn === 'function' ? htmlOrFn() : htmlOrFn));
+  elm.addEventListener('mouseleave', hideRiverTooltip);
+}
+// same, but safe to call on STATIC elements every render (updates the content
+// without stacking duplicate listeners)
+function attachTipOnce(elm, htmlOrFn){
+  elm.__tip = htmlOrFn;
+  if (elm.__tipWired) return;
+  elm.__tipWired = true;
+  elm.classList.add('has-tip');
+  elm.addEventListener('mousemove', e => showRiverTooltip(e, typeof elm.__tip === 'function' ? elm.__tip() : elm.__tip));
   elm.addEventListener('mouseleave', hideRiverTooltip);
 }
 function tipHtml(main, formula){
@@ -3646,11 +3965,13 @@ function exportLedgerCsv(){
 function renderAll(){
   if (!state.rawRows.length) return;
   applyFilters();
+  state._forecast = computeForecast(); // null outside Current-pipeline mode; feeds flags/reqs/summary
   state._flags = computeFlags();
   renderMasthead();
   renderFilterDesk();
   renderFinding();
   renderAttention();
+  renderForecast();
   renderStats();
   renderReqs();
   renderRiver();
