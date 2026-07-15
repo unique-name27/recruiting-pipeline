@@ -419,6 +419,37 @@ svg.funnel .fn-bar:hover, svg.funnel .fn-rest:hover{ opacity:0.85; }
 .owner-link:hover, .owner-link:focus-visible{ border-bottom-color:var(--ink); outline:none; }
 .owner-sep{ color:var(--muted); margin:0 6px; }
 .ledger-owner{ color:var(--muted); font-size:10.5px; margin-left:4px; }
+/* ============================================================
+   SINCE LAST VISIT (lab round 8) — muted diff line under the finding
+   ============================================================ */
+.sincevisit{ font-size:12px; color:var(--muted); margin-top:7px; display:flex; align-items:baseline; gap:0; flex-wrap:wrap; font-variant-numeric:tabular-nums; }
+.sincevisit .numlink{ color:var(--ink); }
+.sincevisit-dismiss{ color:var(--muted); font-size:11px; margin-left:10px; }
+.sincevisit-dismiss:hover{ color:var(--ink); }
+@media print{ .sincevisit-dismiss{ display:none !important; } }
+/* ============================================================
+   ACTION QUEUE — "This week" worklist (lab round 8)
+   ============================================================ */
+.aq-ghead{ display:flex; align-items:baseline; gap:10px; margin:16px 0 4px; font-size:12.5px; }
+.aq-ghead:first-child{ margin-top:0; }
+.aq-gname{ font-weight:600; color:var(--ink); }
+.aq-grole{ color:var(--muted); font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; }
+.aq-gcount{ color:var(--muted); font-variant-numeric:tabular-nums; }
+.aq-copy{ margin-left:auto; font-size:11.5px; color:var(--muted); }
+.aq-copy:hover{ color:var(--ink); }
+.aq-row{ display:flex; align-items:center; gap:10px; padding:5px 2px; border-bottom:0.5px solid var(--hairline); font-size:12.5px; }
+.aq-row.handled{ opacity:0.45; }
+.aq-row.handled .aq-name{ text-decoration:line-through; text-decoration-color:var(--muted); }
+.aq-check{ accent-color:var(--ink); flex-shrink:0; cursor:pointer; }
+.aq-name{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left; }
+.aq-job{ width:170px; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); }
+.aq-stage{ width:90px; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); }
+.aq-days{ width:36px; flex-shrink:0; text-align:right; font-variant-numeric:tabular-nums; color:var(--muted); }
+.aq-days.amber{ color:var(--warn); font-weight:600; }
+.aq-days.red{ color:var(--neg); font-weight:600; }
+.aq-role{ width:100px; flex-shrink:0; color:var(--muted); font-size:10.5px; text-transform:uppercase; letter-spacing:0.05em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.aq-snooze{ flex-shrink:0; font-size:11.5px; }
+@media print{ .aq-check, .aq-snooze, .aq-copy{ display:none !important; } }
 /* activity calendar */
 svg.actcal .ac-cell{ stroke:var(--paper); stroke-width:1; cursor:pointer; }
 svg.actcal .ac-cell:hover{ stroke:var(--ink); }
@@ -616,6 +647,9 @@ svg.forecast .fc-baseline{ stroke:var(--hairline); stroke-width:1; }
 .req-target-btn:hover{ border-bottom:1px solid var(--ink); }
 .target-input{ width:44px; border:none; border-bottom:1px solid var(--ink); background:transparent; color:var(--ink); font:inherit; text-align:right; font-variant-numeric:tabular-nums; }
 .target-input:focus{ outline:none; }
+.sla-input{ width:56px; margin-left:auto; border:none; border-bottom:1px solid var(--hairline); background:transparent; color:var(--ink); font:inherit; font-size:12.5px; text-align:right; font-variant-numeric:tabular-nums; padding:2px 0; }
+.sla-input:focus{ outline:none; border-bottom-color:var(--ink); }
+.sla-input::placeholder{ color:var(--muted); }
 
 /* ============================================================
    TABLES — statement of flow, sources, recruiters, ledger
@@ -871,6 +905,7 @@ html.dark .sheet-overlay{ background:rgba(0,0,0,0.6); }
     <section class="section finding" id="section-finding">
       <h2 class="finding-headline" id="finding-headline"></h2>
       <p class="finding-sub" id="finding-sub"></p>
+      <div class="sincevisit hidden" id="sincevisit-line"></div>
     </section>
 
     <!-- ========== ATTENTION (exec flags) ========== -->
@@ -880,6 +915,17 @@ html.dark .sheet-overlay{ background:rgba(0,0,0,0.6); }
         <button class="underline-btn section-action" id="btn-copy-summary">Copy executive summary</button>
       </div>
       <div id="attention-list"></div>
+    </section>
+
+    <!-- ========== ACTION QUEUE — "This week" (lab round 8, Current pipeline only) ========== -->
+    <section class="section hidden" id="section-actions">
+      <div class="section-head">
+        <span class="kicker">This week</span>
+        <span class="section-note" id="actions-note"></span>
+        <button class="underline-btn section-action" id="btn-actions-clear">Clear</button>
+      </div>
+      <div id="actions-list"></div>
+      <p class="river-caption">Worklist state is local to this browser.</p>
     </section>
 
     <!-- ========== FORECAST (Current pipeline only) ========== -->
@@ -1107,6 +1153,10 @@ const state = {
   trendExpanded: null,
   theme: 'auto',
   renderQueued: false,
+  actionsState: {},          // lab round 8: action-queue worklist { [rowKey]: { handled, snoozeUntil } }, persisted per fingerprint
+  slas: {},                  // lab round 8: per-stage target days { [stage]: days }, persisted per fingerprint — overrides the historical median
+  sinceVisit: null,          // lab round 8: { diff, sinceTs, dismissed } computed once per dataset load; null = first visit or no changes
+  _sinceVisitPending: false, // set on dataset load, consumed by the first renderAll (needs state.snapshotRows populated)
 };
 
 /* ============================================================
@@ -1802,6 +1852,10 @@ function applyDimPrefs(){
   state.asOfDate = null;
   state.visibleDims = defaultVisibleDims();
   loadReqTargets(); // lab: per-req hire targets travel with the dataset prefs
+  loadActionsState(); // lab round 8: action-queue worklist travels with the dataset
+  loadSlas();          // lab round 8: stage SLAs travel with the dataset
+  state.sinceVisit = null;
+  state._sinceVisitPending = true; // consumed by the first renderAll once snapshotRows exist
   const fp = state.fingerprint;
   idbKeyval.get('lab:dimprefs:'+fp).then(p => {
     if (p && state.fingerprint === fp) {
@@ -2086,18 +2140,44 @@ function histStageMedians(){
   return map;
 }
 /* ---- shared aging definition ----
-   ONE source of truth used by the overdue flag, the aging board, the Overdue
-   stat, the ledger tint, the pool overlay and the statement column:
-   amber past 1.5× the stage's historical median, red past 2.5× (14d fallback). */
-function stageNorm(stage){ return histStageMedians()[stage] || 14; }
+   ONE source of truth used by the overdue flag, the action queue, the aging
+   board, the Overdue stat, the ledger tint, the pool overlay and the
+   statement column: amber past the stage norm, red past 2× it.
+   The norm is a per-stage target-days SLA when the user has set one (lab
+   round 8, Customize → Stage norms), else the stage's historical median
+   (14d fallback) with a more lenient 1.5×/2.5× multiplier — an explicit SLA
+   is a firmer commitment than an observed median, so it gets tighter bands. */
+function slaFor(stage){ const v = state.slas && state.slas[stage]; return (v != null && v > 0) ? v : null; }
+function stageNorm(stage){ return slaFor(stage) || histStageMedians()[stage] || 14; }
+// per-stage amber/red day thresholds + which basis produced them
+function agingThresholds(stage){
+  const sla = slaFor(stage);
+  if (sla != null) return { amber: sla, red: sla * 2, basis: 'sla' };
+  const m = histStageMedians()[stage] || 14;
+  return { amber: m * 1.5, red: m * 2.5, basis: 'historical' };
+}
 function agingTier(r, now){
   if (r.status !== 'active') return null;
   const d = daysInCurrentStage(r, now || nowRef());
   if (d == null) return null;
-  const m = stageNorm(r.current_stage);
-  if (d > 2.5 * m) return 'red';
-  if (d > 1.5 * m) return 'amber';
+  const th = agingThresholds(r.current_stage);
+  if (d > th.red) return 'red';
+  if (d > th.amber) return 'amber';
   return null;
+}
+// what basis is driving overdue flags right now — for captions/tooltips
+function normsBasisLabel(){
+  const stages = state.canonicalStages;
+  const withSla = stages.filter(s => slaFor(s) != null);
+  if (!withSla.length) return 'historical medians';
+  if (withSla.length === stages.length) return 'SLA';
+  return `SLA (${withSla.length} of ${stages.length} stages) + historical medians`;
+}
+// shared "what counts as overdue" tooltip body — every overdue-adjacent
+// control in the report uses this so the basis-in-use is always stated.
+function overdueTipHtml(main){
+  return tipHtml(main || 'Actives waiting past their stage\'s overdue threshold.',
+    `amber past the norm, red past 2× it (historical norms use a 1.5× / 2.5× band instead) · norms: ${normsBasisLabel()}`);
 }
 function overdueActives(){
   const now = nowRef();
@@ -2317,6 +2397,30 @@ function loadReqTargets(){
     if (t && state.fingerprint === fp) { state.reqTargets = t; queueRender(); }
   }).catch(()=>{});
 }
+/* action-queue worklist state: persisted per fingerprint under lab: keys.
+   Purely local bookkeeping — never touches candidate data. */
+function persistActionsState(){
+  if (state.fingerprint) idbKeyval.set('lab:actions:'+state.fingerprint, state.actionsState).catch(()=>{});
+}
+function loadActionsState(){
+  const fp = state.fingerprint;
+  state.actionsState = {};
+  idbKeyval.get('lab:actions:'+fp).then(a => {
+    if (a && state.fingerprint === fp) { state.actionsState = a; queueRender(); }
+  }).catch(()=>{});
+}
+/* stage SLAs: per-stage target days, persisted per fingerprint under lab: keys.
+   Read by stageNorm/agingThresholds — every overdue consumer follows automatically. */
+function persistSlas(){
+  if (state.fingerprint) idbKeyval.set('lab:slas:'+state.fingerprint, state.slas).catch(()=>{});
+}
+function loadSlas(){
+  const fp = state.fingerprint;
+  state.slas = {};
+  idbKeyval.get('lab:slas:'+fp).then(s => {
+    if (s && state.fingerprint === fp) { state.slas = s; queueRender(); }
+  }).catch(()=>{});
+}
 // gap analysis: projected 90d hires vs target; back-solve top-of-funnel need
 // from the req's historical end-to-end conversion (hires ÷ resolved)
 function reqGap(job){
@@ -2362,7 +2466,7 @@ function computeFlags(){
     const odOwner = topOwners(od, 1)[0];
     flags.push({ id:'overdue', data:{ count: od.length },
       talkTo: odOwner ? `${odOwner.name} (${odOwner.role})` : null,
-      ruleTip: tipHtml('Flags active candidates waiting more than 1.5× the historical median for their stage.', 'historical medians from past candidates\' stage durations'),
+      ruleTip: overdueTipHtml('Flags active candidates waiting past their stage\'s overdue threshold.'),
       severity: od.length >= Math.max(8, (state.snapshotRows||[]).length*0.25) ? 'red' : 'amber', score: 60 + od.length,
       text: `${od.length} candidate${od.length===1?'':'s'} overdue to advance — ${parts}.`,
       apply: () => setSelection({ type:'overdue' }) });
@@ -2971,6 +3075,106 @@ function renderFilterDesk(){
   line.appendChild(clearBtn);
 }
 /* ============================================================
+   SINCE LAST VISIT (lab round 8) — a muted diff line under the finding,
+   comparing this load's dataset against the digest stored the last time
+   the report was opened for this fingerprint. Current-pipeline mode only.
+   The digest is a per-candidate current-stage map (+ overdue ids) capped at
+   5k ids; past the cap only aggregate counts travel, and the diff parts
+   render as plain (non-clickable) text since there are no ids to drill to.
+   ============================================================ */
+const SINCE_VISIT_ID_CAP = 5000;
+function buildVisitDigest(){
+  const rows = state.rawRows;
+  const countsByStage = {}, countsByStatus = {};
+  for (const r of rows) {
+    countsByStage[r.current_stage] = (countsByStage[r.current_stage]||0) + 1;
+    countsByStatus[r.status] = (countsByStatus[r.status]||0) + 1;
+  }
+  const overCap = rows.length > SINCE_VISIT_ID_CAP;
+  let stageMap = null, overdueIds = null;
+  if (!overCap) {
+    stageMap = {};
+    for (const r of rows) stageMap[rowKey(r)] = r.current_stage;
+    overdueIds = overdueActives().map(rowKey);
+  }
+  return { ts: Date.now(), n: rows.length, countsByStage, countsByStatus, stageMap, overdueIds, overCap };
+}
+function computeVisitDiff(oldD, newD){
+  if (!oldD) return null;
+  const stages = state.canonicalStages;
+  const offerStage = stages[Math.max(0, stages.length - 2)];
+  const hireStage = stages[stages.length - 1];
+  if (oldD.overCap || newD.overCap || !oldD.stageMap || !newD.stageMap) {
+    // aggregate-only fallback: no per-candidate ids to drill to
+    return { overCap:true, sinceTs: oldD.ts,
+      apps: newD.n - oldD.n,
+      offers: (newD.countsByStage[offerStage]||0) - (oldD.countsByStage[offerStage]||0),
+      hires: (newD.countsByStage[hireStage]||0) - (oldD.countsByStage[hireStage]||0) };
+  }
+  const newIds = [], advancedIds = [], offerIds = [], hireIds = [];
+  for (const id in newD.stageMap) {
+    const stage = newD.stageMap[id];
+    const prevStage = oldD.stageMap[id];
+    if (prevStage === undefined) { newIds.push(id); continue; }
+    if (prevStage === stage) continue;
+    const pi = stages.indexOf(prevStage), ni = stages.indexOf(stage);
+    if (ni > pi) advancedIds.push(id);
+    if (stage === offerStage && prevStage !== offerStage) offerIds.push(id);
+    if (stage === hireStage && prevStage !== hireStage) hireIds.push(id);
+  }
+  const oldOverdue = new Set(oldD.overdueIds || []);
+  const newlyOverdueIds = (newD.overdueIds || []).filter(id => !oldOverdue.has(id));
+  return { overCap:false, sinceTs: oldD.ts, newIds, advancedIds, offerIds, hireIds, newlyOverdueIds };
+}
+function visitDiffHasChanges(d){
+  if (!d) return false;
+  if (d.overCap) return (d.apps||0) !== 0 || (d.offers||0) !== 0 || (d.hires||0) !== 0;
+  return d.newIds.length>0 || d.advancedIds.length>0 || d.offerIds.length>0 || d.hireIds.length>0 || d.newlyOverdueIds.length>0;
+}
+// runs once per dataset load, after applyFilters() has populated snapshotRows
+// (overdueActives() needs it); reads+overwrites the persisted digest.
+function initSinceVisit(){
+  const fp = state.fingerprint;
+  const newDigest = buildVisitDigest();
+  idbKeyval.get('lab:lastvisit:'+fp).then(oldDigest => {
+    if (state.fingerprint !== fp) return; // dataset moved on before this resolved
+    const diff = computeVisitDiff(oldDigest, newDigest);
+    state.sinceVisit = (diff && visitDiffHasChanges(diff)) ? { diff, dismissed:false } : null;
+    idbKeyval.set('lab:lastvisit:'+fp, newDigest).catch(()=>{});
+    queueRender();
+  }).catch(()=>{});
+}
+function renderSinceVisit(){
+  const box = $('#sincevisit-line');
+  const sv = state.sinceVisit;
+  if (!sv || sv.dismissed || impliedMode() !== 'snapshot') { box.classList.add('hidden'); box.innerHTML = ''; return; }
+  const d = sv.diff;
+  box.innerHTML = '';
+  box.classList.remove('hidden');
+  box.appendChild(document.createTextNode('Since ' + dayjs(d.sinceTs).format('MMM D') + ': '));
+  const parts = [];
+  const addPart = (n, word, ids, signed) => {
+    if (!n) return;
+    const text = `${signed && n > 0 ? '+' : ''}${fmtN(n)} ${word}`;
+    parts.push(ids ? numlink(text, () => drillTo({ type:'rows', keys:new Set(ids), label: word })) : el('span', {}, text));
+  };
+  if (d.overCap) {
+    addPart(d.apps, 'applications', null, true);
+    addPart(d.offers, 'offers out', null, false);
+    addPart(d.hires, d.hires === 1 ? 'hire' : 'hires', null, false);
+  } else {
+    addPart(d.newIds.length, 'applications', d.newIds, true);
+    addPart(d.advancedIds.length, 'advanced', d.advancedIds, false);
+    addPart(d.offerIds.length, 'offers out', d.offerIds, false);
+    addPart(d.hireIds.length, d.hireIds.length === 1 ? 'hire' : 'hires', d.hireIds, false);
+    addPart(d.newlyOverdueIds.length, 'newly overdue', d.newlyOverdueIds, false);
+  }
+  parts.forEach((p, i) => { if (i) box.appendChild(document.createTextNode(' · ')); box.appendChild(p); });
+  const dismiss = el('button', { class:'sincevisit-dismiss', type:'button', 'aria-label':'Dismiss' }, '✕');
+  dismiss.addEventListener('click', () => { sv.dismissed = true; renderSinceVisit(); });
+  box.appendChild(dismiss);
+}
+/* ============================================================
    RENDER: FINDING LINE — small rules engine over Δ metrics
    ============================================================ */
 function computeFinding(){
@@ -3194,6 +3398,137 @@ async function copyExecSummary(){
     } catch (e2) { toast('Copy failed — clipboard unavailable.'); }
   }
 }
+// shared clipboard write with textarea fallback, used by the exec summary and
+// the action-queue owner messages
+async function copyPlainText(text, successMsg){
+  try {
+    await navigator.clipboard.writeText(text);
+    toast(successMsg);
+  } catch (e) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy');
+      ta.remove();
+      toast(successMsg);
+    } catch (e2) { toast('Copy failed — clipboard unavailable.'); }
+  }
+}
+
+/* ============================================================
+   RENDER: ACTION QUEUE — "This week" (lab round 8)
+   Auto-built worklist: every overdue active candidate (overdueActives()),
+   grouped by primary owner (stageOwnerRoles), groups sorted by pending
+   count desc. "Handled"/"snoozed" are purely local worklist state — they
+   never modify candidate data — persisted under lab:actions:<fingerprint>
+   keyed by application id.
+   ============================================================ */
+function actionRowState(key){ return (state.actionsState && state.actionsState[key]) || {}; }
+function setActionHandled(key, val){
+  state.actionsState = state.actionsState || {};
+  state.actionsState[key] = { ...state.actionsState[key], handled: val };
+  persistActionsState();
+  renderActionQueue();
+}
+function snoozeAction(key){
+  state.actionsState = state.actionsState || {};
+  state.actionsState[key] = { ...state.actionsState[key], snoozeUntil: Date.now() + 7*86400000 };
+  persistActionsState();
+  renderActionQueue();
+  toast('Snoozed 7 days.');
+}
+function clearActionsState(){
+  state.actionsState = {};
+  persistActionsState();
+  renderActionQueue();
+  toast('Worklist cleared.');
+}
+// ready-to-send plain-text note for an owner's overdue group, template by role
+function roleMessage(role, ownerName, rows){
+  const now = nowRef();
+  const stageCounts = new Map();
+  rows.forEach(r => stageCounts.set(r.current_stage, (stageCounts.get(r.current_stage)||0)+1));
+  const topStage = Array.from(stageCounts.entries()).sort((a,b)=>b[1]-a[1])[0][0];
+  const normDays = Math.round(stageNorm(topStage));
+  const list = rows.map(r => `${r.candidate_name || 'Candidate'} (${r.job || '—'}, ${Math.round(daysInCurrentStage(r, now) || 0)}d)`).join(', ');
+  const first = String(ownerName || '').split(/\s+/)[0] || ownerName;
+  const n = rows.length, plural = n === 1 ? '' : 's', isAre = n === 1 ? 'is' : 'are', hasHave = n === 1 ? 'has' : 'have';
+  if (role === 'coordinator') {
+    return `Hi ${first} — ${n} candidate${plural} ${isAre} waiting on ${topStage} scheduling past the ${normDays}d norm: ${list}. Can we get these moving this week?`;
+  }
+  if (role === 'hiring manager') {
+    return `Hi ${first} — ${n} candidate${plural} need${n===1?'s':''} a decision on ${topStage}: ${list}. These have been waiting past the ${normDays}d norm — can you review this week?`;
+  }
+  return `Hi ${first} — ${n} candidate${plural} ${hasHave} stalled past the ${normDays}d norm for ${topStage}: ${list}. Can we move ${n===1?'this one':'these'} forward or close ${n===1?'it':'them'} out?`;
+}
+function renderActionQueue(){
+  const section = $('#section-actions');
+  if (impliedMode() !== 'snapshot') { section.classList.add('hidden'); return; } // Current-pipeline mode only
+  section.classList.remove('hidden');
+  const now = nowRef();
+  const st = state.actionsState || {};
+  // overdueActives() is the shared overdue definition (SLA-aware); snoozed rows hide until their date
+  const all = overdueActives().filter(r => {
+    const s = st[rowKey(r)];
+    return !(s && s.snoozeUntil && s.snoozeUntil > Date.now());
+  });
+  const wrap = $('#actions-list'); wrap.innerHTML = '';
+  if (!all.length) {
+    $('#actions-note').textContent = '';
+    wrap.appendChild(el('div', { class:'attn-none' }, 'No overdue candidates this week.'));
+    return;
+  }
+  const groups = new Map();
+  for (const r of all) {
+    const o = primaryOwner(r);
+    const key = o ? o.field + '|' + o.name : '__unassigned__';
+    if (!groups.has(key)) groups.set(key, { role: o ? o.role : null, name: o ? o.name : 'Unassigned', rows: [] });
+    groups.get(key).rows.push(r);
+  }
+  const pendingCount = g => g.rows.filter(r => !actionRowState(rowKey(r)).handled).length;
+  const groupArr = Array.from(groups.values());
+  groupArr.sort((a,b) => pendingCount(b) - pendingCount(a) || b.rows.length - a.rows.length);
+  groupArr.forEach(g => g.rows.sort((a,b) => (daysInCurrentStage(b, now)||0) - (daysInCurrentStage(a, now)||0)));
+  const totalPending = groupArr.reduce((s,g) => s + pendingCount(g), 0);
+  $('#actions-note').textContent = `${fmtN(totalPending)} pending · ${fmtN(all.length)} overdue this week`;
+  attachTipOnce($('#actions-note'), overdueTipHtml('Overdue actives this week, grouped by who owns their current stage.'));
+  for (const g of groupArr) {
+    const head = el('div', { class:'aq-ghead' },
+      el('span', { class:'aq-gname' }, g.name),
+      g.role ? el('span', { class:'aq-grole' }, g.role) : null,
+      el('span', { class:'aq-gcount' }, `${pendingCount(g)} of ${g.rows.length}`));
+    if (g.role) {
+      const copyBtn = el('button', { class:'underline-btn aq-copy', type:'button' }, 'Copy message');
+      copyBtn.addEventListener('click', () => copyPlainText(roleMessage(g.role, g.name, g.rows), 'Message copied.'));
+      head.appendChild(copyBtn);
+    }
+    wrap.appendChild(head);
+    for (const r of g.rows) {
+      const key = rowKey(r);
+      const rs = actionRowState(key);
+      const tier = agingTier(r, now);
+      const row = el('div', { class:'aq-row' + (rs.handled ? ' handled' : '') });
+      const cb = el('input', { type:'checkbox', class:'aq-check' });
+      cb.checked = !!rs.handled;
+      cb.addEventListener('click', e => e.stopPropagation());
+      cb.addEventListener('change', () => setActionHandled(key, cb.checked));
+      const nameBtn = el('button', { class:'aq-name numlink', type:'button' }, r.candidate_name || 'Candidate');
+      nameBtn.addEventListener('click', () => { state.ledger.expanded.add(key); drillTo({ type:'row', key, name: r.candidate_name || 'Candidate' }); });
+      const days = daysInCurrentStage(r, now);
+      attachTip(nameBtn, overdueTipHtml(`${r.job || '—'} · ${days!=null?Math.round(days):'—'}d in ${r.current_stage} — norm is ${Math.round(stageNorm(r.current_stage))}d.`));
+      const snoozeBtn = el('button', { class:'underline-btn muted aq-snooze', type:'button' }, 'Snooze 7d');
+      snoozeBtn.addEventListener('click', () => snoozeAction(key));
+      row.append(cb, nameBtn,
+        el('span', { class:'aq-job' }, r.job || '—'),
+        el('span', { class:'aq-stage' }, r.current_stage || '—'),
+        el('span', { class:'aq-days' + (tier ? ' '+tier : '') }, days!=null ? fmtDays(days) : '—'),
+        el('span', { class:'aq-role' }, g.role || '—'),
+        snoozeBtn);
+      wrap.appendChild(row);
+    }
+  }
+}
 
 /* ============================================================
    RENDER: FORECAST — fan chart of cumulative expected hires (lab)
@@ -3342,7 +3677,7 @@ function renderReqs(){
   if (isSnapshot && state._forecast) headCells.push(
     th('Target', tipHtml('Hire target for this req. Click a cell to set it; stored locally per dataset.', 'drives the pacing-gap flag when the projection falls short')),
     th('Projected', tipHtml('Expected hires within 90 days for this req.', 'sum of its active candidates\' hire probabilities')));
-  headCells.push(th('Flag', tipHtml('Empty funnel (red): no actives past the second stage. Overdue (amber): actives waiting over 1.5× the historical stage median. Pacing gap: projected hires short of target.')));
+  headCells.push(th('Flag', overdueTipHtml(`Empty funnel (red): no actives past the second stage. Overdue (amber): actives waiting past the stage's overdue threshold. Pacing gap: projected hires short of target.`)));
   table.appendChild(el('thead', {}, el('tr', {}, ...headCells)));
   const tbody = el('tbody');
   for (const e of entries) {
@@ -3427,7 +3762,7 @@ function computeSnapshotStats(){
     drill: () => drillTo({ type:'status', status:'active' }) }];
   const odAll = overdueActives();
   items.push({ label:'Overdue', value: fmtN(odAll.length), cls: odAll.length ? 'alert' : '',
-    tip: tipHtml('Overdue — actives waiting past 1.5× their stage\'s historical median.', `${fmtN(odAll.length)} of ${fmtN(rows.length)} actives; red dots on the aging board are past 2.5×`),
+    tip: overdueTipHtml(`Overdue — actives waiting past their stage's overdue threshold (${fmtN(odAll.length)} of ${fmtN(rows.length)} actives).`),
     drill: odAll.length ? () => drillTo({ type:'overdue' }) : null });
   for (const stage of state.canonicalStages) {
     const n = rows.filter(r => r.current_stage === stage).length;
@@ -4136,7 +4471,7 @@ function renderAging(){
     wrap.appendChild(el('div', { class:'attn-none' }, 'No active candidates.'));
     return;
   }
-  $('#aging-note').textContent = 'each dot is an active candidate · days in current stage';
+  $('#aging-note').textContent = `each dot is an active candidate · days in current stage · norms: ${normsBasisLabel()}`;
   const width = Math.max(700, wrap.clientWidth || 900);
   const labelW = 140, rightW = 96, rowH = 42, axisH = 28;
   const height = stages.length * rowH + axisH;
@@ -4144,7 +4479,7 @@ function renderAging(){
   const dd = r => daysInCurrentStage(r, now) || 0;
   const allDays = rows.map(dd);
   const trueMax = Math.max(...allDays, 1);
-  const maxD = Math.max(trueMax, ...stages.map(s => stageNorm(s) * 1.5)) * 1.08;
+  const maxD = Math.max(trueMax, ...stages.map(s => agingThresholds(s).amber)) * 1.08;
   const x = d => labelW + (d / maxD) * plotW;
   const svg = svgEl('svg', { class:'aging', width, height, viewBox:`0 0 ${width} ${height}` });
   // deterministic vertical jitter so overlapping dots separate without dancing between renders
@@ -4155,9 +4490,11 @@ function renderAging(){
     const cy = y0 + rowH / 2 + 5;
     const inStage = rows.filter(r => r.current_stage === s);
     const norm = stageNorm(s);
-    const thr = norm * 1.5;
+    const th = agingThresholds(s);
+    const normWord = th.basis === 'sla' ? 'target' : 'median';
+    const thr = th.amber;
     svg.appendChild(svgEl('line', { class:'aging-baseline', x1:labelW, y1:cy, x2:labelW + plotW, y2:cy }));
-    // dashed threshold marker at 1.5× the historical median
+    // dashed threshold marker at the amber threshold (SLA itself, or 1.5× the historical median)
     const tx = x(thr);
     svg.appendChild(svgEl('line', { class:'aging-thresh', x1:tx, y1:y0 + 8, x2:tx, y2:y0 + rowH - 4 }));
     svg.appendChild(svgEl('text', { class:'aging-thresh-label', x:tx + 4, y:y0 + 12 }, textNode('norm ' + Math.round(thr) + 'd')));
@@ -4172,7 +4509,7 @@ function renderAging(){
         dot.addEventListener('mousemove', e => {
           const who = tier ? ownersFor(r).map(o => `${escapeHtml(o.name)} (${o.role})`).join(' · ') : '';
           showRiverTooltip(e,
-            `<b>${escapeHtml(r.candidate_name || '—')}</b><br>${escapeHtml(r.job || '—')} · ${escapeHtml(r.recruiter || '—')}<br>${Math.round(d)}d in ${escapeHtml(s)} — median ${Math.round(norm)}d${who ? `<br><span class="tt-muted">talk to: ${who}</span>` : ''}`);
+            `<b>${escapeHtml(r.candidate_name || '—')}</b><br>${escapeHtml(r.job || '—')} · ${escapeHtml(r.recruiter || '—')}<br>${Math.round(d)}d in ${escapeHtml(s)} — ${normWord} ${Math.round(norm)}d${who ? `<br><span class="tt-muted">talk to: ${who}</span>` : ''}`);
         });
         dot.addEventListener('mouseleave', hideRiverTooltip);
         dot.addEventListener('click', () => {
@@ -4190,7 +4527,7 @@ function renderAging(){
       for (const [d, rs] of buckets) {
         const worst = rs.some(r => agingTier(r, now) === 'red') ? 'red' : (rs.some(r => agingTier(r, now) === 'amber') ? 'amber' : '');
         const dot = svgEl('circle', { class:'aging-dot' + (worst ? ' ' + worst : ''), cx:x(d), cy, r:4.5 });
-        dot.addEventListener('mousemove', e => showRiverTooltip(e, `<b>${rs.length} candidate${rs.length===1?'':'s'}</b><br>${d}d in ${escapeHtml(s)} — median ${Math.round(norm)}d`));
+        dot.addEventListener('mousemove', e => showRiverTooltip(e, `<b>${rs.length} candidate${rs.length===1?'':'s'}</b><br>${d}d in ${escapeHtml(s)} — ${normWord} ${Math.round(norm)}d`));
         dot.addEventListener('mouseleave', hideRiverTooltip);
         dot.addEventListener('click', () => drillTo({ type:'active', stage:s }));
         svg.appendChild(dot);
@@ -4204,7 +4541,7 @@ function renderAging(){
       const t = svgEl('text', { class:'aging-overdue ' + (anyRed ? 'red' : 'amber'), x:labelW + plotW + 12, y:cy + 3.5, 'text-anchor':'start' },
         textNode(odIn.length + ' overdue'));
       t.addEventListener('click', () => drillTo({ type:'overdue', stage:s }));
-      t.addEventListener('mousemove', e => showRiverTooltip(e, tipHtml(`${odIn.length} of ${inStage.length} ${s} actives are past 1.5× the stage's historical median (${Math.round(norm)}d). Click to see them.`)));
+      t.addEventListener('mousemove', e => showRiverTooltip(e, tipHtml(`${odIn.length} of ${inStage.length} ${s} actives are past the overdue threshold (${Math.round(thr)}d, ${normWord} ${Math.round(norm)}d). Click to see them.`)));
       t.addEventListener('mouseleave', hideRiverTooltip);
       svg.appendChild(t);
     }
@@ -4735,7 +5072,7 @@ function renderStatement(){
     table.appendChild(el('thead', {}, el('tr', {},
       th('Stage', tipHtml('Canonical pipeline stage, in order.')),
       th('Active now', tipHtml('Candidates currently sitting in this stage.', 'status = active, current stage = row')),
-      th('Overdue', tipHtml('Actives waiting past 1.5× this stage\'s historical median.', 'red when any are past 2.5×')),
+      th('Overdue', overdueTipHtml('Actives waiting past this stage\'s overdue threshold.')),
       th('Median days in stage', tipHtml('Median time actives have been waiting in this stage.', 'stage entered date → today, 50th percentile')),
       th('Oldest', tipHtml('Longest current wait in this stage.', 'max of days-in-stage among actives')),
       th('Δ active vs prior', tipHtml('Change in active count vs the comparison period.', 'no comparison in Current-pipeline view')))));
@@ -5156,8 +5493,7 @@ function renderLedger(){
       owner ? el('span', { class:'ledger-owner' }, '· ' + ownerInitials(owner.name)) : null);
     if (tier) {
       const who = ownersFor(r).map(o => `${o.name} (${o.role})`).join(' · ');
-      attachTip(daysTd, tipHtml(`${Math.round(days)}d — ${r.current_stage} norm is ${Math.round(stageNorm(r.current_stage))}d.${who ? ' Talk to: ' + who + '.' : ''}`,
-        'amber past 1.5×, red past 2.5× the stage\'s historical median'));
+      attachTip(daysTd, overdueTipHtml(`${Math.round(days)}d — ${r.current_stage} norm is ${Math.round(stageNorm(r.current_stage))}d.${who ? ' Talk to: ' + who + '.' : ''}`));
     }
     tr.append(
       el('td', {}, r.candidate_name||'—'), el('td', {}, r.job||'—'), el('td', {}, r.current_stage||'—'),
@@ -5473,6 +5809,7 @@ function renderRecMatrix(){
    ============================================================ */
 const SECTION_REGISTRY = [
   { key:'attention',  title:'Attention',          el:'section-attention',  render: () => renderAttention() },
+  { key:'actions',    title:'This week (action queue)', el:'section-actions', render: () => renderActionQueue(), modeNote:'Current only' },
   { key:'forecast',   title:'Forecast',           el:'section-forecast',   render: () => renderForecast(),  modeNote:'Current only' },
   { key:'stats',      title:'By the numbers',     el:'section-stats',      render: () => renderStats() },
   { key:'reqs',       title:'Requisitions',       el:'section-reqs',       render: () => renderReqs() },
@@ -5609,6 +5946,27 @@ function openCustomize(){
     fvWrap.appendChild(b);
   }
   body.appendChild(fvWrap);
+  // stage norms (lab round 8) — per-stage SLA overrides feeding the shared overdue helper
+  body.appendChild(el('div', { class:'map-section-title' }, 'Stage norms'));
+  body.appendChild(el('p', { style:'font-size:11.5px;color:var(--muted);margin:0 0 4px;max-width:640px;' },
+    'Target days per stage. A set SLA replaces the historical median everywhere overdue is computed — amber past the target, red past 2×. Leave blank to keep the historical median (shown as the placeholder).'));
+  for (const s of state.canonicalStages) {
+    const hist = Math.round(histStageMedians()[s] || 14);
+    const cur = state.slas[s];
+    const inp = el('input', { class:'sla-input', type:'number', min:'1', step:'1',
+      placeholder: String(hist), ...(cur != null ? { value:String(cur) } : {}) });
+    inp.addEventListener('change', () => {
+      const v = parseInt(inp.value, 10);
+      if (!isNaN(v) && v > 0) state.slas[s] = v; else delete state.slas[s];
+      persistSlas();
+      queueRender();
+      openCustomize();
+    });
+    body.appendChild(el('div', { class:'cz-row' },
+      el('span', { class:'cz-title' }, s),
+      el('span', { class:'cz-mode' }, cur != null ? 'SLA' : `historical (${hist}d)`),
+      inp));
+  }
   // gallery
   body.appendChild(el('div', { class:'map-section-title' }, 'Gallery — optional visualizations'));
   for (const def of SECTION_REGISTRY.filter(d => d.gallery)) {
@@ -5639,11 +5997,13 @@ function openCustomize(){
 function renderAll(){
   if (!state.rawRows.length) return;
   applyFilters();
+  if (state._sinceVisitPending) { state._sinceVisitPending = false; initSinceVisit(); } // needs snapshotRows, just populated above
   state._forecast = computeForecast(); // null outside Current-pipeline mode; feeds flags/reqs/summary
   state._flags = computeFlags();
   renderMasthead();
   renderFilterDesk();
   renderFinding();
+  renderSinceVisit();
   for (const def of orderedSectionDefs()) {
     const sec = document.getElementById(def.el);
     if (!sec) continue;
@@ -5908,6 +6268,7 @@ function wireEvents(){
   });
   $('#btn-export-csv').addEventListener('click', exportLedgerCsv);
   $('#btn-copy-summary').addEventListener('click', copyExecSummary);
+  $('#btn-actions-clear').addEventListener('click', clearActionsState);
 
   // Escape chain: open popovers/panels > expanded trend fig > expanded ledger row > drill pop
   window.addEventListener('keydown', (e) => {
