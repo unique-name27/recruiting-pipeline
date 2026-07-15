@@ -72,6 +72,100 @@ html.dark{
     color-scheme: dark;
   }
 }
+/* ============================================================
+   EDITIONS (lab) — complete switchable skins. Declared AFTER the
+   light/dark token blocks so an edition's variables win the cascade.
+   Broadsheet = no root class (the default look, untouched).
+   ============================================================ */
+/* --- TERMINAL: ops-console. Dark is canonical; the light/dark toggle is
+       inert here by design (vars override both) — noted in the switcher. --- */
+html.ed-terminal, html.ed-terminal.dark, html.ed-terminal.light{
+  --paper:#0C0C0C; --ink:#E8E8E3; --muted:#8A8A80; --hairline:rgba(232,232,227,0.20); --heavy:#E8E8E3;
+  --flow-1:#A9F2C8; --flow-2:#6FE6A4; --flow-3:#35D17D; --flow-4:#1FA35C; --flow-5:#137A43;
+  --rej:#55554F;
+  --neg:#FF5F56; --warn:#FFBD2E;
+  --pos-ink:#35D17D;
+  --serif:'JetBrains Mono', ui-monospace, Consolas, monospace;
+  --sans:'JetBrains Mono', ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+html.ed-terminal body{ font-size:12.5px; }
+html.ed-terminal .masthead-title{ font-size:19px; font-weight:700; letter-spacing:0; }
+html.ed-terminal .kicker{ letter-spacing:0.04em; }
+html.ed-terminal .kicker::before{ content:'['; color:var(--muted); }
+html.ed-terminal .kicker::after{ content:']'; color:var(--muted); }
+html.ed-terminal .section{ margin-top:24px; }
+html.ed-terminal .finding-headline{ font-size:16px; font-weight:700; }
+html.ed-terminal .stat-value{ font-size:18px; font-weight:700; }
+html.ed-terminal .stat{ padding-left:12px; padding-top:8px; }
+html.ed-terminal table.report-table td{ padding:4px 8px; }
+html.ed-terminal table.report-table thead th{ padding:4px 8px; }
+html.ed-terminal table.report-table tbody tr.clickable:hover td{ background:var(--ink); color:var(--paper); }
+html.ed-terminal table.report-table tbody tr.clickable:hover td .numlink,
+html.ed-terminal table.report-table tbody tr.clickable:hover td .muted-pct,
+html.ed-terminal table.report-table tbody tr.clickable:hover td .zero{ color:var(--paper); }
+html.ed-terminal .attn-panel{ border-left-width:1px; }
+/* unicode glyph flags: ▲ red, ● amber */
+html.ed-terminal .attn-dot, html.ed-terminal .flag-dot{ background:none !important; width:auto; height:auto; line-height:1; }
+html.ed-terminal .attn-dot.red::before, html.ed-terminal .flag-dot.red::before{ content:'▲'; color:var(--neg); font-size:10px; }
+html.ed-terminal .attn-dot.amber::before, html.ed-terminal .flag-dot.amber::before{ content:'●'; color:var(--warn); font-size:10px; }
+html.ed-terminal svg.river .corridor-label.on-flow,
+html.ed-terminal svg.river .corridor-label.secondary{ fill:#03120A; }
+html.ed-terminal .ledger-row-detail .tl-dot{ background:var(--flow-3); }
+/* --- STUDIO: mainstream product skin. Composes with the dark toggle. --- */
+html.ed-studio{
+  --paper:#FFFFFF; --ink:#111827; --muted:#6B7280; --hairline:rgba(17,24,39,0.10); --heavy:#111827;
+  --flow-1:#DBEAFE; --flow-2:#93C5FD; --flow-3:#3B82F6; --flow-4:#2563EB; --flow-5:#1E40AF;
+  --rej:#9CA3AF;
+  --neg:#DC2626; --warn:#D97706;
+  --pos-ink:#2563EB;
+  --serif:'Inter', -apple-system, 'Segoe UI', sans-serif;
+  --sans:'Inter', -apple-system, 'Segoe UI', sans-serif;
+  color-scheme: light;
+}
+html.ed-studio.dark{
+  --paper:#0F1522; --ink:#F1F5F9; --muted:#94A3B8; --hairline:rgba(241,245,249,0.12); --heavy:#F1F5F9;
+  --flow-1:#BFDBFE; --flow-2:#93C5FD; --flow-3:#60A5FA; --flow-4:#3B82F6; --flow-5:#2563EB;
+  --rej:#64748B;
+  --neg:#F87171; --warn:#FBBF24;
+  --pos-ink:#60A5FA;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark){
+  html.ed-studio:not(.light):not(.dark){
+    --paper:#0F1522; --ink:#F1F5F9; --muted:#94A3B8; --hairline:rgba(241,245,249,0.12); --heavy:#F1F5F9;
+    --flow-1:#BFDBFE; --flow-2:#93C5FD; --flow-3:#60A5FA; --flow-4:#3B82F6; --flow-5:#2563EB;
+    --rej:#64748B;
+    --neg:#F87171; --warn:#FBBF24;
+    --pos-ink:#60A5FA;
+    color-scheme: dark;
+  }
+}
+html.ed-studio body{ font-size:14px; line-height:1.55; }
+html.ed-studio .masthead-title{ font-family:var(--sans); font-weight:700; letter-spacing:-0.02em; }
+html.ed-studio .finding-headline{ font-family:var(--sans); font-weight:600; letter-spacing:-0.01em; }
+html.ed-studio .stat-value{ font-family:var(--sans); font-weight:700; letter-spacing:-0.01em; }
+html.ed-studio .tm-readout, html.ed-studio .river-caption, html.ed-studio .trend-fig figcaption,
+html.ed-studio .attn-suggested, html.ed-studio .attn-trend figcaption, html.ed-studio .proc-explainer,
+html.ed-studio .fd-comparison{ font-family:var(--sans); font-style:normal; color:var(--muted); }
+html.ed-studio .section{ margin-top:24px; border:1px solid var(--hairline); border-radius:8px; padding:18px 22px; }
+html.ed-studio .section .section{ border:none; border-radius:0; padding:0; } /* nested heads stay flat */
+html.ed-studio .masthead .heavy-rule{ border-top-width:1px; }
+html.ed-studio table.report-table thead th{ border-bottom-width:1px; }
+html.ed-studio svg.river .corridor-label.on-flow, html.ed-studio svg.river .corridor-label.secondary{ fill:#FFFFFF; }
+html.ed-studio.dark svg.river .corridor-label.on-flow, html.ed-studio.dark svg.river .corridor-label.secondary{ fill:#0B1E45; }
+/* print always reads as Broadsheet */
+@media print{
+  html, html.ed-terminal, html.ed-studio, html.ed-terminal.dark, html.ed-studio.dark{
+    --paper:#FBFAF8; --ink:#141412; --muted:#6B6A64; --hairline:rgba(20,20,18,0.14); --heavy:#141412;
+    --flow-1:#9FE1CB; --flow-2:#5DCAA5; --flow-3:#1D9E75; --flow-4:#0F6E56; --flow-5:#085041;
+    --rej:#B4B2A9; --neg:#A32D2D; --warn:#BA7517; --pos-ink:#0F6E56;
+    --serif:'Newsreader', Georgia, serif;
+    --sans:'IBM Plex Sans', system-ui, sans-serif;
+  }
+  html.ed-studio .section{ border:none; border-radius:0; padding:0; }
+  html.ed-terminal .kicker::before, html.ed-terminal .kicker::after{ content:none; }
+}
 *{ box-sizing:border-box; }
 html,body{ margin:0; padding:0; background:var(--paper); color:var(--ink); }
 body{
@@ -270,6 +364,88 @@ svg.comp .comp-baseline{ stroke:var(--hairline); stroke-width:1; }
 svg.comp .comp-band{ stroke:var(--paper); stroke-width:0.75; cursor:pointer; }
 svg.comp .comp-marker{ stroke:var(--ink); stroke-width:1; stroke-dasharray:3 3; }
 @media print{ .tm-control, .tm-noteline{ display:none !important; } }
+/* ============================================================
+   FLOW VIEW TOGGLE + BOARD + FUNNEL (lab)
+   ============================================================ */
+.flow-view-toggle{ display:inline-flex; gap:12px; margin-left:16px; font-size:11.5px; }
+.flow-view-toggle button{ color:var(--muted); border-bottom:1px solid transparent; padding-bottom:1px; }
+.flow-view-toggle button:hover{ color:var(--ink); }
+.flow-view-toggle button.active{ color:var(--ink); border-bottom-color:var(--ink); font-weight:600; }
+.fb-row{ display:flex; align-items:center; gap:14px; padding:4px 2px; border-bottom:0.5px solid var(--hairline); font-size:12px; cursor:pointer; }
+.fb-row:hover{ background:var(--hairline); }
+.fb-name{ width:160px; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink); }
+.fb-req{ width:160px; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); }
+.fb-bar{ flex:1; display:flex; height:10px; align-items:stretch; min-width:120px; }
+.fb-seg{ flex-shrink:0; border-right:1px solid var(--paper); }
+.fb-days{ width:48px; flex-shrink:0; text-align:right; font-variant-numeric:tabular-nums; }
+.fb-days.amber{ color:var(--warn); font-weight:600; }
+.fb-days.red{ color:var(--neg); font-weight:600; }
+.fb-more{ margin-top:8px; font-size:12px; }
+.fb-head{ display:flex; gap:14px; padding:2px 2px 6px; font-size:10px; text-transform:uppercase; letter-spacing:0.07em; color:var(--muted); font-weight:600; border-bottom:1px solid var(--heavy); }
+svg.funnel text{ font-family:var(--sans); font-variant-numeric:tabular-nums; }
+svg.funnel .fn-label{ font-size:11.5px; font-weight:600; fill:var(--ink); }
+svg.funnel .fn-count{ font-size:11px; fill:var(--ink); }
+svg.funnel .fn-pass{ font-size:10.5px; fill:var(--muted); }
+svg.funnel .fn-bar{ fill:var(--flow-3); cursor:pointer; }
+svg.funnel .fn-rest{ fill:var(--rej); opacity:0.4; cursor:pointer; }
+svg.funnel .fn-inproc{ fill:var(--flow-1); opacity:0.7; }
+svg.funnel .fn-bar:hover, svg.funnel .fn-rest:hover{ opacity:0.85; }
+@media print{ .flow-view-toggle{ display:none !important; } }
+/* ============================================================
+   CUSTOMIZE (lab round 6) — settings overlay + gallery visuals
+   ============================================================ */
+.cz-row{ display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:0.5px solid var(--hairline); font-size:12.5px; }
+.cz-row .cz-title{ flex:1; }
+.cz-row .cz-title.off{ color:var(--muted); }
+.cz-row .cz-mode{ color:var(--muted); font-size:10.5px; width:110px; }
+.cz-row .stage-btns{ display:flex; gap:4px; }
+.cz-row .stage-btns button{ font-size:11px; color:var(--muted); padding:1px 3px; }
+.cz-row .stage-btns button:hover{ color:var(--ink); }
+.cz-choice{ display:flex; gap:16px; font-size:12.5px; padding:8px 0; flex-wrap:wrap; }
+.cz-choice button{ color:var(--muted); border-bottom:1px solid transparent; padding-bottom:1px; }
+.cz-choice button.active{ color:var(--ink); border-bottom-color:var(--ink); font-weight:600; }
+.cz-gallery-row{ display:flex; align-items:center; gap:14px; padding:9px 0; border-bottom:0.5px solid var(--hairline); }
+.cz-gallery-row .cz-thumb{ flex-shrink:0; }
+.cz-gallery-row .cz-g-name{ font-weight:600; font-size:12.5px; }
+.cz-gallery-row .cz-g-desc{ font-size:11.5px; color:var(--muted); }
+.cz-reset{ font-size:12px; color:var(--muted); text-decoration:underline; text-underline-offset:2px; }
+.cz-reset:hover{ color:var(--ink); }
+/* job posting link glyph + owners block (lab round 7) */
+.req-link{ color:var(--muted); font-size:11px; text-decoration:none; margin-left:5px; }
+.req-link:hover{ color:var(--ink); }
+.attn-owners{ margin:2px 0 10px; font-size:12.5px; }
+.attn-owners .kicker{ display:block; margin-bottom:4px; }
+.owner-link{ color:var(--ink); font-variant-numeric:tabular-nums; border-bottom:1px solid transparent; padding-bottom:1px; }
+.owner-link:hover, .owner-link:focus-visible{ border-bottom-color:var(--ink); outline:none; }
+.owner-sep{ color:var(--muted); margin:0 6px; }
+.ledger-owner{ color:var(--muted); font-size:10.5px; margin-left:4px; }
+/* activity calendar */
+svg.actcal .ac-cell{ stroke:var(--paper); stroke-width:1; cursor:pointer; }
+svg.actcal .ac-cell:hover{ stroke:var(--ink); }
+svg.actcal text{ font-family:var(--sans); font-size:9px; fill:var(--muted); }
+/* histogram + funnel-comparison + recruiter matrix reuse chart text conventions */
+svg.tthdist text, svg.funnelcmp text, svg.recmatrix text{ font-family:var(--sans); font-variant-numeric:tabular-nums; }
+svg.tthdist .td-bar{ fill:var(--flow-3); cursor:pointer; }
+svg.tthdist .td-bar:hover{ opacity:0.85; }
+svg.tthdist .td-prev{ fill:none; stroke:var(--muted); stroke-width:1; stroke-dasharray:3 2; }
+svg.tthdist .td-marker{ stroke:var(--warn); stroke-width:1; stroke-dasharray:3 3; }
+svg.tthdist .td-axis, svg.funnelcmp .fc2-axis, svg.recmatrix .rm-axis{ font-size:9.5px; fill:var(--muted); }
+.rr-row{ display:flex; align-items:center; gap:12px; padding:4px 2px; border-bottom:0.5px solid var(--hairline); font-size:12px; cursor:pointer; }
+.rr-row:hover{ background:var(--hairline); }
+.rr-label{ width:260px; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.rr-bar{ flex:1; height:10px; display:flex; }
+.rr-fill{ background:var(--rej); opacity:0.6; }
+.rr-count{ width:110px; flex-shrink:0; text-align:right; font-variant-numeric:tabular-nums; color:var(--muted); font-size:11.5px; }
+#officegrid-table td.og-cell{ cursor:pointer; }
+#officegrid-table td.og-cell:hover{ text-decoration:underline; text-underline-offset:2px; }
+svg.funnelcmp .fc2-cur{ fill:var(--flow-3); cursor:pointer; }
+svg.funnelcmp .fc2-prev{ fill:var(--rej); opacity:0.45; }
+svg.funnelcmp .fc2-delta.good{ fill:var(--pos-ink); font-weight:600; font-size:10.5px; }
+svg.funnelcmp .fc2-delta.bad{ fill:var(--neg); font-weight:600; font-size:10.5px; }
+svg.recmatrix .rm-dot{ fill:var(--flow-3); cursor:pointer; }
+svg.recmatrix .rm-dot:hover{ stroke:var(--ink); stroke-width:1; }
+svg.recmatrix .rm-od{ fill:var(--warn); pointer-events:none; }
+svg.recmatrix .rm-count{ font-size:9.5px; fill:var(--muted); }
 /* replay dots: flat data marks drifting between pools during history replay */
 .replay-dot{
   position:absolute; width:3px; height:3px; border-radius:50%;
@@ -629,6 +805,14 @@ html.dark .sheet-overlay{ background:rgba(0,0,0,0.6); }
           </div>
         </div>
       </div>
+      <div class="popover-wrap">
+        <button class="underline-btn" id="btn-edition">Edition ▾</button>
+        <div class="popover hidden" id="pop-edition">
+          <h4>Edition</h4>
+          <div id="edition-list"></div>
+        </div>
+      </div>
+      <button class="underline-btn" id="btn-customize">Customize</button>
       <button class="underline-btn theme-toggle" id="btn-theme-toggle">Dark</button>
       <button class="underline-btn" id="btn-print">Export PDF</button>
     </nav>
@@ -725,6 +909,7 @@ html.dark .sheet-overlay{ background:rgba(0,0,0,0.6); }
     <section class="section" id="section-river">
       <div class="section-head">
         <span class="kicker">Flow</span>
+        <span class="flow-view-toggle" id="flow-view-toggle"></span>
         <span class="river-filtered hidden" id="river-filtered"></span>
         <span class="tm-control hidden" id="tm-control">
           <button class="tm-step tm-motion" id="tm-play" type="button" aria-label="replay pipeline history">▶</button>
@@ -803,6 +988,39 @@ html.dark .sheet-overlay{ background:rgba(0,0,0,0.6); }
       <div class="ledger-pagination" id="ledger-pagination"></div>
     </section>
 
+    <!-- ========== GALLERY SECTIONS (lab round 6, default off) ========== -->
+    <section class="section hidden" id="section-cal">
+      <div class="section-head"><span class="kicker" id="cal-kicker">Activity</span><span class="section-note" id="cal-note"></span></div>
+      <div id="cal-chart" style="overflow-x:auto;"></div>
+      <p class="river-caption" id="cal-caption"></p>
+    </section>
+    <section class="section hidden" id="section-tthdist">
+      <div class="section-head"><span class="kicker" id="tthdist-kicker">Time to hire</span><span class="section-note" id="tthdist-note"></span></div>
+      <div id="tthdist-chart"></div>
+      <p class="river-caption" id="tthdist-caption"></p>
+    </section>
+    <section class="section hidden" id="section-reasons">
+      <div class="section-head"><span class="kicker" id="reasons-kicker">Rejection reasons</span><span class="section-note" id="reasons-note"></span></div>
+      <div class="proc-split" id="reasons-split"></div>
+      <div id="reasons-chart"></div>
+      <p class="river-caption" id="reasons-caption"></p>
+    </section>
+    <section class="section hidden" id="section-officegrid">
+      <div class="section-head"><span class="kicker" id="officegrid-kicker">Office × stage</span><span class="section-note" id="officegrid-note"></span></div>
+      <div id="officegrid-table"></div>
+      <p class="river-caption" id="officegrid-caption"></p>
+    </section>
+    <section class="section hidden" id="section-funnelcmp">
+      <div class="section-head"><span class="kicker" id="funnelcmp-kicker">Funnel vs prior</span><span class="section-note" id="funnelcmp-note"></span></div>
+      <div id="funnelcmp-chart"></div>
+      <p class="river-caption" id="funnelcmp-caption"></p>
+    </section>
+    <section class="section hidden" id="section-recmatrix">
+      <div class="section-head"><span class="kicker" id="recmatrix-kicker">Recruiter load</span><span class="section-note" id="recmatrix-note"></span></div>
+      <div id="recmatrix-chart"></div>
+      <p class="river-caption" id="recmatrix-caption"></p>
+    </section>
+
     <!-- ========== FOOTNOTE ========== -->
     <footer class="footnote" id="footnote">
       <hr class="hairline" style="margin-bottom:10px;" />
@@ -837,7 +1055,9 @@ const CANONICAL = [
   ['source','Source','rec',['source','source name','public name','source_name'],''],
   ['source_type','Source type','opt',['source type','source_type','source category'],''],
   ['recruiter','Recruiter','opt',['recruiter','credited to','recruiter name','recruiter_name'],''],
+  ['coordinator','Coordinator','opt',['coordinator','recruiting coordinator','rc','interview coordinator'],'Enables coordinator filter + owner heuristics'],
   ['hiring_manager','Hiring manager','opt',['hiring manager','hiring_manager','hm','manager'],'Enables hiring-manager filter'],
+  ['job_url','Job URL','opt',['job url','job link','job post url','posting url','requisition url','job web link'],'Links req names to the posting'],
   ['rejected_at','Rejected at','opt',['rejected at','rejection date','rejected_at'],'Powers rejection analysis'],
   ['rejection_reason','Rejection reason','opt',['rejection reason','rejection_reason','reason'],''],
   ['hired_at','Hired at','opt',['hired at','hire date','start date','hired_at'],'Powers time-to-hire'],
@@ -1053,15 +1273,17 @@ function scoreHeaderToCanonical(header, canon){
 function sniffValueType(samples){
   const nonEmpty = samples.filter(v => v !== null && v !== undefined && v !== '').slice(0,25);
   if (!nonEmpty.length) return null;
-  let dates=0, emails=0, statuses=0, stages=0;
+  let dates=0, emails=0, statuses=0, stages=0, urls=0;
   for (const v of nonEmpty) {
     if (parseDateWithOrder(v,'MDY')) dates++;
     const s = String(v).toLowerCase().trim();
     if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) emails++;
+    if (/^https?:\/\//.test(s)) urls++;
     if (guessStatusForRaw(s)) statuses++;
     if (STAGE_ALIASES[norm(s)]) stages++;
   }
   const r = c => c/nonEmpty.length;
+  if (r(urls) >= 0.8) return 'url';
   if (r(emails) > 0.7) return 'email';
   if (r(statuses) > 0.6) return 'status';
   if (r(stages) > 0.4) return 'current_stage';
@@ -1093,6 +1315,7 @@ function autoDetectMapping(headers, sampleRows){
     } else {
       const sniff = sniffValueType(samples);
       if (sniff === 'email') cand.email.push({ header:h, score:0.55 });
+      else if (sniff === 'url') cand.job_url.push({ header:h, score:0.55 });
       else if (sniff === 'status') cand.status.push({ header:h, score:0.55 });
       else if (sniff === 'current_stage') cand.current_stage.push({ header:h, score:0.55 });
       else if (sniff === 'date') {
@@ -1517,9 +1740,11 @@ function openMapper(headers, rows, filesMeta, reopen){
    ============================================================ */
 const DIM_FIELDS = [
   ['job','Job'], ['department','Department'], ['office','Office'], ['recruiter','Recruiter'],
-  ['hiring_manager','Hiring manager'],
+  ['coordinator','Coordinator'], ['hiring_manager','Hiring manager'],
   ['source','Source'], ['source_type','Source type'], ['current_stage','Stage'], ['status','Status'],
 ];
+// dims that exist as filters but stay out of the desk by default (enable via "+ Filters")
+const DEFAULT_HIDDEN_DIMS = new Set(['coordinator']);
 function mappedDimFields(){
   return DIM_FIELDS.filter(([f]) => f==='current_stage' || f==='status' || state.mapping[f]);
 }
@@ -1560,7 +1785,7 @@ function allFilterableFields(){
   };
 }
 function defaultVisibleDims(){
-  return new Set(mappedDimFields().map(([f]) => f));
+  return new Set(mappedDimFields().map(([f]) => f).filter(f => !DEFAULT_HIDDEN_DIMS.has(f)));
 }
 function visibleDimFields(){
   const { canon, extras } = allFilterableFields();
@@ -1878,6 +2103,65 @@ function overdueActives(){
   const now = nowRef();
   return (state.snapshotRows || []).filter(r => agingTier(r, now) != null);
 }
+/* ---- accountability: who to talk to about a stuck candidate (lab) ----
+   Stage-owner heuristic by POSITION, not stage name: the top-of-funnel stage
+   belongs to the recruiter; middle (scheduling) stages are coordinator-first;
+   the last pre-terminal stage (offer) is hiring-manager-first; recruiter is
+   always the fallback. Roles whose field isn't mapped drop out gracefully. */
+const ROLE_LABEL = { coordinator:'coordinator', recruiter:'recruiter', hiring_manager:'hiring manager' };
+function stageOwnerRoles(stageIdx){
+  const N = state.canonicalStages.length;
+  let pri;
+  if (stageIdx >= N - 2 && stageIdx > 0) pri = ['hiring_manager','recruiter'];
+  else if (stageIdx > 0) pri = ['coordinator','recruiter'];
+  else pri = ['recruiter'];
+  return pri.filter(f => state.mapping[f]);
+}
+function ownersFor(r){
+  const idx = Math.max(0, stageIndex(r.current_stage));
+  return stageOwnerRoles(idx).map(f => ({ field:f, role:ROLE_LABEL[f], name:r[f] })).filter(o => o.name);
+}
+function primaryOwner(r){
+  const o = ownersFor(r);
+  return o.length ? o[0] : null;
+}
+function ownerInitials(name){
+  return String(name).split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+}
+// aggregate a candidate set by primary owner: [{field, role, name, count, topStage}]
+function topOwners(rows, limit){
+  const m = new Map();
+  for (const r of rows) {
+    const o = primaryOwner(r);
+    if (!o) continue;
+    const k = o.field + '|' + o.name;
+    if (!m.has(k)) m.set(k, { field:o.field, role:o.role, name:o.name, count:0, stages:new Map() });
+    const e = m.get(k);
+    e.count++;
+    e.stages.set(r.current_stage, (e.stages.get(r.current_stage)||0)+1);
+  }
+  return Array.from(m.values()).map(e => {
+    const topStage = Array.from(e.stages.entries()).sort((a,b)=>b[1]-a[1])[0];
+    return { ...e, topStage: topStage ? topStage[0] : null };
+  }).sort((a,b) => b.count - a.count).slice(0, limit || 3);
+}
+/* job posting link: most common non-empty job_url among a req's rows */
+function reqJobUrl(job){
+  if (!state.mapping.job_url) return null;
+  const counts = new Map();
+  for (const r of state.rawRows) {
+    if ((r.job||'—') !== job || !r.job_url) continue;
+    counts.set(r.job_url, (counts.get(r.job_url)||0)+1);
+  }
+  const top = Array.from(counts.entries()).sort((a,b)=>b[1]-a[1])[0];
+  return top ? top[0] : null;
+}
+function jobLinkEl(url){
+  const a = el('a', { class:'req-link', href:url, target:'_blank', rel:'noopener' }, '↗');
+  a.addEventListener('click', e => e.stopPropagation()); // never trigger the row drill
+  attachTip(a, tipHtml('Open the job posting', url));
+  return a;
+}
 /* ============================================================
    TIME MACHINE — as-of pipeline reconstruction (lab)
    Per candidate we precompute stage-entry timestamps for every stage they
@@ -2061,7 +2345,9 @@ function computeFlags(){
     const others = flow.filter(f => f.stage !== bn.stage && f.medianDays != null).map(f => f.medianDays);
     const ratio = others.length ? bn.medianDays / Math.max(median(others), 0.5) : null;
     const waiting = isSnapshot ? (bn.activeNow||0) : (flow.find(f=>f.stage===bn.stage).active || 0);
+    const bnOwner = topOwners((state.snapshotRows||[]).filter(r => r.current_stage === bn.stage), 1)[0];
     flags.push({ id:'bottleneck', data:{ stage: bn.stage, medianDays: bn.medianDays, waiting },
+      talkTo: bnOwner ? `${bnOwner.name} (${bnOwner.role})` : null,
       ruleTip: tipHtml('Flags when a stage\'s median wait exceeds 2× the median of the other stages.', 'red when over 3×'),
       severity: ratio && ratio > 3 ? 'red' : 'amber', score: 100 + (ratio || 0),
       text: `${bn.stage} median ${Math.round(bn.medianDays)}d — ${ratio ? ratio.toFixed(1) : '?'}× other stages; ${fmtN(waiting)} candidate${waiting===1?'':'s'} waiting.`,
@@ -2073,7 +2359,9 @@ function computeFlags(){
     const byStage = new Map();
     od.forEach(r => byStage.set(r.current_stage, (byStage.get(r.current_stage)||0)+1));
     const parts = stages.filter(s => byStage.has(s)).map(s => `${byStage.get(s)} in ${s}`).join(', ');
+    const odOwner = topOwners(od, 1)[0];
     flags.push({ id:'overdue', data:{ count: od.length },
+      talkTo: odOwner ? `${odOwner.name} (${odOwner.role})` : null,
       ruleTip: tipHtml('Flags active candidates waiting more than 1.5× the historical median for their stage.', 'historical medians from past candidates\' stage durations'),
       severity: od.length >= Math.max(8, (state.snapshotRows||[]).length*0.25) ? 'red' : 'amber', score: 60 + od.length,
       text: `${od.length} candidate${od.length===1?'':'s'} overdue to advance — ${parts}.`,
@@ -2213,6 +2501,14 @@ function decompose(population, affected, opts){
   return findings.slice(0, opts.limit || 5);
 }
 /* per-flag investigation: contributors + evidence + trend + suggested action */
+// owners block entries for a candidate set: "Name (role — N <word> in Stage)", clickable
+function ownersBlockFor(rows, selFor, word){
+  return topOwners(rows, 3).map(o => ({
+    text: `${o.name} (${o.role} — ${o.count} ${word}${o.topStage ? ' in ' + o.topStage : ''})`,
+    name: o.name, role: o.role,
+    onClick: () => drillCombo({ [o.field]: o.name }, selFor),
+  }));
+}
 function investigateFlag(flag){
   const now = nowRef();
   const dd = r => daysInCurrentStage(r, now);
@@ -2223,6 +2519,7 @@ function investigateFlag(flag){
     const S = flag.data.stage;
     const waiting = (state.snapshotRows || []).filter(r => r.current_stage === S);
     inv.viewAllN = waiting.length;
+    inv.owners = ownersBlockFor(waiting, { type:'active', stage:S }, 'waiting');
     const overallMed = median(waiting.map(dd).filter(x => x != null)) || flag.data.medianDays || 1;
     inv.contributors = decompose(waiting, waiting, {
       type:'median', value: dd, overall: overallMed,
@@ -2234,13 +2531,15 @@ function investigateFlag(flag){
     inv.trend = { title:`Median days in ${S}`, days:true,
       fn: rows => { const f = computeStageFlow(rows, state.canonicalStages, null, 'cohort').find(x => x.stage === S); return f && f.medianDays != null ? f.medianDays : 0; } };
     const top = inv.contributors[0];
-    inv.suggested = `Suggested: unblock ${S}${top ? ` — start with the ${top.n} ${top.value} candidates` : ''}; the ${inv.evidence.length} oldest are at ${joinDays(inv.evidence)} days.`;
+    const owner = inv.owners && inv.owners[0];
+    inv.suggested = `Suggested: unblock ${S}${top ? ` — start with the ${top.n} ${top.value} candidates` : ''}; the ${inv.evidence.length} oldest are at ${joinDays(inv.evidence)} days.${owner ? ` Talk to ${owner.name} (${owner.role}).` : ''}`;
   }
 
   else if (flag.id === 'overdue') {
     const od = overdueActives();
     const population = state.snapshotRows || [];
     inv.viewAllN = od.length;
+    inv.owners = ownersBlockFor(od, { type:'overdue' }, 'overdue');
     inv.contributors = decompose(population, od, {
       type:'rate',
       rateText: (v, dl, n, total, sr, cr) => `${v}: ${n} of ${total} overdue (${fmtPct(sr,0)} of its actives vs ${fmtPct(cr,0)} elsewhere)`,
@@ -2248,7 +2547,8 @@ function investigateFlag(flag){
     inv.evidence = od.slice().sort((a,b) => (dd(b)||0) - (dd(a)||0)).slice(0,3);
     inv.evidenceText = r => `${r.candidate_name||'—'} · ${r.job||'—'} · ${Math.round(dd(r)||0)}d in ${r.current_stage}`;
     inv.trend = null; // no historical snapshots of "overdue" exist to trend
-    inv.suggested = `Suggested: nudge the ${od.length} overdue candidates — the ${inv.evidence.length} longest-waiting are at ${joinDays(inv.evidence)} days.`;
+    const owner = inv.owners && inv.owners[0];
+    inv.suggested = `Suggested: nudge the ${od.length} overdue candidates${owner ? ` — start with ${owner.name} (${owner.role})` : ''}; the ${inv.evidence.length} longest-waiting are at ${joinDays(inv.evidence)} days.`;
   }
 
   else if (flag.id === 'offeraccept') {
@@ -2294,6 +2594,7 @@ function investigateFlag(flag){
     inv.contributors = jobs.map(j => {
       const acts = actives.filter(r => (r.job || '—') === j);
       return { text: `${j}: ${acts.length} active, none past ${secondStage}`, small: false, n: acts.length,
+        url: reqJobUrl(j), // ↗ to the posting, next to each stalled req
         onClick: () => drillCombo({ job: j }, { type:'status', status:'active' }) };
     }).sort((a,b) => a.n - b.n).slice(0,5); // emptiest reqs first
     inv.evidence = actives.slice().sort((a,b) => (dd(b)||0) - (dd(a)||0)).slice(0,3);
@@ -2328,6 +2629,7 @@ function investigateFlag(flag){
 
   else if (flag.id.startsWith('pacing:')) {
     const job = flag.data.job;
+    inv.url = reqJobUrl(job); // the req is the subject — link its posting in the panel head
     const stages = state.canonicalStages;
     // where does this req's funnel leak vs everyone else? per-stage pass rates, all-time
     const reqRows = state.rawRows.filter(r => (r.job||'—') === job);
@@ -2396,6 +2698,15 @@ function generateSampleData(){
     'Customer Success Manager': ['Leah Gordon','Raj Mehta'],
   };
   const LEVELS = ['L3','L4','L5','L6'];
+  // coordinators correlate with office so owner decompositions find signal
+  const COORDS_BY_OFFICE = { 'New York': ['Jess Park','Maya Cohen'], 'Remote': ['Leo Grant','Ana Torres'], 'Austin': ['Sam Ford'] };
+  const JOB_URLS = {
+    'Backend Engineer':'https://boards.greenhouse.io/acme/jobs/4001',
+    'Product Designer':'https://boards.greenhouse.io/acme/jobs/4002',
+    'Account Executive':'https://boards.greenhouse.io/acme/jobs/4003',
+    'Data Analyst':'https://boards.greenhouse.io/acme/jobs/4004',
+    'Customer Success Manager':'https://boards.greenhouse.io/acme/jobs/4005',
+  };
   const FIRST = ['Alex','Jordan','Sam','Casey','Morgan','Riley','Taylor','Jamie','Avery','Quinn','Drew','Reese','Skyler','Rowan','Emerson','Dakota','Kendall','Peyton','Hayden','Finley'];
   const LAST = ['Chen','Patel','Garcia','Kim','Nguyen','Brown','Silva','Okafor','Mueller','Rossi','Kowalski','Haddad','Ivanov','Larsen','Diallo','Cho','Reyes','Novak','Fischer','Adeyemi'];
   const REJ_REASONS = ['Not enough relevant experience','Compensation expectations mismatch','Failed technical assessment','Culture fit concerns','Location / relocation','Withdrew — accepted other offer','Withdrew — unresponsive','Below bar on onsite loop'];
@@ -2457,6 +2768,7 @@ function generateSampleData(){
       application_id: appId, candidate_id: 'C'+appId, candidate_name: name, email,
       job, department: dept, office, applied_at, current_stage, status,
       source, source_type: sourceType, recruiter, hiring_manager: pick(HMS_BY_JOB[job]),
+      coordinator: pick(COORDS_BY_OFFICE[office]), job_url: JOB_URLS[job],
       rejected_at, rejection_reason, hired_at, last_activity_at, stage_entered_at,
       raw_stage: current_stage, raw_status: status,
       stageDates: { screen: entered.Screen||null, onsite: entered.Onsite||null, offer: entered.Offer||null },
@@ -2470,7 +2782,7 @@ function loadSampleData(){
   state.mapping = { candidate_name:'candidate_name', candidate_id:'candidate_id', application_id:'application_id',
     email:'email', job:'job', department:'department', office:'office', applied_at:'applied_at',
     current_stage:'current_stage', status:'status', source:'source', source_type:'source_type', recruiter:'recruiter',
-    hiring_manager:'hiring_manager',
+    hiring_manager:'hiring_manager', coordinator:'coordinator', job_url:'job_url',
     rejected_at:'rejected_at', rejection_reason:'rejection_reason', hired_at:'hired_at', last_activity_at:'last_activity_at',
     stage_entered_at:'stage_entered_at' };
   state.confidence = {}; for (const k in state.mapping) state.confidence[k] = 1;
@@ -2781,11 +3093,29 @@ function renderAttnPanel(flag){
   panel.addEventListener('click', e => e.stopPropagation());
   const closeBtn = el('button', { class:'attn-close', type:'button' }, '✕');
   closeBtn.addEventListener('click', () => { state.attnOpen = null; renderAttention(); });
-  panel.appendChild(el('div', { class:'attn-panel-head' }, el('span', { class:'kicker' }, 'Where it concentrates'), closeBtn));
+  panel.appendChild(el('div', { class:'attn-panel-head' },
+    el('span', { class:'kicker' }, 'Where it concentrates'),
+    inv.url ? jobLinkEl(inv.url) : null,
+    closeBtn));
+  // OWNERS block: who to talk to, before the decomposition
+  if (inv.owners && inv.owners.length) {
+    const ob = el('div', { class:'attn-owners' }, el('span', { class:'kicker' }, 'Talk to'));
+    attachTip(ob.querySelector('.kicker'), tipHtml(
+      'Owner heuristic by stage position: top-of-funnel → recruiter; middle scheduling stages → coordinator first; the last pre-terminal stage → hiring manager first; recruiter is always the fallback.',
+      'unmapped roles drop out automatically'));
+    inv.owners.forEach((o, i) => {
+      if (i) ob.appendChild(el('span', { class:'owner-sep' }, '·'));
+      const b = el('button', { class:'owner-link', type:'button' }, o.text);
+      b.addEventListener('click', o.onClick);
+      ob.appendChild(b);
+    });
+    panel.appendChild(ob);
+  }
   if (inv.contributors.length) {
     for (const c of inv.contributors) {
       const line = el('button', { class:'attn-contrib', type:'button' }, c.text,
-        c.small ? el('span', { class:'small-note' }, ' · small sample') : null);
+        c.small ? el('span', { class:'small-note' }, ' · small sample') : null,
+        c.url ? jobLinkEl(c.url) : null);
       line.addEventListener('click', c.onClick);
       panel.appendChild(line);
     }
@@ -2813,35 +3143,38 @@ function renderAttnPanel(flag){
   return panel;
 }
 function buildExecSummary(){
+  // the digest mirrors the visible report: hidden sections stay out of it
   const lines = [];
   lines.push('Pipeline review — ' + subLabel());
   lines.push($('#finding-headline').textContent);
-  lines.push('');
-  lines.push('By the numbers:');
-  if (impliedMode() === 'snapshot') {
-    for (const it of computeSnapshotStats()) lines.push(`- ${it.label}: ${it.value}`);
-  } else {
-    for (const k of computeKPIs(state.rows, state.prevRows)) {
-      if (k.curr == null) continue;
-      let s = `- ${k.label}: ${k.fmt(k.curr)}`;
-      if (state.prevRows && k.prev != null) {
-        const diff = k.curr - k.prev;
-        const dtxt = k.fmt === fmtDays ? Math.round(diff)+'d' : (k.label.includes('%') ? Math.round(diff*100)+'pt' : fmtN(diff));
-        s += ` (${diff>=0?'+':''}${dtxt} vs prior)`;
+  if (isSectionOn('stats')) {
+    lines.push('');
+    lines.push('By the numbers:');
+    if (impliedMode() === 'snapshot') {
+      for (const it of computeSnapshotStats()) lines.push(`- ${it.label}: ${it.value}`);
+    } else {
+      for (const k of computeKPIs(state.rows, state.prevRows)) {
+        if (k.curr == null) continue;
+        let s = `- ${k.label}: ${k.fmt(k.curr)}`;
+        if (state.prevRows && k.prev != null) {
+          const diff = k.curr - k.prev;
+          const dtxt = k.fmt === fmtDays ? Math.round(diff)+'d' : (k.label.includes('%') ? Math.round(diff*100)+'pt' : fmtN(diff));
+          s += ` (${diff>=0?'+':''}${dtxt} vs prior)`;
+        }
+        lines.push(s);
       }
-      lines.push(s);
     }
   }
-  if (state._forecast) {
+  if (state._forecast && isSectionOn('forecast')) {
     const t = state._forecast.totals;
     lines.push('');
     lines.push(`Forecast: ~${Math.round(t.d30.mid)} hires in 30d · ~${Math.round(t.d60.mid)} in 60d · ~${Math.round(t.d90.mid)} in 90d (range ${Math.round(t.d90.lo)}–${Math.round(t.d90.hi)})${state._forecast.lowConfidence ? ' — low confidence' : ''}`);
   }
   const flags = state._flags || [];
-  if (flags.length) {
+  if (flags.length && isSectionOn('attention')) {
     lines.push('');
     lines.push('Attention:');
-    for (const f of flags) lines.push(`- ${f.severity==='red'?'[!!]':'[!]'} ${f.text}`);
+    for (const f of flags) lines.push(`- ${f.severity==='red'?'[!!]':'[!]'} ${f.text}${f.talkTo ? ' — talk to ' + f.talkTo : ''}`);
   }
   return lines.join('\n');
 }
@@ -3016,8 +3349,9 @@ function renderReqs(){
     const activeF = state.filters.dims.job && state.filters.dims.job.has(e.job);
     const tr = el('tr', { class:'clickable'+(activeF?' selected':'') });
     tr.addEventListener('click', () => drillToggleDim('job', e.job));
+    const jobUrl = reqJobUrl(e.job);
     const cells = [
-      el('td', {}, e.job), el('td', {}, e.dept),
+      el('td', {}, e.job, jobUrl ? jobLinkEl(jobUrl) : null), el('td', {}, e.dept),
       el('td', {}, e.active > 0 ? numlink(fmtN(e.active), () => drillCombo({ job:e.job }, { type:'status', status:'active' })) : el('span', { class:'zero' }, '—')),
       ...e.stageCounts.map((n, si) => n > 0
         ? el('td', {}, numlink(fmtN(n), () => drillCombo({ job:e.job }, isSnapshot ? { type:'active', stage:stages[si] } : { type:'reached', stage:stages[si] })))
@@ -3288,13 +3622,22 @@ function topReasonFor(stage, statuses){
   return top ? top[0] : null;
 }
 
-function renderRiver(){
-  const wrap = $('#river-wrap');
-  const width = Math.max(900, wrap.clientWidth || 900);
+/* ============================================================
+   FLOW VIEW DISPATCHER (lab) — river | board | funnel share the same
+   computed flow data, header notes, escape hatch, time machine + replay.
+   ============================================================ */
+const FLOW_VIEWS = [['river','River'],['board','Board'],['funnel','Funnel']];
+function getFlowView(){
+  if (!state.flowView) { try { state.flowView = localStorage.getItem('lab:flowView') || 'river'; } catch(e){ state.flowView = 'river'; } }
+  return state.flowView;
+}
+function setFlowView(v){
+  state.flowView = v;
+  try { localStorage.setItem('lab:flowView', v); } catch(e){}
+  queueRender();
+}
+function renderFlowHeader(){
   const isSnapshot = impliedMode() === 'snapshot';
-  const stages = state.canonicalStages;
-  const flow = computeStageFlow(state.rows, stages, state.snapshotRows);
-  wrap.innerHTML = '';
   $('#river-note').textContent = isSnapshot
     ? 'Current pipeline — candidates active today, by current stage'
     : (state.filters.periodPreset === 'total'
@@ -3312,6 +3655,28 @@ function renderRiver(){
   } else {
     filteredNote.classList.add('hidden');
   }
+  // view toggle
+  const tog = $('#flow-view-toggle'); tog.innerHTML = '';
+  for (const [v, label] of FLOW_VIEWS) {
+    const b = el('button', { class: getFlowView() === v ? 'active' : '', type:'button' }, label);
+    b.addEventListener('click', () => setFlowView(v));
+    tog.appendChild(b);
+  }
+}
+function renderFlow(){
+  renderFlowHeader();
+  const v = getFlowView();
+  if (v === 'board') renderFlowBoard();
+  else if (v === 'funnel') renderFlowFunnel();
+  else renderRiver();
+}
+function renderRiver(){
+  const wrap = $('#river-wrap');
+  const width = Math.max(900, wrap.clientWidth || 900);
+  const isSnapshot = impliedMode() === 'snapshot';
+  const stages = state.canonicalStages;
+  const flow = computeStageFlow(state.rows, stages, state.snapshotRows);
+  wrap.innerHTML = '';
   $('#river-caption').textContent = isSnapshot
     ? `Fig. Current pipeline occupancy across ${stages.length} stages.`
     : `Fig. Candidate flow across ${stages.length} stages, ${fmtN(state.rows.length)} applied.`;
@@ -3566,11 +3931,191 @@ function renderRiver(){
 }
 function textNode(s){ return document.createTextNode(s); }
 function fmtPctSafe(n, total){ return total ? fmtPct(n/total,0) : '—'; }
+/* ---- BOARD view: departure-board rows. Current mode = one row per active
+   candidate (stage progress segmented by actual days spent, current segment
+   tinted by aging tier, sorted by staleness). Cohort modes = one row per req
+   (segment width ∝ candidates reaching each stage). ---- */
+function renderFlowBoard(){
+  const wrap = $('#river-wrap'); wrap.innerHTML = '';
+  const isSnapshot = impliedMode() === 'snapshot';
+  const stages = state.canonicalStages;
+  const now = nowRef();
+  const board = el('div', { class:'flow-board' });
+  const CAP = 40;
+  if (isSnapshot) {
+    const iv = stageIntervals();
+    const rows = (state.snapshotRows || []).slice().sort((a,b) => (daysInCurrentStage(b, now)||0) - (daysInCurrentStage(a, now)||0));
+    $('#river-caption').textContent = `Fig. Departure board — ${fmtN(rows.length)} active candidates by staleness; segment length ∝ days in each stage.`;
+    if (!rows.length) { board.appendChild(el('div', { class:'attn-none' }, 'No active candidates.')); wrap.appendChild(board); return; }
+    const shown = state.flowBoardAll ? rows : rows.slice(0, CAP);
+    const maxAge = Math.max(1, ...shown.map(r => (now - (r.applied_at || now)) / 86400000));
+    board.appendChild(el('div', { class:'fb-head' },
+      el('span', { style:'width:160px;flex-shrink:0;' }, 'Candidate'),
+      el('span', { style:'width:160px;flex-shrink:0;' }, 'Req'),
+      el('span', { style:'flex:1;' }, 'Stage progress · days per stage'),
+      el('span', { style:'width:48px;flex-shrink:0;text-align:right;' }, 'In stage')));
+    for (const r of shown) {
+      const tier = agingTier(r, now);
+      const dcs = daysInCurrentStage(r, now) || 0;
+      // per-stage days from the interval entries (as-of aware for synthetic rows)
+      const base = iv.get(r) || iv.get(state.rawRows.find(x => rowKey(x) === rowKey(r)));
+      const K = stageIndex(r.current_stage);
+      const segs = [];
+      if (base) {
+        for (let i = 0; i <= K; i++) {
+          const from = base.entries[i];
+          const to = i < K ? base.entries[i + 1] : null;
+          if (!from) continue;
+          const end = i === K ? now : (to || now);
+          const days = Math.max(0.3, (Math.min(+end, +now) - +from) / 86400000);
+          segs.push({ stage: stages[i], days, current: i === K });
+        }
+      } else {
+        segs.push({ stage: r.current_stage, days: dcs || 0.5, current: true });
+      }
+      const bar = el('div', { class:'fb-bar' });
+      const totalDays = segs.reduce((s, x) => s + x.days, 0) || 1;
+      for (const s of segs) {
+        const pct = Math.max(1.2, (s.days / maxAge) * 100);
+        const fill = s.current
+          ? (tier === 'red' ? 'var(--neg)' : tier === 'amber' ? 'var(--warn)' : 'var(--flow-3)')
+          : 'var(--flow-1)';
+        const seg = el('div', { class:'fb-seg', style:`width:${pct}%; background:${fill};` });
+        attachTip(seg, tipHtml(`${s.stage} — ${Math.round(s.days)}d${s.current ? ' (current)' : ''}`));
+        bar.appendChild(seg);
+      }
+      const row = el('div', { class:'fb-row' },
+        el('span', { class:'fb-name' }, r.candidate_name || '—'),
+        el('span', { class:'fb-req' }, r.job || '—'),
+        bar,
+        el('span', { class:'fb-days' + (tier ? ' ' + tier : '') }, fmtDays(dcs)));
+      row.addEventListener('mousemove', e => showRiverTooltip(e,
+        `<b>${escapeHtml(r.candidate_name || '—')}</b><br>${escapeHtml(r.job || '—')} · ${escapeHtml(r.recruiter || '—')}<br>${Math.round(dcs)}d in ${escapeHtml(r.current_stage)} — median ${Math.round(stageNorm(r.current_stage))}d`));
+      row.addEventListener('mouseleave', hideRiverTooltip);
+      row.addEventListener('click', () => {
+        const key = rowKey(r);
+        state.ledger.expanded.add(key);
+        hideRiverTooltip();
+        drillTo({ type:'row', key, name: r.candidate_name || 'Candidate' });
+      });
+      board.appendChild(row);
+    }
+    if (rows.length > CAP) {
+      const more = el('button', { class:'underline-btn muted fb-more', type:'button' },
+        state.flowBoardAll ? 'show first 40' : `show all ${fmtN(rows.length)}`);
+      more.addEventListener('click', () => { state.flowBoardAll = !state.flowBoardAll; renderFlow(); });
+      board.appendChild(more);
+    }
+  } else {
+    // cohort: one funnel bar per req
+    const byJob = new Map();
+    for (const r of state.rows) { const j = r.job || '—'; if (!byJob.has(j)) byJob.set(j, []); byJob.get(j).push(r); }
+    const reqs = Array.from(byJob.entries()).sort((a,b) => b[1].length - a[1].length);
+    $('#river-caption').textContent = `Fig. Departure board — per-req funnels; segment length ∝ candidates reaching each stage.`;
+    const shown = state.flowBoardAll ? reqs : reqs.slice(0, CAP);
+    const maxN = Math.max(1, ...shown.map(([,rs]) => rs.length));
+    board.appendChild(el('div', { class:'fb-head' },
+      el('span', { style:'width:160px;flex-shrink:0;' }, 'Req'),
+      el('span', { style:'width:160px;flex-shrink:0;' }, 'Dept'),
+      el('span', { style:'flex:1;' }, 'Reached each stage'),
+      el('span', { style:'width:48px;flex-shrink:0;text-align:right;' }, 'Applied')));
+    for (const [job, rs] of shown) {
+      const bar = el('div', { class:'fb-bar' });
+      for (let i = 0; i < stages.length; i++) {
+        const n = rs.filter(r => stageIndex(r.current_stage) >= i).length;
+        if (!n) continue;
+        const pct = Math.max(1.2, (n / maxN) * (100 / stages.length));
+        const shade = ['var(--flow-1)','var(--flow-2)','var(--flow-3)','var(--flow-4)','var(--flow-5)'][Math.min(i, 4)];
+        const seg = el('div', { class:'fb-seg', style:`width:${pct}%; background:${shade};` });
+        attachTip(seg, tipHtml(`${stages[i]} — ${fmtN(n)} reached (${fmtPctSafe(n, rs.length)})`));
+        bar.appendChild(seg);
+      }
+      const dept = (rs.find(r => r.department) || {}).department || '—';
+      const row = el('div', { class:'fb-row' },
+        el('span', { class:'fb-name' }, job),
+        el('span', { class:'fb-req' }, dept),
+        bar,
+        el('span', { class:'fb-days' }, fmtN(rs.length)));
+      row.addEventListener('click', () => drillToggleDim('job', job));
+      board.appendChild(row);
+    }
+    if (reqs.length > CAP) {
+      const more = el('button', { class:'underline-btn muted fb-more', type:'button' },
+        state.flowBoardAll ? 'show first 40' : `show all ${fmtN(reqs.length)}`);
+      more.addEventListener('click', () => { state.flowBoardAll = !state.flowBoardAll; renderFlow(); });
+      board.appendChild(more);
+    }
+  }
+  wrap.appendChild(board);
+}
+/* ---- FUNNEL view: classic horizontal funnel — the familiar exec format. ---- */
+function renderFlowFunnel(){
+  const wrap = $('#river-wrap'); wrap.innerHTML = '';
+  const isSnapshot = impliedMode() === 'snapshot';
+  const stages = state.canonicalStages;
+  const flow = computeStageFlow(state.rows, stages, state.snapshotRows);
+  const width = Math.max(700, wrap.clientWidth || 900);
+  const rowH = 34, labelW = 130, rightW = 150;
+  const plotW = width - labelW - rightW;
+  const rows = isSnapshot ? flow.filter(f => (f.activeNow || 0) > 0 || stageIndex(f.stage) < stages.length - 1) : flow;
+  const height = rows.length * rowH + 8;
+  const svg = svgEl('svg', { class:'funnel', width, height, viewBox:`0 0 ${width} ${height}` });
+  const maxN = Math.max(1, ...rows.map(f => isSnapshot ? (f.activeNow || 0) : (f.entered || 0)));
+  rows.forEach((f, i) => {
+    const y = i * rowH + 6;
+    const barH = 16;
+    svg.appendChild(svgEl('text', { class:'fn-label', x:labelW - 12, y:y + 12, 'text-anchor':'end' }, textNode(f.stage)));
+    if (isSnapshot) {
+      const n = f.activeNow || 0;
+      const w = (n / maxN) * plotW;
+      if (n > 0) {
+        const bar = svgEl('rect', { class:'fn-bar', x:labelW, y, width:Math.max(w, 3), height:barH });
+        bar.addEventListener('click', () => setSelection({ type:'active', stage: f.stage }));
+        bar.addEventListener('mousemove', e => showRiverTooltip(e, `<b>${f.stage}</b><br>${fmtN(n)} active · median ${fmtDays(f.medianDays)}`));
+        bar.addEventListener('mouseleave', hideRiverTooltip);
+        svg.appendChild(bar);
+      }
+      svg.appendChild(svgEl('text', { class:'fn-count', x:labelW + Math.max(w, 3) + 8, y:y + 12 }, textNode(fmtN(n) + (f.medianDays != null ? ` · ${fmtDays(f.medianDays)} median` : ''))));
+    } else {
+      const entered = f.entered || 0;
+      const advanced = f.advanced || 0;
+      const drained = (f.rejected || 0) + (f.withdrawn || 0);
+      const wEnt = (entered / maxN) * plotW;
+      const wAdv = entered ? wEnt * (advanced / entered) : 0;
+      const wDrn = entered ? wEnt * (drained / entered) : 0;
+      if (advanced > 0) {
+        const bar = svgEl('rect', { class:'fn-bar', x:labelW, y, width:Math.max(wAdv, 2), height:barH });
+        const isLast = i === rows.length - 1;
+        bar.addEventListener('click', () => setSelection(isLast ? { type:'status', status:'hired' } : { type:'reached', stage: stages[i + 1] }));
+        bar.addEventListener('mousemove', e => showRiverTooltip(e, `<b>${f.stage}</b><br>Advanced ${fmtN(advanced)} of ${fmtN(entered)} (${fmtPct(f.passPct, 0)})`));
+        bar.addEventListener('mouseleave', hideRiverTooltip);
+        svg.appendChild(bar);
+      }
+      if (entered - advanced - drained > 0.5) { // in-process remainder
+        const wInp = wEnt * ((entered - advanced - drained) / entered);
+        svg.appendChild(svgEl('rect', { class:'fn-inproc', x:labelW + wAdv, y, width:Math.max(wInp, 1), height:barH }));
+      }
+      if (drained > 0) {
+        const rest = svgEl('rect', { class:'fn-rest', x:labelW + (wEnt - wDrn), y, width:Math.max(wDrn, 2), height:barH });
+        rest.addEventListener('click', () => setSelection({ type:'reject', stage: f.stage }));
+        rest.addEventListener('mousemove', e => showRiverTooltip(e, `<b>${f.stage}</b><br>Rejected ${fmtN(f.rejected)} · withdrawn ${fmtN(f.withdrawn)} (${fmtPctSafe(drained, entered)} of entered)`));
+        rest.addEventListener('mouseleave', hideRiverTooltip);
+        svg.appendChild(rest);
+      }
+      svg.appendChild(svgEl('text', { class:'fn-count', x:labelW + wEnt + 8, y:y + 8 }, textNode(fmtN(entered))));
+      if (f.passPct != null) svg.appendChild(svgEl('text', { class:'fn-pass', x:labelW + wEnt + 8, y:y + 19 }, textNode(fmtPct(f.passPct, 0) + ' pass')));
+    }
+  });
+  wrap.appendChild(svg);
+  $('#river-caption').textContent = isSnapshot
+    ? 'Fig. Funnel — active candidates per stage.'
+    : 'Fig. Funnel — entered per stage; filled = advanced, gray = rejected/withdrawn, light = in process.';
+}
 let riverResizeObs = null;
 function setupRiverResize(){
   if (riverResizeObs) return;
   const wrap = $('#river-wrap');
-  const debounced = debounce(() => { renderRiver(); renderAging(); }, 150);
+  const debounced = debounce(() => { renderFlow(); renderAging(); }, 150);
   riverResizeObs = new ResizeObserver(debounced);
   riverResizeObs.observe(wrap.parentElement);
 }
@@ -3624,8 +4169,11 @@ function renderAging(){
         const d = dd(r);
         const tier = agingTier(r, now);
         const dot = svgEl('circle', { class:'aging-dot' + (tier ? ' ' + tier : ''), cx:x(d), cy:cy + jitterFor(rowKey(r)), r:3.5 });
-        dot.addEventListener('mousemove', e => showRiverTooltip(e,
-          `<b>${escapeHtml(r.candidate_name || '—')}</b><br>${escapeHtml(r.job || '—')} · ${escapeHtml(r.recruiter || '—')}<br>${Math.round(d)}d in ${escapeHtml(s)} — median ${Math.round(norm)}d`));
+        dot.addEventListener('mousemove', e => {
+          const who = tier ? ownersFor(r).map(o => `${escapeHtml(o.name)} (${o.role})`).join(' · ') : '';
+          showRiverTooltip(e,
+            `<b>${escapeHtml(r.candidate_name || '—')}</b><br>${escapeHtml(r.job || '—')} · ${escapeHtml(r.recruiter || '—')}<br>${Math.round(d)}d in ${escapeHtml(s)} — median ${Math.round(norm)}d${who ? `<br><span class="tt-muted">talk to: ${who}</span>` : ''}`);
+        });
         dot.addEventListener('mouseleave', hideRiverTooltip);
         dot.addEventListener('click', () => {
           const key = rowKey(r);
@@ -4602,9 +5150,15 @@ function renderLedger(){
     const days = ledgerDaysInStage(r);
     // aging tint on days-in-stage for actives, with vs-median context on hover
     const tier = agingTier(r);
-    const daysTd = el('td', { class: tier === 'red' ? 'alert' : tier === 'amber' ? 'warn-cell' : '' }, days!=null?fmtDays(days):'—');
-    if (tier) attachTip(daysTd, tipHtml(`${Math.round(days)}d — ${r.current_stage} norm is ${Math.round(stageNorm(r.current_stage))}d.`,
-      'amber past 1.5×, red past 2.5× the stage\'s historical median'));
+    const owner = tier ? primaryOwner(r) : null; // overdue rows name who to talk to
+    const daysTd = el('td', { class: tier === 'red' ? 'alert' : tier === 'amber' ? 'warn-cell' : '' },
+      days!=null?fmtDays(days):'—',
+      owner ? el('span', { class:'ledger-owner' }, '· ' + ownerInitials(owner.name)) : null);
+    if (tier) {
+      const who = ownersFor(r).map(o => `${o.name} (${o.role})`).join(' · ');
+      attachTip(daysTd, tipHtml(`${Math.round(days)}d — ${r.current_stage} norm is ${Math.round(stageNorm(r.current_stage))}d.${who ? ' Talk to: ' + who + '.' : ''}`,
+        'amber past 1.5×, red past 2.5× the stage\'s historical median'));
+    }
     tr.append(
       el('td', {}, r.candidate_name||'—'), el('td', {}, r.job||'—'), el('td', {}, r.current_stage||'—'),
       el('td', {}, r.status||'—'), daysTd,
@@ -4627,9 +5181,11 @@ function renderLedger(){
       steps.sort((a,b)=>+a[1]-+b[1]);
       const closeBtn = el('button', { class:'ledger-close' }, '✕');
       closeBtn.addEventListener('click', (e) => { e.stopPropagation(); state.ledger.expanded.delete(key); renderLedger(); });
+      const metaUrl = r.job_url || reqJobUrl(r.job || '—');
       const detail = el('div', { class:'ledger-row-detail' },
         el('div', { style:'display:flex; justify-content:space-between; gap:12px; align-items:baseline;' },
-          el('span', {}, `${r.email||'—'} · ${r.candidate_id||r.application_id||'—'}${r.hiring_manager?' · HM: '+r.hiring_manager:''}${r.rejection_reason?' · '+r.rejection_reason:''}`),
+          el('span', {}, `${r.email||'—'} · ${r.candidate_id||r.application_id||'—'}${r.hiring_manager?' · HM: '+r.hiring_manager:''}${r.coordinator?' · Coord: '+r.coordinator:''}${r.rejection_reason?' · '+r.rejection_reason:''}`,
+            metaUrl ? jobLinkEl(metaUrl) : null),
           closeBtn),
         el('div', { class:'timeline' }, ...steps.flatMap(([label,date],i) => {
           const step = el('span', { class:'tl-step' }, el('span', { class:'tl-dot' }), el('span', {}, el('span', { class:'tl-label' }, label), ' '+fmtDate(date)));
@@ -4662,6 +5218,422 @@ function exportLedgerCsv(){
   toast('Exported '+rows.length+' rows.');
 }
 /* ============================================================
+   GALLERY VISUALIZATIONS (lab round 6) — optional sections, default off.
+   ============================================================ */
+function galleryRowsDrill(rows, label){
+  const keys = new Set(rows.map(rowKey));
+  drillTo({ type:'rows', keys, label });
+}
+/* 1. Activity calendar — applications per day, GitHub-style */
+function renderCalendar(){
+  const section = $('#section-cal');
+  if (impliedMode() !== 'cohort') { section.classList.add('hidden'); return; }
+  attachTipOnce($('#cal-kicker'), tipHtml('Activity — applications received per day over the period.', 'tint scales with the busiest day; click a day to see its applicants'));
+  const wrap = $('#cal-chart'); wrap.innerHTML = '';
+  const rows = state.rows.filter(r => r.applied_at);
+  const range = state.periodRange || [datasetSpanStart(), new Date()];
+  const byDay = new Map();
+  for (const r of rows) { const k = dayjs(r.applied_at).format('YYYY-MM-DD'); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(r); }
+  const start = dayjs(range[0]).startOf('week'), end = dayjs(range[1]);
+  const weeks = Math.max(1, Math.ceil(end.diff(start, 'day') / 7) + 1);
+  const cell = 12, gap = 2;
+  const width = weeks * (cell + gap) + 40, height = 7 * (cell + gap) + 24;
+  const maxN = Math.max(1, ...Array.from(byDay.values()).map(a => a.length));
+  const tint = n => n === 0 ? 'var(--hairline)' : n <= maxN*0.25 ? 'var(--flow-1)' : n <= maxN*0.5 ? 'var(--flow-2)' : n <= maxN*0.75 ? 'var(--flow-3)' : 'var(--flow-4)';
+  const svg = svgEl('svg', { class:'actcal', width, height, viewBox:`0 0 ${width} ${height}` });
+  let lastMonth = '';
+  for (let w = 0; w < weeks; w++) {
+    for (let d = 0; d < 7; d++) {
+      const day = start.add(w * 7 + d, 'day');
+      if (day.isAfter(end)) continue;
+      if (day.isBefore(dayjs(range[0]).startOf('day'))) continue;
+      const k = day.format('YYYY-MM-DD');
+      const dayRows = byDay.get(k) || [];
+      const rc = svgEl('rect', { class:'ac-cell', x:30 + w*(cell+gap), y:14 + d*(cell+gap), width:cell, height:cell, fill:tint(dayRows.length) });
+      rc.addEventListener('mousemove', e => showRiverTooltip(e, `<b>${day.format('MMM D, YYYY')}</b><br>${fmtN(dayRows.length)} application${dayRows.length===1?'':'s'}${dayRows.length?'<br><span class="tt-muted">click to see them</span>':''}`));
+      rc.addEventListener('mouseleave', hideRiverTooltip);
+      if (dayRows.length) rc.addEventListener('click', () => { hideRiverTooltip(); galleryRowsDrill(dayRows, day.format('MMM D') + ' applicants'); });
+      svg.appendChild(rc);
+      const m = day.format('MMM');
+      if (d === 0 && m !== lastMonth) { lastMonth = m; svg.appendChild(svgEl('text', { x:30 + w*(cell+gap), y:9 }, textNode(m))); }
+    }
+  }
+  ['Mon','Wed','Fri'].forEach((lab, i) => svg.appendChild(svgEl('text', { x:2, y:14 + (1 + i*2)*(cell+gap) + 9 }, textNode(lab))));
+  wrap.appendChild(svg);
+  $('#cal-note').textContent = `busiest day: ${fmtN(maxN)} applications`;
+  $('#cal-caption').textContent = `Fig. Applications per day, ${dayjs(range[0]).format('MMM YYYY')} – ${dayjs(range[1]).format('MMM YYYY')}.`;
+}
+/* 2. Time-to-hire distribution — histogram with median/p90 + comparison outline */
+function renderTthDist(){
+  const section = $('#section-tthdist');
+  if (impliedMode() !== 'cohort') { section.classList.add('hidden'); return; }
+  attachTipOnce($('#tthdist-kicker'), tipHtml('Time to hire — how long hires took, from application to hire date.', 'dashed markers: median and p90; dashed outline: comparison period'));
+  const wrap = $('#tthdist-chart'); wrap.innerHTML = '';
+  const days = r => (r.hired_at - r.applied_at) / 86400000;
+  const hires = state.rows.filter(r => r.status === 'hired' && r.hired_at && r.applied_at);
+  if (!hires.length) { wrap.appendChild(el('div', { class:'attn-none' }, 'No hires in view.')); $('#tthdist-caption').textContent=''; return; }
+  const vals = hires.map(days);
+  const maxD = Math.max(...vals, 1);
+  const binW = Math.max(2, Math.ceil(maxD / 12 / 2) * 2);
+  const nBins = Math.ceil((maxD + 1) / binW);
+  const bins = new Array(nBins).fill(null).map((_, i) => ({ lo: i*binW, hi: (i+1)*binW, rows: [] }));
+  for (const r of hires) bins[Math.min(nBins - 1, Math.floor(days(r) / binW))].rows.push(r);
+  let prevBins = null;
+  if (state.prevRows) {
+    const ph = state.prevRows.filter(r => r.status === 'hired' && r.hired_at && r.applied_at);
+    if (ph.length) { prevBins = new Array(nBins).fill(0); for (const r of ph) prevBins[Math.min(nBins - 1, Math.floor(days(r) / binW))]++; }
+  }
+  const width = Math.max(600, wrap.clientWidth || 800), height = 170;
+  const padL = 34, padR = 20, padT = 14, padB = 26;
+  const plotW = width - padL - padR, plotH = height - padT - padB;
+  const maxC = Math.max(1, ...bins.map(b => b.rows.length), ...(prevBins || [0]));
+  const x = i => padL + (i / nBins) * plotW;
+  const y = c => padT + plotH - (c / maxC) * plotH;
+  const svg = svgEl('svg', { class:'tthdist', width, height, viewBox:`0 0 ${width} ${height}` });
+  bins.forEach((b, i) => {
+    if (!b.rows.length) return;
+    const bar = svgEl('rect', { class:'td-bar', x:x(i)+1, y:y(b.rows.length), width:plotW/nBins - 2, height:padT + plotH - y(b.rows.length) });
+    bar.addEventListener('mousemove', e => showRiverTooltip(e, `<b>${b.lo}–${b.hi}d</b><br>${fmtN(b.rows.length)} hire${b.rows.length===1?'':'s'}<br><span class="tt-muted">click to see them</span>`));
+    bar.addEventListener('mouseleave', hideRiverTooltip);
+    bar.addEventListener('click', () => { hideRiverTooltip(); galleryRowsDrill(b.rows, `hires in ${b.lo}–${b.hi}d`); });
+    svg.appendChild(bar);
+  });
+  if (prevBins) {
+    let dPath = '';
+    for (let i = 0; i < nBins; i++) dPath += `${i ? 'L' : 'M'}${x(i)},${y(prevBins[i])} L${x(i+1)},${y(prevBins[i])} `;
+    svg.appendChild(svgEl('path', { class:'td-prev', d:dPath }));
+  }
+  const med = median(vals), p90 = quantile(vals, 0.9);
+  for (const [v, lab] of [[med,'median '+Math.round(med)+'d'], [p90,'p90 '+Math.round(p90)+'d']]) {
+    const mx = padL + (v / (nBins * binW)) * plotW;
+    svg.appendChild(svgEl('line', { class:'td-marker', x1:mx, y1:padT, x2:mx, y2:padT+plotH }));
+    svg.appendChild(svgEl('text', { class:'td-axis', x:mx+3, y:padT+8 }, textNode(lab)));
+  }
+  svg.appendChild(svgEl('text', { class:'td-axis', x:padL, y:height-8 }, textNode('0d')));
+  svg.appendChild(svgEl('text', { class:'td-axis', x:padL+plotW, y:height-8, 'text-anchor':'end' }, textNode(nBins*binW + 'd')));
+  wrap.appendChild(svg);
+  $('#tthdist-note').textContent = `${fmtN(hires.length)} hires · bin ${binW}d`;
+  $('#tthdist-caption').textContent = `Fig. Distribution of days to hire${prevBins ? '; dashed outline = comparison period' : ''}.`;
+}
+/* 3. Rejection reasons — ranked bars with exit-type split */
+function renderReasons(){
+  const section = $('#section-reasons');
+  if (impliedMode() !== 'cohort' || !state.mapping.rejection_reason) { section.classList.add('hidden'); return; }
+  attachTipOnce($('#reasons-kicker'), tipHtml('Rejection reasons — why candidates left the process, ranked by share.', 'split by exit type; click a reason to see those candidates'));
+  if (!state.rrSplit) state.rrSplit = 'all';
+  const splitWrap = $('#reasons-split'); splitWrap.innerHTML = '';
+  for (const [k, lab] of [['all','All exits'],['rejected','Rejected'],['withdrawn','Withdrawn']]) {
+    const b = el('button', { class: state.rrSplit === k ? 'active' : '', type:'button' }, lab);
+    b.addEventListener('click', () => { state.rrSplit = k; renderReasons(); });
+    splitWrap.appendChild(b);
+  }
+  const wrap = $('#reasons-chart'); wrap.innerHTML = '';
+  const pool = state.rows.filter(r => (state.rrSplit === 'all' ? (r.status === 'rejected' || r.status === 'withdrawn' || r.status === 'declined') : r.status === state.rrSplit) && r.rejection_reason);
+  if (!pool.length) { wrap.appendChild(el('div', { class:'attn-none' }, 'No exits with a recorded reason.')); $('#reasons-caption').textContent=''; return; }
+  const byReason = new Map();
+  for (const r of pool) { const k = r.rejection_reason; if (!byReason.has(k)) byReason.set(k, []); byReason.get(k).push(r); }
+  const ranked = Array.from(byReason.entries()).sort((a,b) => b[1].length - a[1].length).slice(0, 10);
+  const maxN = ranked[0][1].length;
+  for (const [reason, rs] of ranked) {
+    const row = el('div', { class:'rr-row' },
+      el('span', { class:'rr-label' }, reason),
+      el('div', { class:'rr-bar' }, el('div', { class:'rr-fill', style:`width:${(rs.length/maxN)*100}%;` })),
+      el('span', { class:'rr-count' }, `${fmtN(rs.length)} · ${fmtPct(rs.length/pool.length,0)}`));
+    row.addEventListener('mousemove', e => showRiverTooltip(e, `<b>${escapeHtml(reason)}</b><br>${fmtN(rs.length)} of ${fmtN(pool.length)} (${fmtPct(rs.length/pool.length,0)})<br><span class="tt-muted">click to see them</span>`));
+    row.addEventListener('mouseleave', hideRiverTooltip);
+    row.addEventListener('click', () => { hideRiverTooltip(); galleryRowsDrill(rs, reason); });
+    wrap.appendChild(row);
+  }
+  $('#reasons-note').textContent = `${fmtN(pool.length)} exits with reasons`;
+  $('#reasons-caption').textContent = 'Fig. Exit reasons ranked by share of recorded exits.';
+}
+/* 4. Office × stage grid — count matrix tinted by share */
+function renderOfficeGrid(){
+  const section = $('#section-officegrid');
+  if (!state.mapping.office) { section.classList.add('hidden'); return; }
+  const isSnapshot = impliedMode() === 'snapshot';
+  attachTipOnce($('#officegrid-kicker'), tipHtml(
+    isSnapshot ? 'Office × stage — active candidates per office per stage.' : 'Office × stage — candidates who reached each stage, per office.',
+    'tint scales with the largest cell; click a cell to drill'));
+  const wrap = $('#officegrid-table'); wrap.innerHTML = '';
+  const stages = state.canonicalStages;
+  const rows = isSnapshot ? (state.snapshotRows || []) : state.rows;
+  const offices = Array.from(new Set(rows.map(r => r.office || '—'))).sort();
+  if (!offices.length) { wrap.appendChild(el('div', { class:'attn-none' }, 'No candidates in view.')); return; }
+  const cellVal = (office, si) => rows.filter(r => (r.office || '—') === office && (isSnapshot ? r.current_stage === stages[si] : stageIndex(r.current_stage) >= si));
+  let maxN = 1;
+  for (const o of offices) for (let i = 0; i < stages.length; i++) maxN = Math.max(maxN, cellVal(o, i).length);
+  const table = el('table', { class:'report-table' });
+  table.appendChild(el('thead', {}, el('tr', {}, el('th', {}, 'Office'), ...stages.map(s => el('th', {}, s)))));
+  const tbody = el('tbody');
+  for (const o of offices) {
+    const tr = el('tr', {});
+    tr.appendChild(el('td', {}, o));
+    stages.forEach((s, si) => {
+      const cellRows = cellVal(o, si);
+      const n = cellRows.length;
+      const alpha = n ? 0.08 + (n / maxN) * 0.32 : 0;
+      const td = el('td', { class: n ? 'og-cell' : 'zero', style: n ? `background:color-mix(in srgb, var(--flow-3) ${Math.round(alpha*100)}%, transparent);` : '' }, n ? fmtN(n) : '—');
+      if (n) {
+        attachTip(td, tipHtml(`${o} · ${s}: ${fmtN(n)} ${isSnapshot ? 'active' : 'reached'}`, 'click to drill'));
+        td.addEventListener('click', (e) => { e.stopPropagation(); hideRiverTooltip(); drillCombo({ office: o }, isSnapshot ? { type:'active', stage:s } : { type:'reached', stage:s }); });
+      }
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  wrap.appendChild(table);
+  $('#officegrid-note').textContent = isSnapshot ? 'actives per office and stage' : 'reached counts per office and stage';
+  $('#officegrid-caption').textContent = 'Fig. Where the pipeline sits geographically; darker cells hold more candidates.';
+}
+/* 5. Funnel comparison — this period vs comparison, Δpp pass rates */
+function renderFunnelCmp(){
+  const section = $('#section-funnelcmp');
+  if (impliedMode() !== 'cohort' || !state.prevRows || !state.prevRows.length) { section.classList.add('hidden'); return; }
+  attachTipOnce($('#funnelcmp-kicker'), tipHtml('Funnel vs prior — paired stage bars for this period against the comparison period.', 'Δpp = change in pass-through rate, colored by direction'));
+  const wrap = $('#funnelcmp-chart'); wrap.innerHTML = '';
+  const stages = state.canonicalStages;
+  const cur = computeStageFlow(state.rows, stages, null, 'cohort');
+  const prev = computeStageFlow(state.prevRows, stages, null, 'cohort');
+  const width = Math.max(600, wrap.clientWidth || 800);
+  const rowH = 40, labelW = 120, rightW = 150;
+  const plotW = width - labelW - rightW;
+  const height = stages.length * rowH + 6;
+  const maxN = Math.max(1, ...cur.map(f => f.entered || 0), ...prev.map(f => f.entered || 0));
+  const svg = svgEl('svg', { class:'funnelcmp', width, height, viewBox:`0 0 ${width} ${height}` });
+  stages.forEach((s, i) => {
+    const y = i * rowH + 4;
+    svg.appendChild(svgEl('text', { class:'fn-label', x:labelW-12, y:y+15, 'text-anchor':'end', style:'font-size:11.5px; font-weight:600; fill:var(--ink);' }, textNode(s)));
+    const cw = ((cur[i].entered || 0) / maxN) * plotW;
+    const pw = ((prev[i].entered || 0) / maxN) * plotW;
+    const curBar = svgEl('rect', { class:'fc2-cur', x:labelW, y, width:Math.max(cw, cur[i].entered ? 2 : 0), height:12 });
+    curBar.addEventListener('click', () => setSelection({ type:'reached', stage:s }));
+    curBar.addEventListener('mousemove', e => showRiverTooltip(e, `<b>${s}</b><br>this period: ${fmtN(cur[i].entered)}<br>comparison: ${fmtN(prev[i].entered)}`));
+    curBar.addEventListener('mouseleave', hideRiverTooltip);
+    svg.appendChild(curBar);
+    svg.appendChild(svgEl('rect', { class:'fc2-prev', x:labelW, y:y+15, width:Math.max(pw, prev[i].entered ? 2 : 0), height:8 }));
+    svg.appendChild(svgEl('text', { class:'fc2-axis', x:labelW + Math.max(cw, pw) + 8, y:y+11 }, textNode(`${fmtN(cur[i].entered)} vs ${fmtN(prev[i].entered)}`)));
+    if (cur[i].passPct != null && prev[i].passPct != null) {
+      const d = Math.round((cur[i].passPct - prev[i].passPct) * 100);
+      svg.appendChild(svgEl('text', { class:'fc2-delta ' + (d >= 0 ? 'good' : 'bad'), x:labelW + Math.max(cw, pw) + 8, y:y+23 },
+        textNode(`${d >= 0 ? '+' : ''}${d}pp pass`)));
+    }
+  });
+  wrap.appendChild(svg);
+  $('#funnelcmp-note').textContent = 'vs ' + formatRangeLabel(state.prevRange[0], state.prevRange[1]);
+  $('#funnelcmp-caption').textContent = 'Fig. Did we get better — filled bars this period, gray bars the comparison, Δpp on pass-through.';
+}
+/* 6. Recruiter load matrix — dot area ∝ active count, overdue core in amber */
+function renderRecMatrix(){
+  const section = $('#section-recmatrix');
+  if (impliedMode() !== 'snapshot' || !state.mapping.recruiter) { section.classList.add('hidden'); return; }
+  attachTipOnce($('#recmatrix-kicker'), tipHtml('Recruiter load — actives per recruiter per stage; dot area ∝ count.', 'amber core = the overdue portion; click a dot to drill'));
+  const wrap = $('#recmatrix-chart'); wrap.innerHTML = '';
+  const stages = state.canonicalStages.filter(s => (state.snapshotRows||[]).some(r => r.current_stage === s));
+  const now = nowRef();
+  const recs = Array.from(new Set((state.snapshotRows||[]).map(r => r.recruiter || '—'))).sort();
+  if (!recs.length || !stages.length) { wrap.appendChild(el('div', { class:'attn-none' }, 'No active candidates.')); $('#recmatrix-caption').textContent=''; return; }
+  const cellRows = (rec, s) => (state.snapshotRows||[]).filter(r => (r.recruiter || '—') === rec && r.current_stage === s);
+  let maxN = 1;
+  for (const rec of recs) for (const s of stages) maxN = Math.max(maxN, cellRows(rec, s).length);
+  const labelW = 130, colW = 96, rowH = 42, headH = 22;
+  const width = labelW + stages.length * colW + 20;
+  const height = headH + recs.length * rowH + 6;
+  const svg = svgEl('svg', { class:'recmatrix', width, height, viewBox:`0 0 ${width} ${height}` });
+  stages.forEach((s, si) => svg.appendChild(svgEl('text', { class:'rm-axis', x:labelW + si*colW + colW/2, y:12, 'text-anchor':'middle' }, textNode(s))));
+  recs.forEach((rec, ri) => {
+    const cy = headH + ri*rowH + rowH/2;
+    svg.appendChild(svgEl('text', { class:'rm-axis', x:labelW - 10, y:cy + 3.5, 'text-anchor':'end', style:'fill:var(--ink); font-size:11px;' }, textNode(rec)));
+    stages.forEach((s, si) => {
+      const rows = cellRows(rec, s);
+      if (!rows.length) return;
+      const od = rows.filter(r => agingTier(r, now) != null).length;
+      const cx = labelW + si*colW + 28;
+      const rr = 4 + Math.sqrt(rows.length / maxN) * 10; // area ∝ count
+      const dot = svgEl('circle', { class:'rm-dot', cx, cy, r:rr });
+      dot.addEventListener('mousemove', e => showRiverTooltip(e, `<b>${escapeHtml(rec)} · ${escapeHtml(s)}</b><br>${fmtN(rows.length)} active${od ? ` · ${fmtN(od)} overdue` : ''}<br><span class="tt-muted">click to drill</span>`));
+      dot.addEventListener('mouseleave', hideRiverTooltip);
+      dot.addEventListener('click', () => { hideRiverTooltip(); drillCombo({ recruiter: rec }, { type:'active', stage:s }); });
+      svg.appendChild(dot);
+      if (od > 0) svg.appendChild(svgEl('circle', { class:'rm-od', cx, cy, r:Math.max(2.5, rr * Math.sqrt(od / rows.length)) }));
+      svg.appendChild(svgEl('text', { class:'rm-count', x:cx + rr + 5, y:cy + 3.5 }, textNode(String(rows.length))));
+    });
+  });
+  wrap.appendChild(svg);
+  $('#recmatrix-note').textContent = 'dot area ∝ actives · amber core = overdue';
+  $('#recmatrix-caption').textContent = 'Fig. Who is carrying the load, and where it is going stale.';
+}
+/* ============================================================
+   SECTION REGISTRY (lab round 6) — every report section, in default order.
+   renderAll iterates this; the Customize screen edits visibility/order,
+   persisted globally under lab:layout. Mode rules still live inside each
+   render fn (hiding here is an AND on top of them). gallery:true items are
+   the optional visualizations, default OFF until enabled in the gallery.
+   ============================================================ */
+const SECTION_REGISTRY = [
+  { key:'attention',  title:'Attention',          el:'section-attention',  render: () => renderAttention() },
+  { key:'forecast',   title:'Forecast',           el:'section-forecast',   render: () => renderForecast(),  modeNote:'Current only' },
+  { key:'stats',      title:'By the numbers',     el:'section-stats',      render: () => renderStats() },
+  { key:'reqs',       title:'Requisitions',       el:'section-reqs',       render: () => renderReqs() },
+  { key:'flow',       title:'Flow',               el:'section-river',      render: () => { renderFlow(); renderTimeMachine(); } },
+  { key:'aging',      title:'Aging',              el:'section-aging',      render: () => renderAging(),     modeNote:'Current only' },
+  { key:'composition',title:'Composition',        el:'section-composition',render: () => renderComposition(), modeNote:'Current only' },
+  { key:'statement',  title:'Statement of flow',  el:'section-statement',  render: () => renderStatement() },
+  { key:'trends',     title:'Trends',             el:'section-trends',     render: () => renderTrends() },
+  { key:'process',    title:'Process',            el:'section-process',    render: () => renderProcess(),   modeNote:'cohort only' },
+  { key:'sources',    title:'Sources & people',   el:'section-sources',    render: () => renderSourcesAndPeople() },
+  { key:'ledger',     title:'Ledger',             el:'section-ledger',     render: () => renderLedger() },
+  { key:'calendar',   title:'Activity calendar',  el:'section-cal',        render: () => renderCalendar(),  gallery:true, modeNote:'cohort only',
+    desc:'GitHub-style heat calendar of applications per day.' },
+  { key:'tthdist',    title:'Time-to-hire distribution', el:'section-tthdist', render: () => renderTthDist(), gallery:true, modeNote:'cohort only',
+    desc:'Histogram of days-to-hire with median and p90 markers.' },
+  { key:'reasons',    title:'Rejection reasons',  el:'section-reasons',    render: () => renderReasons(),   gallery:true, modeNote:'cohort only',
+    desc:'Ranked bars of why candidates exit, split by exit type.' },
+  { key:'officegrid', title:'Office × stage grid',el:'section-officegrid', render: () => renderOfficeGrid(), gallery:true,
+    desc:'Compact office-by-stage count matrix, tinted by share.' },
+  { key:'funnelcmp',  title:'Funnel comparison',  el:'section-funnelcmp',  render: () => renderFunnelCmp(), gallery:true, modeNote:'historical only',
+    desc:'This period\'s funnel against the comparison, with Δpp pass rates.' },
+  { key:'recmatrix',  title:'Recruiter load matrix', el:'section-recmatrix', render: () => renderRecMatrix(), gallery:true, modeNote:'Current only',
+    desc:'Recruiter-by-stage dots sized by active load, overdue in amber.' },
+];
+let _layout = null;
+function getLayout(){
+  if (_layout) return _layout;
+  try {
+    const raw = localStorage.getItem('lab:layout');
+    if (raw) {
+      const p = JSON.parse(raw);
+      _layout = { order: p.order || [], hidden: new Set(p.hidden || []), enabled: new Set(p.enabled || []) };
+    }
+  } catch(e){}
+  if (!_layout) _layout = { order: SECTION_REGISTRY.map(d => d.key), hidden: new Set(), enabled: new Set() };
+  for (const d of SECTION_REGISTRY) if (!_layout.order.includes(d.key)) _layout.order.push(d.key); // merge new keys
+  return _layout;
+}
+function persistLayout(){
+  const l = getLayout();
+  try { localStorage.setItem('lab:layout', JSON.stringify({ order: l.order, hidden: Array.from(l.hidden), enabled: Array.from(l.enabled) })); } catch(e){}
+}
+function resetLayout(){
+  _layout = null;
+  try { localStorage.removeItem('lab:layout'); } catch(e){}
+  applySectionOrder();
+  queueRender();
+}
+function orderedSectionDefs(){
+  const l = getLayout();
+  return l.order.map(k => SECTION_REGISTRY.find(d => d.key === k)).filter(Boolean);
+}
+function isSectionOff(def){
+  const l = getLayout();
+  if (l.hidden.has(def.key)) return true;
+  if (def.gallery && !l.enabled.has(def.key)) return true;
+  return false;
+}
+function isSectionOn(key){
+  const def = SECTION_REGISTRY.find(d => d.key === key);
+  return def ? !isSectionOff(def) : true;
+}
+function applySectionOrder(){
+  const parent = document.getElementById('report-body');
+  for (const def of orderedSectionDefs()) {
+    const s = document.getElementById(def.el);
+    if (s) parent.appendChild(s);
+  }
+  parent.appendChild(document.getElementById('footnote')); // footnote stays last
+}
+/* ---- Customize screen: sections, edition, flow view, gallery ---- */
+function galleryThumb(key){
+  // tiny static sketches, 84×30, flat fills only
+  const s = svgEl('svg', { class:'cz-thumb', width:84, height:30, viewBox:'0 0 84 30' });
+  const add = (tag, attrs) => s.appendChild(svgEl(tag, attrs));
+  if (key === 'calendar') {
+    for (let w = 0; w < 10; w++) for (let d = 0; d < 4; d++)
+      add('rect', { x:2+w*8, y:2+d*7, width:6, height:5, fill:`var(--flow-${1+((w+d)%4)})`, opacity:0.8 });
+  } else if (key === 'tthdist') {
+    [6,12,22,16,10,5,3].forEach((h,i) => add('rect', { x:4+i*11, y:28-h, width:8, height:h, fill:'var(--flow-3)' }));
+  } else if (key === 'reasons') {
+    [70,52,34,20].forEach((w,i) => add('rect', { x:2, y:2+i*7, width:w, height:5, fill:'var(--rej)', opacity:0.6 }));
+  } else if (key === 'officegrid') {
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++)
+      add('rect', { x:2+c*16, y:2+r*9, width:14, height:7, fill:'var(--flow-3)', opacity:0.15+((r+c)%4)*0.2 });
+  } else if (key === 'funnelcmp') {
+    [[64,50],[44,40],[26,30]].forEach(([a,b],i) => { add('rect', { x:2, y:2+i*10, width:a, height:4, fill:'var(--flow-3)' }); add('rect', { x:2, y:7+i*10, width:b, height:3, fill:'var(--rej)', opacity:0.5 }); });
+  } else if (key === 'recmatrix') {
+    [[12,8,5],[7,11,3],[4,6,9]].forEach((row,r) => row.forEach((n,c) => add('circle', { cx:12+c*26, cy:6+r*9, r:n/3+1.5, fill:'var(--flow-3)' })));
+  }
+  return s;
+}
+function openCustomize(){
+  const root = $('#mapper-root'); root.innerHTML = '';
+  const overlay = el('div', { class:'sheet-overlay', id:'customize-overlay' });
+  const sheet = el('div', { class:'sheet' });
+  const body = el('div', { class:'sheet-body' });
+  const l = getLayout();
+  const rebuild = () => { persistLayout(); applySectionOrder(); queueRender(); openCustomize(); };
+  // sections list
+  body.appendChild(el('div', { class:'map-section-title' }, 'Sections'));
+  orderedSectionDefs().forEach((def, idx, arr) => {
+    if (def.gallery && !l.enabled.has(def.key)) return; // not enabled = lives only in the gallery below
+    const cb = el('input', { type:'checkbox' });
+    cb.checked = !l.hidden.has(def.key);
+    cb.addEventListener('change', () => { if (cb.checked) l.hidden.delete(def.key); else l.hidden.add(def.key); rebuild(); });
+    const up = el('button', { type:'button' }, '▲');
+    up.addEventListener('click', () => { const i = l.order.indexOf(def.key); if (i > 0) { [l.order[i-1], l.order[i]] = [l.order[i], l.order[i-1]]; rebuild(); } });
+    const down = el('button', { type:'button' }, '▼');
+    down.addEventListener('click', () => { const i = l.order.indexOf(def.key); if (i < l.order.length-1) { [l.order[i+1], l.order[i]] = [l.order[i], l.order[i+1]]; rebuild(); } });
+    body.appendChild(el('div', { class:'cz-row' }, cb,
+      el('span', { class:'cz-title' + (l.hidden.has(def.key) ? ' off' : '') }, def.title),
+      el('span', { class:'cz-mode' }, def.modeNote || ''),
+      el('div', { class:'stage-btns' }, up, down)));
+  });
+  const reset = el('button', { class:'cz-reset', type:'button' }, 'Reset to default layout');
+  reset.addEventListener('click', () => { resetLayout(); openCustomize(); });
+  body.appendChild(el('div', { style:'margin-top:8px;' }, reset));
+  // edition + flow view choices
+  body.appendChild(el('div', { class:'map-section-title' }, 'Edition'));
+  const edWrap = el('div', { class:'cz-choice' });
+  for (const [key, name, desc] of EDITIONS) {
+    const b = el('button', { class: getEdition() === key ? 'active' : '', type:'button' }, name);
+    attachTip(b, tipHtml(desc));
+    b.addEventListener('click', () => { setEdition(key); openCustomize(); });
+    edWrap.appendChild(b);
+  }
+  body.appendChild(edWrap);
+  body.appendChild(el('div', { class:'map-section-title' }, 'Flow view'));
+  const fvWrap = el('div', { class:'cz-choice' });
+  for (const [v, label] of FLOW_VIEWS) {
+    const b = el('button', { class: getFlowView() === v ? 'active' : '', type:'button' }, label);
+    b.addEventListener('click', () => { setFlowView(v); openCustomize(); });
+    fvWrap.appendChild(b);
+  }
+  body.appendChild(fvWrap);
+  // gallery
+  body.appendChild(el('div', { class:'map-section-title' }, 'Gallery — optional visualizations'));
+  for (const def of SECTION_REGISTRY.filter(d => d.gallery)) {
+    const cb = el('input', { type:'checkbox' });
+    cb.checked = l.enabled.has(def.key);
+    cb.addEventListener('change', () => {
+      if (cb.checked) { l.enabled.add(def.key); l.hidden.delete(def.key); }
+      else l.enabled.delete(def.key);
+      rebuild();
+    });
+    body.appendChild(el('div', { class:'cz-gallery-row' }, cb, galleryThumb(def.key),
+      el('div', {}, el('div', { class:'cz-g-name' }, def.title + (def.modeNote ? ' · ' + def.modeNote : '')),
+        el('div', { class:'cz-g-desc' }, def.desc || ''))));
+  }
+  const closeBtn = el('button', { class:'underline-btn primary', type:'button' }, 'Done');
+  closeBtn.addEventListener('click', () => overlay.remove());
+  sheet.append(
+    el('div', { class:'sheet-head' }, el('h2', {}, 'Customize the report'),
+      el('p', {}, 'Choose which sections appear and in what order, pick an edition and flow view, and enable optional visualizations. Stored locally.')),
+    body,
+    el('div', { class:'sheet-foot' }, el('span', { class:'status-msg' }, 'Changes apply immediately.'), closeBtn));
+  overlay.appendChild(sheet);
+  root.appendChild(overlay);
+}
+/* ============================================================
    RENDER: ALL / FOOTNOTE
    ============================================================ */
 function renderAll(){
@@ -4672,20 +5644,14 @@ function renderAll(){
   renderMasthead();
   renderFilterDesk();
   renderFinding();
-  renderAttention();
-  renderForecast();
-  renderStats();
-  renderReqs();
-  renderRiver();
-  renderTimeMachine(); // after the river so the approximation note can extend its caption
+  for (const def of orderedSectionDefs()) {
+    const sec = document.getElementById(def.el);
+    if (!sec) continue;
+    if (isSectionOff(def)) { sec.classList.add('hidden'); continue; }
+    sec.classList.remove('hidden'); // the render fn re-hides if its mode rules say so
+    def.render();
+  }
   setupRiverResize();
-  renderAging();
-  renderComposition();
-  renderStatement();
-  renderTrends();
-  renderProcess();
-  renderSourcesAndPeople();
-  renderLedger();
   renderFootnote();
 }
 function queueRender(){
@@ -4824,6 +5790,50 @@ async function saveCurrentView(){
 }
 
 /* ============================================================
+   EDITIONS (lab) — switchable skins; presentation only. Chart colors are
+   CSS-variable-driven end to end (the THEME source of truth is the token
+   block per edition), so SVGs restyle live; we re-render anyway on switch.
+   ============================================================ */
+const EDITIONS = [
+  ['broadsheet','Broadsheet','editorial serif — the default'],
+  ['terminal','Terminal','ops console — mono, dense · locks dark'],
+  ['studio','Studio','modern product look — Inter, blue accent'],
+];
+function getEdition(){ try { return localStorage.getItem('lab:edition') || 'broadsheet'; } catch(e){ return 'broadsheet'; } }
+function ensureEditionFont(ed){
+  // fonts load lazily, only when their edition first activates
+  if (ed === 'terminal' && !document.getElementById('font-jbm')) {
+    document.head.appendChild(el('link', { id:'font-jbm', rel:'stylesheet',
+      href:'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap' }));
+  }
+  if (ed === 'studio' && !document.getElementById('font-inter')) {
+    document.head.appendChild(el('link', { id:'font-inter', rel:'stylesheet',
+      href:'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap' }));
+  }
+}
+function applyEdition(ed){
+  document.documentElement.classList.remove('ed-terminal','ed-studio');
+  if (ed === 'terminal') document.documentElement.classList.add('ed-terminal');
+  if (ed === 'studio') document.documentElement.classList.add('ed-studio');
+  ensureEditionFont(ed);
+}
+function setEdition(ed){
+  try { localStorage.setItem('lab:edition', ed); } catch(e){}
+  applyEdition(ed);
+  queueRender();
+}
+function renderEditionList(){
+  const list = $('#edition-list'); list.innerHTML = '';
+  const cur = getEdition();
+  for (const [key, name, desc] of EDITIONS) {
+    const row = el('div', { class:'prow', style:'cursor:pointer;' },
+      el('span', { class:'pname' }, (cur === key ? '● ' : '') + name),
+      el('span', { class:'pmeta' }, desc));
+    row.addEventListener('click', () => { setEdition(key); renderEditionList(); });
+    list.appendChild(row);
+  }
+}
+/* ============================================================
    THEME
    ============================================================ */
 function applyTheme(){
@@ -4857,6 +5867,8 @@ function wireEvents(){
   $('#btn-save-view').addEventListener('click', (e) => { e.stopPropagation(); saveCurrentView(); });
   $$('.popover').forEach(p => p.addEventListener('click', e => e.stopPropagation()));
   $('#btn-theme-toggle').addEventListener('click', toggleTheme);
+  $('#btn-edition').addEventListener('click', (e) => { e.stopPropagation(); togglePopover('pop-edition', renderEditionList); });
+  $('#btn-customize').addEventListener('click', openCustomize);
   $('#btn-print').addEventListener('click', () => window.print());
 
   $('#fd-period').addEventListener('change', (e) => { setPeriodPreset(e.target.value); });
@@ -4900,7 +5912,9 @@ function wireEvents(){
   // Escape chain: open popovers/panels > expanded trend fig > expanded ledger row > drill pop
   window.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    if (replay.playing) { stopReplay(false); return; } // pause the replay first
+    const cz = document.getElementById('customize-overlay');
+    if (cz) { cz.remove(); return; } // settings overlay closes first
+    if (replay.playing) { stopReplay(false); return; } // then the replay pauses
     const openPops = $$('.popover:not(.hidden), .fd-panel:not(.hidden)');
     if (openPops.length) { openPops.forEach(p=>p.classList.add('hidden')); return; }
     if (state.trendExpanded) { state.trendExpanded = null; renderTrends(); return; }
@@ -4920,6 +5934,8 @@ let pendingAppend = false;
    INIT
    ============================================================ */
 async function init(){
+  applyEdition(getEdition());
+  applySectionOrder(); // restore the customized section order before first render
   applyTheme();
   wireEvents();
   try {
