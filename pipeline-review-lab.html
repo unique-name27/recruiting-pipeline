@@ -270,6 +270,41 @@ svg.comp .comp-baseline{ stroke:var(--hairline); stroke-width:1; }
 svg.comp .comp-band{ stroke:var(--paper); stroke-width:0.75; cursor:pointer; }
 svg.comp .comp-marker{ stroke:var(--ink); stroke-width:1; stroke-dasharray:3 3; }
 @media print{ .tm-control, .tm-noteline{ display:none !important; } }
+/* ============================================================
+   PROCESS ANALYTICS (lab) — survival curves + velocity heatmap
+   ============================================================ */
+.proc-split{ display:flex; gap:16px; font-size:12px; margin-bottom:10px; }
+.proc-split button{ color:var(--muted); border-bottom:1px solid transparent; padding-bottom:1px; }
+.proc-split button:hover{ color:var(--ink); }
+.proc-split button.active{ color:var(--ink); border-bottom-color:var(--ink); font-weight:600; }
+.proc-legend{ font-size:11.5px; color:var(--muted); margin-top:6px; }
+.proc-legend .swatch{ display:inline-block; width:9px; height:9px; margin:0 5px 0 14px; vertical-align:baseline; }
+.proc-legend .swatch:first-child{ margin-left:0; }
+.proc-explainer{ font-size:11.5px; color:var(--muted); margin-top:6px; font-style:italic; font-family:var(--serif); }
+svg.survival text{ font-family:var(--sans); font-variant-numeric:tabular-nums; }
+svg.survival .sv-axis{ font-size:9.5px; fill:var(--muted); }
+svg.survival .sv-baseline{ stroke:var(--hairline); stroke-width:1; }
+svg.survival .sv-curve{ fill:none; stroke-width:1.6; cursor:pointer; transition:opacity 120ms; }
+svg.survival.hovering .sv-curve:not(.hovered){ opacity:0.35; }
+svg.survival .sv-median{ stroke:var(--muted); stroke-width:0.75; stroke-dasharray:3 3; }
+svg.survival .sv-annot{ font-size:10.5px; fill:var(--muted); }
+/* velocity heatmap tints: paper (fast) → amber → red (slow); dark-mode stops brightened */
+#velocity-heatmap td.vh-1{ background:rgba(186,117,23,0.12); }
+#velocity-heatmap td.vh-2{ background:rgba(186,117,23,0.28); }
+#velocity-heatmap td.vh-3{ background:rgba(163,45,45,0.30); color:var(--neg); font-weight:600; }
+html.dark #velocity-heatmap td.vh-1{ background:rgba(224,178,101,0.14); }
+html.dark #velocity-heatmap td.vh-2{ background:rgba(224,178,101,0.32); }
+html.dark #velocity-heatmap td.vh-3{ background:rgba(230,138,126,0.30); color:var(--neg); }
+@media (prefers-color-scheme: dark){
+  html:not(.light):not(.dark) #velocity-heatmap td.vh-1{ background:rgba(224,178,101,0.14); }
+  html:not(.light):not(.dark) #velocity-heatmap td.vh-2{ background:rgba(224,178,101,0.32); }
+  html:not(.light):not(.dark) #velocity-heatmap td.vh-3{ background:rgba(230,138,126,0.30); color:var(--neg); }
+}
+#velocity-heatmap td.vh-dot{ color:var(--muted); }
+#velocity-heatmap td.vh-ref, #velocity-heatmap tr.vh-refrow td{ color:var(--muted); border-top:1px solid var(--heavy); }
+#velocity-heatmap td.vh-n{ color:var(--muted); font-size:11px; }
+#velocity-heatmap td.vh-click{ cursor:pointer; }
+#velocity-heatmap td.vh-click:hover{ text-decoration:underline; text-underline-offset:2px; }
 .muted-pct{ color:var(--muted); font-size:11px; }
 .ledger-close{ color:var(--muted); font-size:12px; flex-shrink:0; }
 .ledger-close:hover{ color:var(--ink); }
@@ -713,6 +748,18 @@ html.dark .sheet-overlay{ background:rgba(0,0,0,0.6); }
     <section class="section" id="section-trends">
       <div class="section-head"><span class="kicker">Trends</span></div>
       <div class="trend-grid" id="trend-grid"></div>
+    </section>
+
+    <!-- ========== PROCESS ANALYTICS (cohort modes only, lab) ========== -->
+    <section class="section hidden" id="section-process">
+      <div class="section-head"><span class="kicker" id="process-kicker">Process</span><span class="section-note" id="process-note"></span></div>
+      <div class="proc-split" id="proc-split"></div>
+      <div id="survival-chart"></div>
+      <p class="river-caption" id="survival-caption"></p>
+      <div class="proc-legend" id="survival-legend"></div>
+      <p class="proc-explainer">Fast-dropping curves resolve candidates quickly — pair with pass rates to judge quality.</p>
+      <div class="section-head" style="margin-top:30px;"><span class="kicker" id="velocity-kicker">Velocity</span><span class="section-note" id="vh-note"></span></div>
+      <div id="velocity-heatmap"></div>
     </section>
 
     <!-- ========== SOURCES & PEOPLE ========== -->
@@ -3112,13 +3159,20 @@ function dimsSnapshot(){
   return Object.fromEntries(Object.entries(state.filters.dims).map(([k,v]) => [k, new Set(v)]));
 }
 function pushDrill(){
-  state.drill.push({ selection: state.selection ? { ...state.selection } : null, dims: dimsSnapshot() });
+  const f = state.filters;
+  state.drill.push({ selection: state.selection ? { ...state.selection } : null, dims: dimsSnapshot(),
+    period: { preset: f.periodPreset, customFrom: f.customFrom, customTo: f.customTo } });
 }
 function popDrill(){
   const snap = state.drill.pop();
   if (!snap) return;
   state.selection = snap.selection;
   state.filters.dims = snap.dims;
+  if (snap.period) { // drills may change the period (e.g. velocity-heatmap cohort cells) — restore it
+    state.filters.periodPreset = snap.period.preset;
+    state.filters.customFrom = snap.period.customFrom;
+    state.filters.customTo = snap.period.customTo;
+  }
   queueRender();
 }
 function drillToggleDim(dim, value){
@@ -3741,6 +3795,262 @@ function renderComposition(){
   wrap.appendChild(svg);
 }
 /* ============================================================
+   RENDER: PROCESS ANALYTICS (lab) — survival curves + velocity heatmap
+   Cohort-mode history views; both respect the active dimension filters
+   (they recompute from state.rows) and ignore the comparison period.
+   ============================================================ */
+/* Kaplan–Meier-style estimator: at each distinct resolution time t_i,
+   S(t) ← S(t) × (1 − d_i/n_i) where d_i = candidates resolved at t_i and
+   n_i = candidates still at risk. Candidates still active are RIGHT-CENSORED
+   at their current age: they leave the risk set at that age without counting
+   as an event, which keeps the curve honest about open pipelines. */
+function kmCurve(rows){
+  const now = new Date();
+  const obs = [];
+  for (const r of rows) {
+    if (!r.applied_at) continue;
+    const end = r.status === 'active' ? now : (r.rejected_at || r.hired_at || r.last_activity_at);
+    if (!end) continue;
+    const t = Math.max(0, Math.round((end - r.applied_at) / 86400000));
+    obs.push({ t, e: r.status === 'active' ? 0 : 1 });
+  }
+  obs.sort((a,b) => a.t - b.t);
+  let atRisk = obs.length, S = 1;
+  const pts = [{ t:0, s:1 }];
+  let i = 0;
+  while (i < obs.length) {
+    const t = obs[i].t;
+    let d = 0, c = 0;
+    while (i < obs.length && obs[i].t === t) { if (obs[i].e) d++; else c++; i++; }
+    if (d > 0 && atRisk > 0) { S *= (1 - d / atRisk); pts.push({ t, s: S }); }
+    atRisk -= (d + c);
+  }
+  const med = pts.find(p => p.s <= 0.5);
+  return { pts, n: obs.length, median: med ? med.t : null };
+}
+const PROC_SPLITS = [
+  ['overall','Overall'], ['source','by Source'], ['job','by Req'],
+  ['hiring_manager','by Hiring manager'], ['recruiter','by Recruiter'],
+];
+const SV_COLORS = ['var(--flow-3)','var(--flow-4)','var(--flow-5)','var(--warn)','var(--flow-2)'];
+function renderProcess(){
+  const section = $('#section-process');
+  if (impliedMode() !== 'cohort' || !state.rawRows.length) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+  attachTipOnce($('#process-kicker'), tipHtml(
+    'Process — how long candidates last in the process (survival curves) and whether stage transitions are speeding up or slowing down (velocity heatmap).',
+    'full-span history views; the comparison period does not apply here'));
+  if (!state.procSplit) state.procSplit = 'overall';
+  // split control
+  const splitWrap = $('#proc-split'); splitWrap.innerHTML = '';
+  for (const [key, label] of PROC_SPLITS) {
+    if (key !== 'overall' && !state.mapping[key]) continue;
+    const b = el('button', { class: state.procSplit === key ? 'active' : '', type:'button' }, label);
+    b.addEventListener('click', () => { state.procSplit = key; renderProcess(); });
+    splitWrap.appendChild(b);
+  }
+  renderSurvival();
+  renderVelocity();
+}
+function renderSurvival(){
+  const wrap = $('#survival-chart'); wrap.innerHTML = '';
+  const legend = $('#survival-legend'); legend.innerHTML = '';
+  const rows = state.rows;
+  const overall = kmCurve(rows);
+  if (!overall.n) { wrap.appendChild(el('div', { class:'attn-none' }, 'No candidates in view.')); $('#survival-caption').textContent=''; return; }
+  // x cap at p95 of resolution (event) times
+  const eventTimes = [];
+  const now = new Date();
+  for (const r of rows) {
+    if (r.status === 'active' || !r.applied_at) continue;
+    const end = r.rejected_at || r.hired_at || r.last_activity_at;
+    if (end) eventTimes.push(Math.max(0, (end - r.applied_at)/86400000));
+  }
+  const cap = Math.max(14, Math.ceil(quantile(eventTimes, 0.95) || 30));
+  // curves
+  let curves, hiddenNote = '';
+  if (state.procSplit === 'overall') {
+    curves = [{ label:'Overall', color:'var(--ink)', km: overall, seg:null }];
+  } else {
+    const groups = new Map();
+    for (const r of rows) { const v = String(dimValue(r, state.procSplit) ?? '—'); if (!groups.has(v)) groups.set(v, []); groups.get(v).push(r); }
+    const ranked = Array.from(groups.entries()).sort((a,b) => b[1].length - a[1].length);
+    const eligible = ranked.filter(([,rs]) => rs.length >= 15);
+    const hidden = ranked.length - eligible.length;
+    curves = eligible.slice(0, 5).map(([v, rs], i) => ({ label:v, color:SV_COLORS[i % SV_COLORS.length], km: kmCurve(rs), seg:v }));
+    if (hidden > 0) hiddenNote = ` · ${hidden} segment${hidden===1?'':'s'} under n=15 hidden`;
+    if (!curves.length) { wrap.appendChild(el('div', { class:'attn-none' }, 'No segments with n ≥ 15.')); $('#survival-caption').textContent=''; return; }
+  }
+  const width = Math.max(700, wrap.clientWidth || 900);
+  const height = 220;
+  const padL = 44, padR = 26, padT = 12, padB = 26;
+  const plotW = width - padL - padR, plotH = height - padT - padB;
+  const x = t => padL + Math.min(1, t / cap) * plotW;
+  const y = s => padT + (1 - s) * plotH;
+  const svg = svgEl('svg', { class:'survival', width, height, viewBox:`0 0 ${width} ${height}` });
+  svg.appendChild(svgEl('line', { class:'sv-baseline', x1:padL, y1:padT+plotH, x2:padL+plotW, y2:padT+plotH }));
+  for (const [frac, lab] of [[1,'100%'],[0.5,'50%'],[0,'0%']]) {
+    svg.appendChild(svgEl('text', { class:'sv-axis', x:padL-5, y:y(frac)+3.5, 'text-anchor':'end' }, textNode(lab)));
+  }
+  svg.appendChild(svgEl('text', { class:'sv-axis', x:padL, y:height-8, 'text-anchor':'start' }, textNode('day 0')));
+  svg.appendChild(svgEl('text', { class:'sv-axis', x:padL+plotW, y:height-8, 'text-anchor':'end' }, textNode('day '+cap+' (p95)')));
+  // median annotation on the overall view
+  if (state.procSplit === 'overall' && overall.median != null && overall.median <= cap) {
+    svg.appendChild(svgEl('line', { class:'sv-median', x1:padL, y1:y(0.5), x2:x(overall.median), y2:y(0.5) }));
+    svg.appendChild(svgEl('line', { class:'sv-median', x1:x(overall.median), y1:y(0.5), x2:x(overall.median), y2:padT+plotH }));
+    svg.appendChild(svgEl('text', { class:'sv-annot', x:x(overall.median)+5, y:y(0.5)-4 }, textNode('half resolved by day '+Math.round(overall.median))));
+  }
+  // step curves
+  for (const c of curves) {
+    let dPath = `M${x(0)},${y(1)}`;
+    let prevS = 1;
+    for (const p of c.km.pts) {
+      if (p.t === 0) continue;
+      const px = x(Math.min(p.t, cap));
+      dPath += ` L${px},${y(prevS)} L${px},${y(p.s)}`;
+      prevS = p.s;
+      if (p.t >= cap) break;
+    }
+    dPath += ` L${x(cap)},${y(prevS)}`;
+    const path = svgEl('path', { class:'sv-curve', d:dPath, stroke:c.color });
+    if (c.seg != null) {
+      path.addEventListener('click', () => drillToggleDim(state.procSplit, c.seg));
+      path.addEventListener('mouseenter', () => { svg.classList.add('hovering'); path.classList.add('hovered'); });
+      path.addEventListener('mouseleave', () => { svg.classList.remove('hovering'); path.classList.remove('hovered'); });
+    }
+    svg.appendChild(path);
+  }
+  // hover: per-curve % remaining at the pointed day
+  const svAt = (km, t) => { let s = 1; for (const p of km.pts) { if (p.t > t) break; s = p.s; } return s; };
+  const guide = svgEl('line', { class:'trend-guide', x1:0, y1:padT, x2:0, y2:padT+plotH, style:'display:none' });
+  svg.appendChild(guide);
+  svg.addEventListener('mousemove', (e) => {
+    const rect = svg.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (width / rect.width);
+    const day = Math.max(0, Math.min(cap, Math.round((mx - padL) / plotW * cap)));
+    guide.setAttribute('x1', x(day)); guide.setAttribute('x2', x(day));
+    guide.style.display = 'block';
+    const linesHtml = curves.map(c => `${escapeHtml(c.label)}: ${fmtPct(svAt(c.km, day), 0)} still in process`).join('<br>');
+    showRiverTooltip(e, `<b>Day ${day}</b><br>${linesHtml}<br><span class="tt-muted">full-span view — comparison period not applied</span>`);
+  });
+  svg.addEventListener('mouseleave', () => { guide.style.display = 'none'; hideRiverTooltip(); });
+  wrap.appendChild(svg);
+  const caption = $('#survival-caption');
+  caption.textContent = `Fig. Share of cohort still in process by days since application (n=${fmtN(overall.n)})${hiddenNote}.`;
+  attachTipOnce(caption, tipHtml(
+    'Kaplan–Meier-style survival: at each resolution time the curve drops by the share of at-risk candidates who resolved. Still-active candidates are right-censored at their current age — they leave the risk set without counting as resolved.',
+    'x capped at the 95th percentile of resolution times'));
+  if (curves.length > 1 || curves[0].seg != null) {
+    for (const c of curves) {
+      legend.appendChild(el('span', {}, el('span', { class:'swatch', style:'background:'+c.color }), `${c.label} (n=${fmtN(c.km.n)})`));
+    }
+  }
+}
+function renderVelocity(){
+  const wrap = $('#velocity-heatmap'); wrap.innerHTML = '';
+  const stages = state.canonicalStages;
+  const N = stages.length;
+  const iv = stageIntervals();
+  const transitions = [];
+  for (let i = 0; i < N - 1; i++) transitions.push({ i, label: stages[i] + '→' + stages[i+1] });
+  // cohort = apply month; last 12 individually, older folds into "earlier"
+  const nowD = dayjs();
+  const monthKeys = [];
+  for (let m = 0; m < 12; m++) monthKeys.push(nowD.subtract(m, 'month').format('YYYY-MM'));
+  const spanStart = datasetSpanStart();
+  const hasEarlier = dayjs(spanStart).isBefore(nowD.subtract(11, 'month').startOf('month'));
+  const cohortRows = new Map(); // key -> { durs: transitions[] of arrays, n }
+  const mkCohort = () => ({ durs: transitions.map(() => []), n: 0 });
+  const allDurs = transitions.map(() => []);
+  for (const r of state.rows) {
+    if (!r.applied_at) continue;
+    const key0 = dayjs(r.applied_at).format('YYYY-MM');
+    const key = monthKeys.includes(key0) ? key0 : (hasEarlier ? 'earlier' : null);
+    if (!key) continue;
+    if (!cohortRows.has(key)) cohortRows.set(key, mkCohort());
+    const c = cohortRows.get(key);
+    c.n++;
+    const info = iv.get(r);
+    if (!info) continue;
+    for (const tr of transitions) {
+      const a = info.entries[tr.i], b = info.entries[tr.i + 1];
+      if (a && b) { const d = Math.max(0, (b - a) / 86400000); c.durs[tr.i].push(d); allDurs[tr.i].push(d); }
+    }
+  }
+  // thresholds per transition from the pooled (all-time, filter-respecting) distribution
+  const thresholds = allDurs.map(a => ({ p50: quantile(a, 0.5), p75: quantile(a, 0.75), p90: quantile(a, 0.90) }));
+  const rowKeys = monthKeys.filter(k => cohortRows.has(k));
+  if (hasEarlier && cohortRows.has('earlier')) rowKeys.push('earlier');
+  if (!rowKeys.length) { wrap.appendChild(el('div', { class:'attn-none' }, 'No cohorts in view.')); return; }
+  $('#vh-note').textContent = 'median days per stage transition, by apply-month cohort';
+  attachTipOnce($('#velocity-kicker'), tipHtml(
+    'Velocity — median days each apply-month cohort spent on each stage transition. Tints against the all-time distribution: amber past its p50/p75, red past p90.',
+    'cells with fewer than 10 measured transitions show a muted dot; click a cell to see that cohort\'s candidates'));
+  const table = el('table', { class:'report-table' });
+  table.appendChild(el('thead', {}, el('tr', {},
+    el('th', {}, 'Cohort'),
+    ...transitions.map(tr => { const t = el('th', {}, tr.label); attachTip(t, tipHtml(`Median days from entering ${stages[tr.i]} to entering ${stages[tr.i+1]}.`, 'full-span view — comparison period not applied')); return t; }),
+    (() => { const t = el('th', {}, 'n'); attachTip(t, tipHtml('Cohort size — candidates who applied that month (current filters).')); return t; })())));
+  const tbody = el('tbody');
+  const monthBounds = key => {
+    if (key === 'earlier') {
+      const from = new Date(spanStart); from.setHours(0,0,0,0);
+      const to = nowD.subtract(11, 'month').startOf('month').subtract(1, 'day').endOf('day').toDate();
+      return [from, to];
+    }
+    const m = dayjs(key + '-01');
+    return [m.startOf('month').toDate(), m.endOf('month').toDate()];
+  };
+  const drillCohortCell = (key, toStageIdx) => {
+    const [from, to] = monthBounds(key);
+    pushDrill();
+    state.filters.periodPreset = 'custom';
+    state.filters.customFrom = from;
+    state.filters.customTo = to;
+    state.filters.dateField = 'applied_at';
+    $('#fd-date-from').value = dayjs(from).format('YYYY-MM-DD');
+    $('#fd-date-to').value = dayjs(to).format('YYYY-MM-DD');
+    state.selection = { type:'reached', stage: stages[toStageIdx] };
+    queueRender();
+    scrollLedgerIntoView();
+  };
+  for (const key of rowKeys) {
+    const c = cohortRows.get(key);
+    const label = key === 'earlier' ? 'earlier' : dayjs(key + '-01').format('MMM YYYY');
+    const tr = el('tr', {});
+    tr.appendChild(el('td', {}, label));
+    transitions.forEach((t, ti) => {
+      const arr = c.durs[ti];
+      if (arr.length < 10) {
+        tr.appendChild(el('td', { class:'vh-dot' }, '·'));
+        return;
+      }
+      const med = median(arr);
+      const th = thresholds[ti];
+      let cls = '';
+      if (th.p90 != null && med > th.p90) cls = 'vh-3';
+      else if (th.p75 != null && med > th.p75) cls = 'vh-2';
+      else if (th.p50 != null && med > th.p50) cls = 'vh-1';
+      const td = el('td', { class: (cls ? cls + ' ' : '') + 'vh-click' }, Math.round(med) + 'd');
+      const allMed = median(allDurs[ti]);
+      attachTip(td, tipHtml(`${label} · ${t.label}: median ${med.toFixed(1)}d (n=${arr.length}) vs ${allMed != null ? allMed.toFixed(1) : '—'}d all-time.`,
+        'full-span view — comparison period not applied; click to see this cohort'));
+      td.addEventListener('click', (e) => { e.stopPropagation(); hideRiverTooltip(); drillCohortCell(key, t.i + 1); });
+      tr.appendChild(td);
+    });
+    tr.appendChild(el('td', { class:'vh-n' }, fmtN(c.n)));
+    tbody.appendChild(tr);
+  }
+  // all-time reference row
+  const ref = el('tr', { class:'vh-refrow' });
+  ref.appendChild(el('td', {}, 'all-time'));
+  transitions.forEach((t, ti) => ref.appendChild(el('td', {}, allDurs[ti].length ? Math.round(median(allDurs[ti])) + 'd' : '·')));
+  ref.appendChild(el('td', { class:'vh-n' }, fmtN(state.rows.length)));
+  tbody.appendChild(ref);
+  table.appendChild(tbody);
+  wrap.appendChild(table);
+}
+/* ============================================================
    RENDER: STATEMENT OF FLOW
    ============================================================ */
 function renderStatement(){
@@ -4253,6 +4563,7 @@ function renderAll(){
   renderComposition();
   renderStatement();
   renderTrends();
+  renderProcess();
   renderSourcesAndPeople();
   renderLedger();
   renderFootnote();
