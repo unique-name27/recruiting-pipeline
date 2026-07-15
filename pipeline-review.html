@@ -195,6 +195,10 @@ main{ display:block; }
 .fd-panel .fd-selall{ display:flex; gap:12px; margin-top:8px; padding-top:8px; border-top:0.5px solid var(--hairline); font-size:11px; }
 .fd-panel .fd-selall button{ color:var(--muted); }
 .fd-panel .fd-selall button:hover{ color:var(--ink); }
+.fd-addfilters-btn{ font-size:12px; color:var(--muted); border-bottom:1px solid transparent; padding-bottom:1px; }
+.fd-addfilters-btn:hover{ color:var(--ink); border-bottom-color:var(--ink); }
+#fd-addfilters-wrap .fd-panel{ left:auto; right:0; }
+.fd-panel .fd-group-label{ font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); font-weight:600; margin:6px 0 4px; }
 .fd-search-global{
   margin-left:auto; border:none; border-bottom:1px solid var(--hairline); background:transparent; color:var(--ink);
   padding:3px 2px; font-size:12.5px; text-align:right; width:170px;
@@ -563,6 +567,10 @@ html.dark .sheet-overlay{ background:rgba(0,0,0,0.6); }
     </div>
     <span class="fd-comparison" id="fd-comparison-label"></span>
     <div class="fd-dims" id="fd-dims"></div>
+    <div class="fd-dim" id="fd-addfilters-wrap">
+      <button class="fd-addfilters-btn" id="btn-add-filters">+ Filters</button>
+      <div class="fd-panel hidden" id="fd-addfilters-panel"></div>
+    </div>
     <input type="text" class="fd-search-global" id="fd-search" placeholder="Search name, email, id…" />
   </div>
 </section>
@@ -690,7 +698,7 @@ const CANONICAL = [
   ['source','Source','rec',['source','source name','public name','source_name'],''],
   ['source_type','Source type','opt',['source type','source_type','source category'],''],
   ['recruiter','Recruiter','opt',['recruiter','credited to','recruiter name','recruiter_name'],''],
-  ['hiring_manager','Hiring manager','opt',['hiring manager','hiring_manager','hm'],''],
+  ['hiring_manager','Hiring manager','opt',['hiring manager','hiring_manager','hm','manager'],'Enables hiring-manager filter'],
   ['rejected_at','Rejected at','opt',['rejected at','rejection date','rejected_at'],'Powers rejection analysis'],
   ['rejection_reason','Rejection reason','opt',['rejection reason','rejection_reason','reason'],''],
   ['hired_at','Hired at','opt',['hired at','hire date','start date','hired_at'],'Powers time-to-hire'],
@@ -731,6 +739,7 @@ const state = {
   selection: null,           // { kind:'stage'|'reject'|'withdraw'|'decline'|'active', stage, } — sankey/table cross-filter
   drill: [],                 // history stack of pre-drill snapshots for "← Back" (viz clicks only)
   attnOpen: null,            // id of the Attention flag whose investigation panel is expanded
+  visibleDims: null,         // Set of dim keys shown in the filter desk (null = default set); persisted per fingerprint
   ledger: { page: 0, pageSize: 100, sortCol: 'daysInStage', sortDir: 'desc', expanded: new Set() },
   sourcesSort: { col: 'hireRate', dir: 'desc' },
   recruitersSort: { col: 'activeCount', dir: 'desc' },
@@ -870,7 +879,10 @@ function normalizeStatusValue(raw, statusMap){
    ============================================================ */
 function scoreHeaderToCanonical(header, canon){
   const h = norm(header); const aliases = canon[3];
-  for (const a of aliases) if (h === norm(a)) return 1.0;
+  // generic single-word aliases (e.g. "manager") are weaker evidence than a
+  // specific header, so an exact "Hiring Manager" outranks a bare "Manager"
+  const GENERIC_ALIASES = new Set(['manager']);
+  for (const a of aliases) if (h === norm(a)) return GENERIC_ALIASES.has(norm(a)) ? 0.9 : 1.0;
   const hTokens = new Set(h.split(' ')); let best = 0;
   for (const a of aliases) {
     const aTokensArr = norm(a).split(' ');
@@ -1105,6 +1117,10 @@ async function proceedWithParsed(parsed, append){
 function finalizeIngest(allRawRows, filesMeta){
   const m = state.mapping;
   const rows = [];
+  // headers consumed by the mapping (incl. stage-timestamp columns) — anything
+  // else survives normalization under row._extra for the customizable filter desk
+  const usedHeaders = new Set(Object.values(m).filter(Boolean));
+  if (state.stageDateCols) Object.values(state.stageDateCols).forEach(h => usedHeaders.add(h));
   for (const r of allRawRows) {
     const o = {};
     for (const c of CANONICAL) {
@@ -1117,6 +1133,12 @@ function finalizeIngest(allRawRows, filesMeta){
       } else {
         o[field] = (v==null || v==='') ? null : v;
       }
+    }
+    o._extra = {};
+    for (const h in r) {
+      if (usedHeaders.has(h) || h === '__srcFile') continue;
+      const v = r[h];
+      if (v != null && v !== '') o._extra[h] = v;
     }
     o.__srcFile = r.__srcFile || null;
     o.raw_stage = o.current_stage;
@@ -1159,6 +1181,7 @@ function finalizeIngest(allRawRows, filesMeta){
     fingerprint: state.fingerprint, rawRows: state.rawRows, files: state.files,
     headers: state.headers, rawIngestRows: state._rawIngestRows,
   }).catch(()=>{});
+  applyDimPrefs();
 
   $('#empty-state').classList.add('hidden');
   $('#report-body').classList.remove('hidden');
@@ -1353,10 +1376,71 @@ function openMapper(headers, rows, filesMeta, reopen){
    ============================================================ */
 const DIM_FIELDS = [
   ['job','Job'], ['department','Department'], ['office','Office'], ['recruiter','Recruiter'],
+  ['hiring_manager','Hiring manager'],
   ['source','Source'], ['source_type','Source type'], ['current_stage','Stage'], ['status','Status'],
 ];
 function mappedDimFields(){
   return DIM_FIELDS.filter(([f]) => f==='current_stage' || f==='status' || state.mapping[f]);
+}
+// dimension value accessor: canonical fields live on the row; extra source
+// columns (keys prefixed "x:") live under row._extra keyed by raw header name
+function dimValue(r, dim){
+  return dim.startsWith('x:') ? (r._extra ? r._extra[dim.slice(2)] : null) : r[dim];
+}
+function dimLabel(dim){
+  if (dim.startsWith('x:')) return dim.slice(2);
+  return (DIM_FIELDS.find(d => d[0] === dim) || [dim, dim])[1];
+}
+// extra low-cardinality source columns that weren't mapped to a canonical field
+let _extraColsCache = null;
+function extraColumns(){
+  if (_extraColsCache && _extraColsCache.n === state.rawRows.length) return _extraColsCache.list;
+  const sets = new Map();
+  const dead = new Set();
+  for (const r of state.rawRows) {
+    const ex = r._extra;
+    if (!ex) continue;
+    for (const h in ex) {
+      if (dead.has(h)) continue;
+      if (!sets.has(h)) sets.set(h, new Set());
+      const s = sets.get(h);
+      s.add(String(ex[h]));
+      if (s.size > 50) { dead.add(h); sets.delete(h); } // too many distinct values to filter on
+    }
+  }
+  const list = Array.from(sets.keys()).sort();
+  _extraColsCache = { n: state.rawRows.length, list };
+  return list;
+}
+function allFilterableFields(){
+  return {
+    canon: mappedDimFields(),
+    extras: extraColumns().map(h => ['x:'+h, h]),
+  };
+}
+function defaultVisibleDims(){
+  return new Set(mappedDimFields().map(([f]) => f));
+}
+function visibleDimFields(){
+  const { canon, extras } = allFilterableFields();
+  if (!state.visibleDims) return canon;
+  return [...canon, ...extras].filter(([f]) => state.visibleDims.has(f));
+}
+// visibility prefs live per dataset fingerprint alongside the mapping profile
+function persistDimPrefs(){
+  if (state.fingerprint) idbKeyval.set('dimprefs:'+state.fingerprint, Array.from(state.visibleDims || [])).catch(()=>{});
+}
+function applyDimPrefs(){
+  _extraColsCache = null;
+  state.visibleDims = defaultVisibleDims();
+  const fp = state.fingerprint;
+  idbKeyval.get('dimprefs:'+fp).then(p => {
+    if (p && state.fingerprint === fp) {
+      state.visibleDims = new Set(p);
+      buildDimFilterControls();
+      queueRender();
+    }
+  }).catch(()=>{});
 }
 function matchesSearch(r,q){
   return (r.candidate_name && r.candidate_name.toLowerCase().includes(q))
@@ -1390,7 +1474,7 @@ function baseFilteredRows(excludeDim){
     // In Current-pipeline mode the status filter is inert: everything is active by definition.
     if (dim === 'status' && f.periodPreset === 'current') continue;
     const set = f.dims[dim];
-    if (set && set.size) rows = rows.filter(r => set.has(String(r[dim] ?? '—')));
+    if (set && set.size) rows = rows.filter(r => set.has(String(dimValue(r, dim) ?? '—')));
   }
   if (f.search) { const q = f.search.toLowerCase(); rows = rows.filter(r => matchesSearch(r,q)); }
   if (state.selection) rows = rows.filter(rowMatchesSelection);
@@ -1455,7 +1539,7 @@ function facetedCounts(dimField){
     if (from && to) rows = rows.filter(r => { const d=r[f.dateField]; return d && d>=from && d<=to; });
   }
   const counts = new Map();
-  for (const r of rows) { const v = String(r[dimField] ?? '—'); counts.set(v, (counts.get(v)||0)+1); }
+  for (const r of rows) { const v = String(dimValue(r, dimField) ?? '—'); counts.set(v, (counts.get(v)||0)+1); }
   return counts;
 }
 function toggleDimValue(dim, value){
@@ -1476,7 +1560,7 @@ function activeFilterTerms(){
   const f = state.filters;
   for (const dim in f.dims) {
     if (dim === 'status' && f.periodPreset === 'current') continue; // inert in Current-pipeline mode
-    const label = (DIM_FIELDS.find(d=>d[0]===dim)||[dim,dim])[1];
+    const label = dimLabel(dim);
     const vals = Array.from(f.dims[dim]);
     terms.push({ text: `${label}: ${vals.join(', ')}`, clear: () => { delete f.dims[dim]; queueRender(); } });
   }
@@ -1934,6 +2018,15 @@ function generateSampleData(){
   const OFFICES = ['New York','Remote','Austin'];
   const SOURCES = [['Referral','Employee referral'],['LinkedIn','Sourced'],['Careers site','Inbound'],['Indeed','Inbound'],['Agency','Sourced'],['University','Sourced']];
   const RECRUITERS = ['Dana Ruiz','Marcus Webb','Priya Anand','Sam O’Neill','Talia Brooks'];
+  // 8 hiring managers, each consistently owning 1–2 reqs
+  const HMS_BY_JOB = {
+    'Backend Engineer': ['Nina Kowalski','Omar Haddad'],
+    'Product Designer': ['Grace Lin'],
+    'Account Executive': ['Victor Reyes','Ana Silva'],
+    'Data Analyst': ['Tom Berg'],
+    'Customer Success Manager': ['Leah Gordon','Raj Mehta'],
+  };
+  const LEVELS = ['L3','L4','L5','L6'];
   const FIRST = ['Alex','Jordan','Sam','Casey','Morgan','Riley','Taylor','Jamie','Avery','Quinn','Drew','Reese','Skyler','Rowan','Emerson','Dakota','Kendall','Peyton','Hayden','Finley'];
   const LAST = ['Chen','Patel','Garcia','Kim','Nguyen','Brown','Silva','Okafor','Mueller','Rossi','Kowalski','Haddad','Ivanov','Larsen','Diallo','Cho','Reyes','Novak','Fischer','Adeyemi'];
   const REJ_REASONS = ['Not enough relevant experience','Compensation expectations mismatch','Failed technical assessment','Culture fit concerns','Location / relocation','Withdrew — accepted other offer','Withdrew — unresponsive','Below bar on onsite loop'];
@@ -1994,10 +2087,11 @@ function generateSampleData(){
     const row = {
       application_id: appId, candidate_id: 'C'+appId, candidate_name: name, email,
       job, department: dept, office, applied_at, current_stage, status,
-      source, source_type: sourceType, recruiter, hiring_manager: null,
+      source, source_type: sourceType, recruiter, hiring_manager: pick(HMS_BY_JOB[job]),
       rejected_at, rejection_reason, hired_at, last_activity_at, stage_entered_at,
       raw_stage: current_stage, raw_status: status,
       stageDates: { screen: entered.Screen||null, onsite: entered.Onsite||null, offer: entered.Offer||null },
+      _extra: { Level: pick(LEVELS) }, // demo extra source column for the customizable filter desk
     };
     rows.push(row);
   }
@@ -2007,6 +2101,7 @@ function loadSampleData(){
   state.mapping = { candidate_name:'candidate_name', candidate_id:'candidate_id', application_id:'application_id',
     email:'email', job:'job', department:'department', office:'office', applied_at:'applied_at',
     current_stage:'current_stage', status:'status', source:'source', source_type:'source_type', recruiter:'recruiter',
+    hiring_manager:'hiring_manager',
     rejected_at:'rejected_at', rejection_reason:'rejection_reason', hired_at:'hired_at', last_activity_at:'last_activity_at',
     stage_entered_at:'stage_entered_at' };
   state.confidence = {}; for (const k in state.mapping) state.confidence[k] = 1;
@@ -2018,6 +2113,7 @@ function loadSampleData(){
   state.rawRows = generateSampleData();
   state._rawIngestRows = state.rawRows;
   state.files = [{ name:'sample-data.generated', rows: state.rawRows.length }];
+  applyDimPrefs();
   idbKeyval.set('mapping:'+state.fingerprint, {
     mapping: state.mapping, stageMap: state.stageMap, statusMap: state.statusMap,
     canonicalStages: state.canonicalStages, stageDateCols: state.stageDateCols,
@@ -2071,9 +2167,10 @@ function initFilterDefaults(){
 // Mode is implied by the period selection: "Current pipeline" is a snapshot of
 // today's actives; every other preset is a cohort view.
 function impliedMode(){ return state.filters.periodPreset === 'current' ? 'snapshot' : 'cohort'; }
+let _panelCloserWired = false;
 function buildDimFilterControls(){
   const wrap = $('#fd-dims'); wrap.innerHTML = '';
-  for (const [field,label] of mappedDimFields()) {
+  for (const [field,label] of visibleDimFields()) {
     const btn = el('button', {}, label+' ▾');
     const panel = el('div', { class:'fd-panel hidden' });
     const dimEl = el('div', { class:'fd-dim' }, btn, panel);
@@ -2085,12 +2182,15 @@ function buildDimFilterControls(){
     });
     wrap.appendChild(dimEl);
   }
-  document.addEventListener('click', () => $$('.fd-panel').forEach(p=>p.classList.add('hidden')));
+  if (!_panelCloserWired) {
+    _panelCloserWired = true;
+    document.addEventListener('click', () => $$('.fd-panel').forEach(p=>p.classList.add('hidden')));
+  }
 }
 function renderDimPanel(field, panel){
   panel.innerHTML = '';
   const counts = facetedCounts(field);
-  const allVals = Array.from(new Set(state.rawRows.map(r => String(r[field] ?? '—')))).sort();
+  const allVals = Array.from(new Set(state.rawRows.map(r => String(dimValue(r, field) ?? '—')))).sort();
   const search = el('input', { class:'fd-search', type:'text', placeholder:'Search…' });
   const list = el('div', { class:'fd-list' });
   const selSet = state.filters.dims[field] || new Set();
@@ -2114,6 +2214,35 @@ function renderDimPanel(field, panel){
   panel.addEventListener('click', e => e.stopPropagation());
   panel.append(search, list, selall);
 }
+// "+ Filters" panel: choose which dimension filters appear in the desk
+function renderAddFiltersPanel(panel){
+  panel.innerHTML = '';
+  if (!state.visibleDims) state.visibleDims = defaultVisibleDims();
+  const { canon, extras } = allFilterableFields();
+  const mkRow = (key, label) => {
+    const cb = el('input', { type:'checkbox' });
+    cb.checked = state.visibleDims.has(key);
+    cb.addEventListener('change', () => {
+      if (cb.checked) {
+        state.visibleDims.add(key);
+      } else {
+        state.visibleDims.delete(key);
+        if (state.filters.dims[key]) delete state.filters.dims[key]; // hiding a filter clears its selections
+      }
+      persistDimPrefs();
+      buildDimFilterControls();
+      queueRender();
+    });
+    return el('label', { class:'fd-item' }, cb, el('span', { class:'fd-item-name' }, label));
+  };
+  panel.appendChild(el('div', { class:'fd-group-label' }, 'Filters'));
+  canon.forEach(([k,l]) => panel.appendChild(mkRow(k, l)));
+  if (extras.length) {
+    panel.appendChild(el('div', { class:'fd-group-label' }, 'From source file'));
+    extras.forEach(([k,l]) => panel.appendChild(mkRow(k, l)));
+  }
+  panel.addEventListener('click', e => e.stopPropagation());
+}
 function renderFilterDesk(){
   const f = state.filters;
   $('#fd-period').value = f.periodPreset;
@@ -2121,7 +2250,7 @@ function renderFilterDesk(){
   // the applied/last-activity toggle only matters for date-windowed presets
   $('#fd-datefield-group').classList.toggle('hidden', f.periodPreset === 'current' || f.periodPreset === 'total');
   $$('.fd-datefield button').forEach(b => b.classList.toggle('active', b.dataset.datefield===f.dateField));
-  const dims = mappedDimFields();
+  const dims = visibleDimFields();
   $$('#fd-dims .fd-dim').forEach((dimEl, idx) => {
     if (!dims[idx]) return;
     const [field,label] = dims[idx];
@@ -3479,7 +3608,7 @@ function renderLedger(){
       closeBtn.addEventListener('click', (e) => { e.stopPropagation(); state.ledger.expanded.delete(key); renderLedger(); });
       const detail = el('div', { class:'ledger-row-detail' },
         el('div', { style:'display:flex; justify-content:space-between; gap:12px; align-items:baseline;' },
-          el('span', {}, `${r.email||'—'} · ${r.candidate_id||r.application_id||'—'}${r.rejection_reason?' · '+r.rejection_reason:''}`),
+          el('span', {}, `${r.email||'—'} · ${r.candidate_id||r.application_id||'—'}${r.hiring_manager?' · HM: '+r.hiring_manager:''}${r.rejection_reason?' · '+r.rejection_reason:''}`),
           closeBtn),
         el('div', { class:'timeline' }, ...steps.flatMap(([label,date],i) => {
           const step = el('span', { class:'tl-step' }, el('span', { class:'tl-dot' }), el('span', {}, el('span', { class:'tl-label' }, label), ' '+fmtDate(date)));
@@ -3640,6 +3769,12 @@ function applySavedView(v){
   state.filters = deserializeFilters(v.filters);
   state.selection = null;
   state.drill.length = 0;
+  // restore which filters were visible; any dim carrying a selection must be visible
+  if (v.visibleDims) state.visibleDims = new Set(v.visibleDims);
+  else if (!state.visibleDims) state.visibleDims = defaultVisibleDims();
+  for (const k of Object.keys(state.filters.dims)) state.visibleDims.add(k);
+  persistDimPrefs();
+  buildDimFilterControls();
   $('#fd-search').value = state.filters.search;
   if (state.filters.customFrom) $('#fd-date-from').value = dayjs(state.filters.customFrom).format('YYYY-MM-DD');
   if (state.filters.customTo) $('#fd-date-to').value = dayjs(state.filters.customTo).format('YYYY-MM-DD');
@@ -3652,7 +3787,8 @@ async function saveCurrentView(){
   const name = nameInput.value.trim();
   if (!name) { toast('Name this view first.'); return; }
   const views = (await idbKeyval.get('savedViews')) || [];
-  views.push({ id: Date.now(), name, filters: serializeFilters(state.filters) });
+  views.push({ id: Date.now(), name, filters: serializeFilters(state.filters),
+    visibleDims: Array.from(state.visibleDims || defaultVisibleDims()) });
   await idbKeyval.set('savedViews', views);
   nameInput.value = '';
   renderSavedViewsList();
@@ -3700,6 +3836,13 @@ function wireEvents(){
   $('#fd-date-to').addEventListener('change', (e) => { state.filters.customTo = e.target.value ? new Date(e.target.value+'T23:59:59') : null; queueRender(); });
   $$('.fd-datefield button').forEach(b => b.addEventListener('click', () => { state.filters.dateField = b.dataset.datefield; queueRender(); }));
   $('#fd-search').addEventListener('input', debounce((e) => { state.filters.search = e.target.value; queueRender(); }, 150));
+  $('#btn-add-filters').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const panel = $('#fd-addfilters-panel');
+    const wasOpen = !panel.classList.contains('hidden');
+    $$('.fd-panel').forEach(p => p.classList.add('hidden'));
+    if (!wasOpen) { renderAddFiltersPanel(panel); panel.classList.remove('hidden'); }
+  });
   $('#btn-export-csv').addEventListener('click', exportLedgerCsv);
   $('#btn-copy-summary').addEventListener('click', copyExecSummary);
 
@@ -3746,6 +3889,7 @@ async function init(){
       $('#report-body').classList.remove('hidden');
       $('#filterdesk').classList.remove('hidden');
       initFilterDefaults();
+      applyDimPrefs();
       buildDimFilterControls();
       renderAll();
       toast('Restored your last session.');
