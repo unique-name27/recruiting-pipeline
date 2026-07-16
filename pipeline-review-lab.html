@@ -438,8 +438,10 @@ svg.funnel .fn-bar:hover, svg.funnel .fn-rest:hover{ opacity:0.85; }
 .aq-copy{ margin-left:auto; font-size:11.5px; color:var(--muted); }
 .aq-copy:hover{ color:var(--ink); }
 .aq-row{ display:flex; align-items:center; gap:10px; padding:5px 2px; border-bottom:0.5px solid var(--hairline); font-size:12.5px; }
-.aq-row.handled{ opacity:0.45; }
-.aq-row.handled .aq-name{ text-decoration:line-through; text-decoration-color:var(--muted); }
+/* handled rows stay fully visible and IN PLACE: struck-through muted name,
+   tints dropped — never opacity-dimmed, never reordered */
+.aq-row.handled .aq-name{ text-decoration:line-through; text-decoration-color:var(--muted); color:var(--muted); }
+.aq-row.handled .aq-days{ color:var(--muted); font-weight:400; }
 .aq-check{ accent-color:var(--ink); flex-shrink:0; cursor:pointer; }
 .aq-name{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left; }
 .aq-job{ width:170px; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); }
@@ -3317,25 +3319,36 @@ function computeFinding(){
     return f ? f.medianDays : null;
   };
   const candidates = [];
+  // Significance gate (shared with the trend-fig callouts): a Δ-based headline
+  // needs ≥5 underlying events on each side AND a ≥15% relative change —
+  // anything weaker is noise and never reaches the headline.
+  const sigDelta = (cur, prevV, nCur, nPrev) => {
+    if (cur == null || prevV == null || nCur < 5 || nPrev < 5) return false;
+    return Math.abs(cur - prevV) / Math.max(Math.abs(prevV), 0.01) >= 0.15;
+  };
+  const resolvedOffers = rs => rs.filter(r=>r.status==='hired'||r.status==='declined').length;
   const oa1 = offerAccept(rows), oa0 = offerAccept(prev);
-  if (oa1!=null && oa0!=null) candidates.push({ score: Math.abs(oa1-oa0)*100*1.2,
+  if (sigDelta(oa1, oa0, resolvedOffers(rows), resolvedOffers(prev))) candidates.push({ score: Math.abs(oa1-oa0)*100*1.2,
     text: `Offer acceptance ${oa1<oa0?'fell':'rose'} ${Math.abs(Math.round((oa1-oa0)*100))} points to ${fmtPct(oa1,0)}.` });
   if (screenIdx>=0 && onsiteIdx>=0) {
     const w1 = stageWait(rows,'Onsite'), w0 = stageWait(prev,'Onsite');
-    if (w1!=null && w0!=null) candidates.push({ score: Math.abs(w1-w0)*1.4,
-      text: `Screen→onsite wait grew ${Math.abs(Math.round(w1-w0))} days to ${Math.round(w1)}.` });
+    const reachedOnsite = rs => rs.filter(r => stageIndex(r.current_stage) >= onsiteIdx).length;
+    if (sigDelta(w1, w0, reachedOnsite(rows), reachedOnsite(prev))) candidates.push({ score: Math.abs(w1-w0)*1.4,
+      text: `Screen→onsite wait ${w1>w0?'grew':'shrank'} ${Math.abs(Math.round(w1-w0))} days to ${Math.round(w1)}.` });
   }
-  if (rows.length && prev.length) {
+  if (sigDelta(rows.length, prev.length, rows.length, prev.length)) {
     const pct = (rows.length-prev.length)/prev.length*100;
     candidates.push({ score: Math.abs(pct)*0.35, text: `Applications ${pct>=0?'rose':'fell'} ${Math.abs(Math.round(pct))}% to ${fmtN(rows.length)}.` });
   }
   const t1 = medTTH(rows), t0 = medTTH(prev);
-  if (t1!=null && t0!=null) candidates.push({ score: Math.abs(t1-t0)*1.1,
+  const hiresWithDates = rs => rs.filter(r=>r.hired_at&&r.applied_at).length;
+  if (sigDelta(t1, t0, hiresWithDates(rows), hiresWithDates(prev))) candidates.push({ score: Math.abs(t1-t0)*1.1,
     text: `Time-to-hire ${t1>t0?'grew':'fell'} ${Math.abs(Math.round(t1-t0))} days to ${Math.round(t1)}.` });
   const r1 = computeRejectionReasonShare(rows), r0 = computeRejectionReasonShare(prev);
-  if (r1 && r0 && r1.reason===r0.reason) candidates.push({ score: Math.abs(r1.share-r0.share)*100,
+  const rejReasonN = rs => rs.filter(r=>r.status==='rejected' && r.rejection_reason).length;
+  if (r1 && r0 && r1.reason===r0.reason && sigDelta(r1.share, r0.share, rejReasonN(rows), rejReasonN(prev))) candidates.push({ score: Math.abs(r1.share-r0.share)*100,
     text: `"${r1.reason}" grew to ${fmtPct(r1.share,0)} of rejections.` });
-  else if (r1) candidates.push({ score: r1.share*60, text: `"${r1.reason}" is the top rejection reason at ${fmtPct(r1.share,0)}.` });
+  else if (r1 && rejReasonN(rows) >= 5) candidates.push({ score: r1.share*60, text: `"${r1.reason}" is the top rejection reason at ${fmtPct(r1.share,0)}.` });
   candidates.sort((a,b)=>b.score-a.score);
   const best = candidates[0];
   if (!best || best.score < 3) return { headline: 'Nothing unusual: pipeline within normal ranges.', sub: subLabel() };
@@ -3601,7 +3614,10 @@ function renderActionQueue(){
   }
   const pendingCount = g => g.rows.filter(r => !actionRowState(rowKey(r)).handled).length;
   const groupArr = Array.from(groups.values());
-  groupArr.sort((a,b) => pendingCount(b) - pendingCount(a) || b.rows.length - a.rows.length);
+  // STABLE ordering: total overdue desc + name tiebreak — never by pending count,
+  // so checking a row as handled cannot reorder groups and teleport the row
+  // out from under the cursor (the bug users read as "the checkbox is broken")
+  groupArr.sort((a,b) => (b.rows.length - a.rows.length) || String(a.name).localeCompare(String(b.name)));
   groupArr.forEach(g => g.rows.sort((a,b) => (daysInCurrentStage(b, now)||0) - (daysInCurrentStage(a, now)||0)));
   const totalPending = groupArr.reduce((s,g) => s + pendingCount(g), 0);
   $('#actions-note').textContent = `${fmtN(totalPending)} pending · ${fmtN(all.length)} overdue this week`;
@@ -5410,17 +5426,19 @@ function sparkPath(points, w, h, pad=4, padRight){
   return { line, area, xs, ys, min, max };
 }
 const TREND_DEFS = [
-  { id:'apps', title:'Applications', metric: rows => rows.length, field:'applied_at', rate:true, goodDir:'up',
+  // `count` = the underlying event count behind each bin's value, used by the
+  // significance gate on the Δ callouts (≥5 events on both sides required)
+  { id:'apps', title:'Applications', metric: rows => rows.length, count: rows => rows.length, field:'applied_at', rate:true, goodDir:'up',
     explain:'Candidates who applied, counted by application date.' },
-  { id:'hires', title:'Hires', metric: rows => rows.filter(r=>r.status==='hired').length, field:'hired_at', rate:true, goodDir:'up',
+  { id:'hires', title:'Hires', metric: rows => rows.filter(r=>r.status==='hired').length, count: rows => rows.filter(r=>r.status==='hired').length, field:'hired_at', rate:true, goodDir:'up',
     explain:'Candidates hired, counted by hire date.' },
-  { id:'offeraccept', title:'Offer accept %', metric: rows => { const h=rows.filter(r=>r.status==='hired').length,d=rows.filter(r=>r.status==='declined').length; return (h+d)?h/(h+d):0; }, field:'applied_at', pct:true, goodDir:'up',
+  { id:'offeraccept', title:'Offer accept %', metric: rows => { const h=rows.filter(r=>r.status==='hired').length,d=rows.filter(r=>r.status==='declined').length; return (h+d)?h/(h+d):0; }, count: rows => rows.filter(r=>r.status==='hired'||r.status==='declined').length, field:'applied_at', pct:true, goodDir:'up',
     explain:'Accepted ÷ resolved offers, grouped by the cohort\'s application date.' },
-  { id:'tth', title:'Median time-to-hire', metric: rows => median(rows.filter(r=>r.hired_at&&r.applied_at).map(r=>(r.hired_at-r.applied_at)/86400000))||0, field:'applied_at', days:true, goodDir:'down',
+  { id:'tth', title:'Median time-to-hire', metric: rows => median(rows.filter(r=>r.hired_at&&r.applied_at).map(r=>(r.hired_at-r.applied_at)/86400000))||0, count: rows => rows.filter(r=>r.hired_at&&r.applied_at).length, field:'applied_at', days:true, goodDir:'down',
     explain:'Median days from application to hire, by application cohort.' },
-  { id:'wait', title:'Screen→onsite wait', metric: rows => { const f = computeStageFlow(rows, state.canonicalStages, null, 'cohort').find(x=>x.stage==='Screen'); return f&&f.medianDays!=null?f.medianDays:0; }, field:'applied_at', days:true, goodDir:'down',
+  { id:'wait', title:'Screen→onsite wait', metric: rows => { const f = computeStageFlow(rows, state.canonicalStages, null, 'cohort').find(x=>x.stage==='Screen'); return f&&f.medianDays!=null?f.medianDays:0; }, count: rows => { const si = Math.max(1, state.canonicalStages.indexOf('Screen')); return rows.filter(r=>stageIndex(r.current_stage) >= si).length; }, field:'applied_at', days:true, goodDir:'down',
     explain:'Median days spent in Screen before advancing, by application cohort.' },
-  { id:'pipeline', title:'Pipeline size (active)', metric: rows => rows.filter(r=>r.status==='active').length, field:'applied_at', goodDir:'up',
+  { id:'pipeline', title:'Pipeline size (active)', metric: rows => rows.filter(r=>r.status==='active').length, count: rows => rows.filter(r=>r.status==='active').length, field:'applied_at', goodDir:'up',
     explain:'Candidates from each application cohort who are still in process today.' },
 ];
 const RES_ABBREV = { day:'d', week:'wk', month:'mo' };
@@ -5449,16 +5467,16 @@ function renderTrends(){
   const spanDays = Math.max(1, (range[1]-range[0])/86400000);
   const res = pickResolution(spanDays);
   TREND_DEFS.forEach((def,idx) => {
-    const bins = buildBins(state.rows, def.field, res, range).map(b => ({ ...b, value: (() => {
+    const bins = buildBins(state.rows, def.field, res, range).map(b => {
       const rowsInBin = state.rows.filter(r => r[def.field] && binKey(r[def.field],res)===b.key);
-      return def.metric(rowsInBin);
-    })() }));
+      return { ...b, value: def.metric(rowsInBin), n: def.count ? def.count(rowsInBin) : rowsInBin.length };
+    });
     let prevBins = null;
     if (state.prevRows && state.prevRange) {
-      prevBins = buildBins(state.prevRows, def.field, res, state.prevRange).map(b => ({ ...b, value: (() => {
+      prevBins = buildBins(state.prevRows, def.field, res, state.prevRange).map(b => {
         const rowsInBin = state.prevRows.filter(r => r[def.field] && binKey(r[def.field],res)===b.key);
-        return def.metric(rowsInBin);
-      })() }));
+        return { ...b, value: def.metric(rowsInBin), n: def.count ? def.count(rowsInBin) : rowsInBin.length };
+      });
     }
     const expanded = state.trendExpanded === def.id;
     // right gutter reserves room for the latest-value + Δ labels
@@ -5505,18 +5523,31 @@ function renderTrends(){
       const lx = w - padR + 8;
       const ly = Math.min(Math.max(sp.ys[li], 14), h-16);
       svg.appendChild(svgEl('text', { class:'trend-latest', x:lx, y:ly, 'text-anchor':'start' }, textNode(trendValueLabel(def, latest, res))));
-      // Δ vs comparison-period end where one exists, else vs start of window
-      const base = (prevBins && prevBins.length) ? prevBins[prevBins.length-1].value : vals[0];
+      // Δ vs the COMPARISON period's MATCHING bin (or the trailing-8-bin mean
+      // when no comparison exists). Colored only when the change is significant:
+      // |Δ| ≥ 15% relative AND ≥5 underlying events on both sides — anything
+      // weaker renders muted so the callouts stop promoting noise. The partial
+      // current bin never drives the callout (li is the last COMPLETE bin).
+      let base = null, nBase = 0;
+      if (prevBins && prevBins[li] != null) { base = prevBins[li].value; nBase = prevBins[li].n; }
+      else if (li >= 1) {
+        const win = bins.slice(Math.max(0, li-8), li);
+        base = win.reduce((s,b) => s+b.value, 0) / win.length;
+        nBase = Math.round(win.reduce((s,b) => s+b.n, 0) / win.length);
+      }
       let deltaTxt = null, deltaCls = 'flat';
       if (base != null && isFinite(base)) {
+        const nCur = bins[li].n;
+        const rel = Math.abs(latest-base) / Math.max(Math.abs(base), def.pct ? 0.01 : 1e-9);
+        const significant = rel >= 0.15 && nCur >= 5 && nBase >= 5;
         if (def.pct) {
           const dPt = Math.round((latest-base)*100);
           deltaTxt = (dPt>=0?'+':'')+dPt+'pt';
-          deltaCls = dPt===0 ? 'flat' : ((dPt>0) === (def.goodDir==='up') ? 'good' : 'bad');
+          deltaCls = (!significant || dPt===0) ? 'flat' : ((dPt>0) === (def.goodDir==='up') ? 'good' : 'bad');
         } else if (base !== 0) {
           const dPct = Math.round((latest-base)/Math.abs(base)*100);
           deltaTxt = (dPct>=0?'+':'')+dPct+'%';
-          deltaCls = dPct===0 ? 'flat' : ((dPct>0) === (def.goodDir==='up') ? 'good' : 'bad');
+          deltaCls = (!significant || dPct===0) ? 'flat' : ((dPct>0) === (def.goodDir==='up') ? 'good' : 'bad');
         }
       }
       if (deltaTxt) svg.appendChild(svgEl('text', { class:'trend-delta '+deltaCls, x:lx, y:ly+12, 'text-anchor':'start' }, textNode(deltaTxt)));

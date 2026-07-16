@@ -477,6 +477,82 @@ html.dark .sheet-overlay{ background:rgba(0,0,0,0.6); }
 .load-data-list .prow{ align-items:center; }
 
 /* ============================================================
+   ACTION QUEUE — "This week" worklist (promoted from lab)
+   ============================================================ */
+.aq-ghead{ display:flex; align-items:baseline; gap:10px; margin:16px 0 4px; font-size:12.5px; }
+.aq-ghead:first-child{ margin-top:0; }
+.aq-gname{ font-weight:600; color:var(--ink); }
+.aq-grole{ color:var(--muted); font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; }
+.aq-gcount{ color:var(--muted); font-variant-numeric:tabular-nums; }
+.aq-copy{ margin-left:auto; font-size:11.5px; color:var(--muted); }
+.aq-copy:hover{ color:var(--ink); }
+.aq-row{ display:flex; align-items:center; gap:10px; padding:5px 2px; border-bottom:0.5px solid var(--hairline); font-size:12.5px; }
+/* handled rows stay fully visible and IN PLACE: struck-through muted name,
+   tints dropped — never opacity-dimmed, never reordered */
+.aq-row.handled .aq-name{ text-decoration:line-through; text-decoration-color:var(--muted); color:var(--muted); }
+.aq-row.handled .aq-days{ color:var(--muted); font-weight:400; }
+.aq-check{ accent-color:var(--ink); flex-shrink:0; cursor:pointer; }
+.aq-name{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left; }
+.aq-job{ width:170px; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); }
+.aq-stage{ width:90px; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); }
+.aq-days{ width:36px; flex-shrink:0; text-align:right; font-variant-numeric:tabular-nums; color:var(--muted); }
+.aq-days.amber{ color:var(--warn); font-weight:600; }
+.aq-days.red{ color:var(--neg); font-weight:600; }
+.aq-role{ width:100px; flex-shrink:0; color:var(--muted); font-size:10.5px; text-transform:uppercase; letter-spacing:0.05em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.aq-snooze{ flex-shrink:0; font-size:11.5px; }
+/* ============================================================
+   OWNERS / "Talk to" (promoted from lab)
+   ============================================================ */
+.attn-owners{ margin:2px 0 10px; font-size:12.5px; }
+.attn-owners .kicker{ display:block; margin-bottom:4px; }
+.owner-link{ color:var(--ink); font-variant-numeric:tabular-nums; border-bottom:1px solid transparent; padding-bottom:1px; }
+.owner-link:hover, .owner-link:focus-visible{ border-bottom-color:var(--ink); outline:none; }
+.owner-sep{ color:var(--muted); margin:0 6px; }
+.ledger-owner{ color:var(--muted); font-size:10.5px; margin-left:4px; }
+/* ============================================================
+   FLOW VIEW TOGGLE + FUNNEL (promoted from lab; no Board)
+   ============================================================ */
+.flow-view-toggle{ display:inline-flex; gap:12px; margin-left:16px; font-size:11.5px; }
+.flow-view-toggle button{ color:var(--muted); border-bottom:1px solid transparent; padding-bottom:1px; }
+.flow-view-toggle button:hover{ color:var(--ink); }
+.flow-view-toggle button.active{ color:var(--ink); border-bottom-color:var(--ink); font-weight:600; }
+svg.funnel text{ font-family:var(--sans); font-variant-numeric:tabular-nums; }
+svg.funnel .fn-label{ font-size:11.5px; font-weight:600; fill:var(--ink); }
+svg.funnel .fn-count{ font-size:11px; fill:var(--ink); }
+svg.funnel .fn-pass{ font-size:10.5px; fill:var(--muted); }
+svg.funnel .fn-bar{ fill:var(--flow-3); cursor:pointer; }
+svg.funnel .fn-rest{ fill:var(--rej); opacity:0.4; cursor:pointer; }
+svg.funnel .fn-inproc{ fill:var(--flow-1); opacity:0.7; }
+svg.funnel .fn-bar:hover, svg.funnel .fn-rest:hover{ opacity:0.85; }
+/* ============================================================
+   TIME MACHINE control — thin-rule scrubber + serif readout
+   (promoted from lab; no replay animation)
+   ============================================================ */
+.tm-control{ display:inline-flex; align-items:center; gap:8px; margin-left:14px; }
+.tm-aslabel{ font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); font-weight:600; }
+.tm-step{ color:var(--muted); font-size:11px; padding:0 2px; }
+.tm-step:hover{ color:var(--ink); }
+.tm-control input[type=range]{ -webkit-appearance:none; appearance:none; width:150px; height:14px; background:transparent; cursor:pointer; }
+.tm-control input[type=range]::-webkit-slider-runnable-track{ height:1px; background:var(--hairline); }
+.tm-control input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; appearance:none; width:9px; height:9px; background:var(--ink); border:none; border-radius:0; margin-top:-4px; }
+.tm-control input[type=range]::-moz-range-track{ height:1px; background:var(--hairline); }
+.tm-control input[type=range]::-moz-range-thumb{ width:9px; height:9px; background:var(--ink); border:none; border-radius:0; }
+.tm-control input[type=range]:focus{ outline:none; }
+.tm-readout{ font-family:var(--serif); font-style:italic; font-size:12px; color:var(--ink); min-width:80px; font-variant-numeric:tabular-nums; }
+.tm-noteline{ font-size:12px; color:var(--warn); margin:6px 0 10px; }
+.tm-noteline button{ color:var(--warn); text-decoration:underline; text-underline-offset:2px; }
+.tm-noteline button:hover{ color:var(--ink); }
+/* composition history chart */
+svg.comp text{ font-family:var(--sans); font-variant-numeric:tabular-nums; }
+svg.comp .comp-axis{ font-size:9.5px; fill:var(--muted); }
+svg.comp .comp-baseline{ stroke:var(--hairline); stroke-width:1; }
+svg.comp .comp-band{ stroke:var(--paper); stroke-width:0.75; cursor:pointer; }
+svg.comp .comp-marker{ stroke:var(--ink); stroke-width:1; stroke-dasharray:3 3; }
+@media print{
+  .aq-check, .aq-snooze, .aq-copy, .flow-view-toggle, .tm-control, .tm-noteline{ display:none !important; }
+}
+
+/* ============================================================
    TOAST
    ============================================================ */
 .toast-line{
@@ -605,6 +681,17 @@ html.dark .sheet-overlay{ background:rgba(0,0,0,0.6); }
       <div id="attention-list"></div>
     </section>
 
+    <!-- ========== ACTION QUEUE — "This week" (Current pipeline only) ========== -->
+    <section class="section hidden" id="section-actions">
+      <div class="section-head">
+        <span class="kicker">This week</span>
+        <span class="section-note" id="actions-note"></span>
+        <button class="underline-btn section-action" id="btn-actions-clear">Clear</button>
+      </div>
+      <div id="actions-list"></div>
+      <p class="river-caption">Worklist state is local to this browser.</p>
+    </section>
+
     <!-- ========== BY THE NUMBERS ========== -->
     <section class="section" id="section-stats">
       <div class="section-head"><span class="kicker">By the numbers</span></div>
@@ -617,9 +704,23 @@ html.dark .sheet-overlay{ background:rgba(0,0,0,0.6); }
       <div id="reqs-table-wrap"></div>
     </section>
 
-    <!-- ========== THE RIVER ========== -->
+    <!-- ========== THE FLOW (funnel default · river alternate) ========== -->
     <section class="section" id="section-river">
-      <div class="section-head"><span class="kicker">Flow</span><span class="river-filtered hidden" id="river-filtered"></span><span class="section-note" id="river-note"></span></div>
+      <div class="section-head">
+        <span class="kicker">Flow</span>
+        <span class="flow-view-toggle" id="flow-view-toggle"></span>
+        <span class="river-filtered hidden" id="river-filtered"></span>
+        <span class="tm-control hidden" id="tm-control">
+          <span class="tm-aslabel" id="tm-aslabel">as of ▸</span>
+          <button class="tm-step" id="tm-back" type="button" aria-label="one week earlier">◂</button>
+          <input type="range" id="tm-range" min="0" max="100" value="100" aria-label="pipeline as-of date" />
+          <button class="tm-step" id="tm-fwd" type="button" aria-label="one week later">▸</button>
+          <span class="tm-readout" id="tm-readout">today</span>
+          <button class="underline-btn muted hidden" id="tm-today" type="button">today</button>
+        </span>
+        <span class="section-note" id="river-note"></span>
+      </div>
+      <div class="tm-noteline hidden" id="tm-noteline">Viewing pipeline as of <span id="tm-note-date"></span> — <button id="tm-note-reset" type="button">return to today</button></div>
       <div class="river-scroll">
         <div class="river-svg-wrap" id="river-wrap"></div>
       </div>
@@ -630,6 +731,13 @@ html.dark .sheet-overlay{ background:rgba(0,0,0,0.6); }
     <section class="section hidden" id="section-aging">
       <div class="section-head"><span class="kicker">Aging</span><span class="section-note" id="aging-note"></span></div>
       <div id="aging-board"></div>
+    </section>
+
+    <!-- ========== COMPOSITION HISTORY (Current pipeline only) ========== -->
+    <section class="section hidden" id="section-composition">
+      <div class="section-head"><span class="kicker" id="comp-kicker">Composition</span><span class="section-note" id="comp-note"></span></div>
+      <div id="comp-chart"></div>
+      <p class="river-caption" id="comp-caption"></p>
     </section>
 
     <!-- ========== STATEMENT OF FLOW ========== -->
@@ -698,6 +806,7 @@ const CANONICAL = [
   ['source','Source','rec',['source','source name','public name','source_name'],''],
   ['source_type','Source type','opt',['source type','source_type','source category'],''],
   ['recruiter','Recruiter','opt',['recruiter','credited to','recruiter name','recruiter_name'],''],
+  ['coordinator','Coordinator','opt',['coordinator','recruiting coordinator','rc','interview coordinator'],'Enables coordinator filter + owner heuristics'],
   ['hiring_manager','Hiring manager','opt',['hiring manager','hiring_manager','hm','manager'],'Enables hiring-manager filter'],
   ['rejected_at','Rejected at','opt',['rejected at','rejection date','rejected_at'],'Powers rejection analysis'],
   ['rejection_reason','Rejection reason','opt',['rejection reason','rejection_reason','reason'],''],
@@ -740,6 +849,9 @@ const state = {
   drill: [],                 // history stack of pre-drill snapshots for "← Back" (viz clicks only)
   attnOpen: null,            // id of the Attention flag whose investigation panel is expanded
   visibleDims: null,         // Set of dim keys shown in the filter desk (null = default set); persisted per fingerprint
+  actionsState: {},          // action-queue worklist { [rowKey]: { handled, snoozeUntil } }, persisted per fingerprint
+  asOfDate: null,            // time machine: Date the pipeline is reconstructed at (null = today/live); session-only
+  flowView: null,            // 'funnel' (default) | 'river' — persisted in localStorage
   ledger: { page: 0, pageSize: 100, sortCol: 'daysInStage', sortDir: 'desc', expanded: new Set() },
   sourcesSort: { col: 'hireRate', dir: 'desc' },
   recruitersSort: { col: 'activeCount', dir: 'desc' },
@@ -1376,9 +1488,11 @@ function openMapper(headers, rows, filesMeta, reopen){
    ============================================================ */
 const DIM_FIELDS = [
   ['job','Job'], ['department','Department'], ['office','Office'], ['recruiter','Recruiter'],
-  ['hiring_manager','Hiring manager'],
+  ['coordinator','Coordinator'], ['hiring_manager','Hiring manager'],
   ['source','Source'], ['source_type','Source type'], ['current_stage','Stage'], ['status','Status'],
 ];
+// dims that exist as filters but stay out of the desk by default (enable via "+ Filters")
+const DEFAULT_HIDDEN_DIMS = new Set(['coordinator']);
 function mappedDimFields(){
   return DIM_FIELDS.filter(([f]) => f==='current_stage' || f==='status' || state.mapping[f]);
 }
@@ -1419,7 +1533,7 @@ function allFilterableFields(){
   };
 }
 function defaultVisibleDims(){
-  return new Set(mappedDimFields().map(([f]) => f));
+  return new Set(mappedDimFields().map(([f]) => f).filter(f => !DEFAULT_HIDDEN_DIMS.has(f)));
 }
 function visibleDimFields(){
   const { canon, extras } = allFilterableFields();
@@ -1432,7 +1546,10 @@ function persistDimPrefs(){
 }
 function applyDimPrefs(){
   _extraColsCache = null;
+  _intervalsCache = null; _spanStartCache = null; _compCache = null; // time-machine caches follow the dataset
+  state.asOfDate = null;
   state.visibleDims = defaultVisibleDims();
+  loadActionsState(); // action-queue worklist travels with the dataset
   const fp = state.fingerprint;
   idbKeyval.get('dimprefs:'+fp).then(p => {
     if (p && state.fingerprint === fp) {
@@ -1513,8 +1630,11 @@ function applyFilters(){
   const [from,to] = getPeriodRange(f);
   state.periodRange = (from && to) ? [from,to] : null;
   if (f.periodPreset === 'current') {
-    // Current pipeline: only today's actives, no date filtering, no comparison.
-    state.snapshotRows = rows.filter(r => r.status === 'active');
+    // Current pipeline: only today's actives (or the reconstructed actives when
+    // the time machine is set), no date filtering, no comparison.
+    state.snapshotRows = state.asOfDate
+      ? asOfActiveRows(state.asOfDate, rows)
+      : rows.filter(r => r.status === 'active');
     state.rows = state.snapshotRows;
     state.prevRange = null; state.prevRows = null;
     return;
@@ -1533,7 +1653,7 @@ function facetedCounts(dimField){
   const f = state.filters;
   let rows = baseFilteredRows(dimField);
   if (f.periodPreset === 'current') {
-    rows = rows.filter(r => r.status === 'active');
+    rows = state.asOfDate ? asOfActiveRows(state.asOfDate, rows) : rows.filter(r => r.status === 'active');
   } else {
     const [from,to] = getPeriodRange(f);
     if (from && to) rows = rows.filter(r => { const d=r[f.dateField]; return d && d>=from && d<=to; });
@@ -1589,8 +1709,8 @@ function periodPresetLabel(p){
   return map[p] || p;
 }
 function setPeriodPreset(p){
-  // crossing the snapshot/cohort boundary invalidates sankey selections + drill history
-  if ((state.filters.periodPreset === 'current') !== (p === 'current')) { state.selection = null; state.drill.length = 0; }
+  // crossing the snapshot/cohort boundary invalidates sankey selections + drill history + time machine
+  if ((state.filters.periodPreset === 'current') !== (p === 'current')) { state.selection = null; state.drill.length = 0; state.asOfDate = null; }
   state.filters.periodPreset = p;
   queueRender();
 }
@@ -1600,7 +1720,7 @@ function setPeriodPreset(p){
    ============================================================ */
 function computeStageFlow(rows, canonicalStages, snapshotRows, forceMode){
   const isSnapshot = (forceMode || impliedMode()) === 'snapshot';
-  const now = new Date();
+  const now = nowRef();
   return canonicalStages.map((stage, i) => {
     if (isSnapshot) {
       const activeHere = (snapshotRows||[]).filter(r => r.current_stage === stage);
@@ -1686,6 +1806,9 @@ function computeKPIs(rows, prevRows){
   ];
 }
 /* ---- attention flag engine ---- */
+// "now" for every snapshot-view computation: the time-machine date when
+// time-traveling, else the real present. Historical norms keep the real clock.
+function nowRef(){ return state.asOfDate ? new Date(state.asOfDate) : new Date(); }
 function daysInCurrentStage(r, now){
   const s = r.stage_entered_at || r.applied_at;
   return s ? (now - s)/86400000 : null;
@@ -1715,7 +1838,7 @@ function histStageMedians(){
 function stageNorm(stage){ return histStageMedians()[stage] || 14; }
 function agingTier(r, now){
   if (r.status !== 'active') return null;
-  const d = daysInCurrentStage(r, now || new Date());
+  const d = daysInCurrentStage(r, now || nowRef());
   if (d == null) return null;
   const m = stageNorm(r.current_stage);
   if (d > 2.5 * m) return 'red';
@@ -1723,8 +1846,125 @@ function agingTier(r, now){
   return null;
 }
 function overdueActives(){
-  const now = new Date();
+  const now = nowRef();
   return (state.snapshotRows || []).filter(r => agingTier(r, now) != null);
+}
+/* ---- accountability: who to talk to about a stuck candidate ----
+   Stage-owner heuristic by POSITION, not stage name: the top-of-funnel stage
+   belongs to the recruiter; middle (scheduling) stages are coordinator-first;
+   the last pre-terminal stage (offer) is hiring-manager-first; recruiter is
+   always the fallback. Roles whose field isn't mapped drop out gracefully. */
+const ROLE_LABEL = { coordinator:'coordinator', recruiter:'recruiter', hiring_manager:'hiring manager' };
+function stageOwnerRoles(stageIdx){
+  const N = state.canonicalStages.length;
+  let pri;
+  if (stageIdx >= N - 2 && stageIdx > 0) pri = ['hiring_manager','recruiter'];
+  else if (stageIdx > 0) pri = ['coordinator','recruiter'];
+  else pri = ['recruiter'];
+  return pri.filter(f => state.mapping[f]);
+}
+function ownersFor(r){
+  const idx = Math.max(0, stageIndex(r.current_stage));
+  return stageOwnerRoles(idx).map(f => ({ field:f, role:ROLE_LABEL[f], name:r[f] })).filter(o => o.name);
+}
+function primaryOwner(r){
+  const o = ownersFor(r);
+  return o.length ? o[0] : null;
+}
+function ownerInitials(name){
+  return String(name).split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+}
+// aggregate a candidate set by primary owner: [{field, role, name, count, topStage}]
+function topOwners(rows, limit){
+  const m = new Map();
+  for (const r of rows) {
+    const o = primaryOwner(r);
+    if (!o) continue;
+    const k = o.field + '|' + o.name;
+    if (!m.has(k)) m.set(k, { field:o.field, role:o.role, name:o.name, count:0, stages:new Map() });
+    const e = m.get(k);
+    e.count++;
+    e.stages.set(r.current_stage, (e.stages.get(r.current_stage)||0)+1);
+  }
+  return Array.from(m.values()).map(e => {
+    const topStage = Array.from(e.stages.entries()).sort((a,b)=>b[1]-a[1])[0];
+    return { ...e, topStage: topStage ? topStage[0] : null };
+  }).sort((a,b) => b.count - a.count).slice(0, limit || 3);
+}
+/* ============================================================
+   TIME MACHINE — as-of pipeline reconstruction (promoted from lab)
+   Per candidate we precompute stage-entry timestamps for every stage they
+   reached: applied_at anchors stage 0, per-stage timestamp columns / hired_at /
+   stage_entered_at anchor the rest. Missing intermediate entries are
+   interpolated evenly between the nearest known anchors (marked approximated).
+   asOfActiveRows(date) then answers "who was in process on that date, and where".
+   ============================================================ */
+let _intervalsCache = null;
+function stageIntervals(){
+  if (_intervalsCache && _intervalsCache.n === state.rawRows.length && _intervalsCache.stages === state.canonicalStages.join('|')) {
+    return _intervalsCache.map;
+  }
+  const stages = state.canonicalStages;
+  const N = stages.length;
+  const now = new Date();
+  const map = new Map();
+  for (const r of state.rawRows) {
+    const K = stageIndex(r.current_stage);
+    if (K < 0 || !r.applied_at) continue;
+    const terminalAt = r.status === 'active' ? null : (r.rejected_at || r.hired_at || r.last_activity_at || null);
+    const end = terminalAt || now;
+    const entries = new Array(K + 1).fill(null);
+    entries[0] = r.applied_at;
+    for (let i = 1; i <= K; i++) {
+      const sname = stages[i].toLowerCase();
+      let t = null;
+      if (r.stageDates) for (const kw in r.stageDates) { if (r.stageDates[kw] && sname.includes(kw)) { t = r.stageDates[kw]; break; } }
+      if (!t && i === N - 1 && r.hired_at) t = r.hired_at;
+      if (!t && i === K && r.stage_entered_at) t = r.stage_entered_at;
+      entries[i] = t;
+    }
+    let approx = false;
+    for (let i = 1; i <= K; i++) {
+      if (entries[i]) continue;
+      approx = true;
+      let j = i - 1; while (entries[j] == null) j--;
+      let k = i + 1; while (k <= K && entries[k] == null) k++;
+      const t0 = entries[j];
+      const t1 = (k <= K && entries[k]) ? entries[k] : end;
+      const stop = (k <= K && entries[k]) ? k : K + 1;
+      const span = Math.max(0, t1 - t0);
+      for (let m = j + 1; m < stop; m++) {
+        entries[m] = new Date(t0.getTime() + span * (m - j) / (stop - j));
+      }
+    }
+    for (let i = 1; i <= K; i++) if (entries[i] < entries[i - 1]) entries[i] = entries[i - 1];
+    map.set(r, { entries, terminalAt, approx, K });
+  }
+  _intervalsCache = { n: state.rawRows.length, stages: stages.join('|'), map };
+  return map;
+}
+// synthetic active rows as of `date`, from an already dim/search-filtered base
+function asOfActiveRows(date, baseRows){
+  const iv = stageIntervals();
+  const out = [];
+  for (const r of baseRows) {
+    const info = iv.get(r);
+    if (!info) continue;
+    if (!r.applied_at || r.applied_at > date) continue;              // not applied yet
+    if (info.terminalAt && info.terminalAt <= date) continue;        // already exited
+    if (r.hired_at && r.hired_at <= date) continue;                  // already hired
+    let idx = 0;
+    for (let i = info.K; i >= 0; i--) if (info.entries[i] && info.entries[i] <= date) { idx = i; break; }
+    if (idx === state.canonicalStages.length - 1) continue;          // terminal stage = hired, never "active"
+    out.push({ ...r, status:'active', current_stage: state.canonicalStages[idx],
+      stage_entered_at: info.entries[idx], _approx: info.approx, _asOf: true });
+  }
+  return out;
+}
+// share of as-of actives whose stage position relied on interpolation
+function asOfApproxShare(rows){
+  if (!rows || !rows.length) return 0;
+  return rows.filter(r => r._approx).length / rows.length;
 }
 function computeFlags(){
   const flags = [];
@@ -1737,7 +1977,9 @@ function computeFlags(){
     const others = flow.filter(f => f.stage !== bn.stage && f.medianDays != null).map(f => f.medianDays);
     const ratio = others.length ? bn.medianDays / Math.max(median(others), 0.5) : null;
     const waiting = isSnapshot ? (bn.activeNow||0) : (flow.find(f=>f.stage===bn.stage).active || 0);
+    const bnOwner = topOwners((state.snapshotRows||[]).filter(r => r.current_stage === bn.stage), 1)[0];
     flags.push({ id:'bottleneck', data:{ stage: bn.stage, medianDays: bn.medianDays, waiting },
+      talkTo: bnOwner ? `${bnOwner.name} (${bnOwner.role})` : null,
       ruleTip: tipHtml('Flags when a stage\'s median wait exceeds 2× the median of the other stages.', 'red when over 3×'),
       severity: ratio && ratio > 3 ? 'red' : 'amber', score: 100 + (ratio || 0),
       text: `${bn.stage} median ${Math.round(bn.medianDays)}d — ${ratio ? ratio.toFixed(1) : '?'}× other stages; ${fmtN(waiting)} candidate${waiting===1?'':'s'} waiting.`,
@@ -1749,7 +1991,9 @@ function computeFlags(){
     const byStage = new Map();
     od.forEach(r => byStage.set(r.current_stage, (byStage.get(r.current_stage)||0)+1));
     const parts = stages.filter(s => byStage.has(s)).map(s => `${byStage.get(s)} in ${s}`).join(', ');
+    const odOwner = topOwners(od, 1)[0];
     flags.push({ id:'overdue', data:{ count: od.length },
+      talkTo: odOwner ? `${odOwner.name} (${odOwner.role})` : null,
       ruleTip: tipHtml('Flags active candidates waiting more than 1.5× the historical median for their stage.', 'historical medians from past candidates\' stage durations'),
       severity: od.length >= Math.max(8, (state.snapshotRows||[]).length*0.25) ? 'red' : 'amber', score: 60 + od.length,
       text: `${od.length} candidate${od.length===1?'':'s'} overdue to advance — ${parts}.`,
@@ -1876,8 +2120,16 @@ function decompose(population, affected, opts){
   return findings.slice(0, opts.limit || 5);
 }
 /* per-flag investigation: contributors + evidence + trend + suggested action */
+// "Talk to" block data for an investigation panel: top primary owners of a candidate set
+function ownersBlockFor(rows, selFor, word){
+  return topOwners(rows, 3).map(o => ({
+    text: `${o.name} (${o.role} — ${o.count} ${word}${o.topStage ? ' in ' + o.topStage : ''})`,
+    name: o.name, role: o.role,
+    onClick: () => drillCombo({ [o.field]: o.name }, selFor),
+  }));
+}
 function investigateFlag(flag){
-  const now = new Date();
+  const now = nowRef();
   const dd = r => daysInCurrentStage(r, now);
   const inv = { contributors: [], evidence: [], evidenceText: r => r.candidate_name || '—', trend: null, suggested: '', viewAllN: 0, viewAll: flag.apply };
   const joinDays = rows => rows.map(r => Math.round(dd(r) || 0)).join(', ');
@@ -1886,6 +2138,7 @@ function investigateFlag(flag){
     const S = flag.data.stage;
     const waiting = (state.snapshotRows || []).filter(r => r.current_stage === S);
     inv.viewAllN = waiting.length;
+    inv.owners = ownersBlockFor(waiting, { type:'active', stage:S }, 'waiting');
     const overallMed = median(waiting.map(dd).filter(x => x != null)) || flag.data.medianDays || 1;
     inv.contributors = decompose(waiting, waiting, {
       type:'median', value: dd, overall: overallMed,
@@ -1897,13 +2150,15 @@ function investigateFlag(flag){
     inv.trend = { title:`Median days in ${S}`, days:true,
       fn: rows => { const f = computeStageFlow(rows, state.canonicalStages, null, 'cohort').find(x => x.stage === S); return f && f.medianDays != null ? f.medianDays : 0; } };
     const top = inv.contributors[0];
-    inv.suggested = `Suggested: unblock ${S}${top ? ` — start with the ${top.n} ${top.value} candidates` : ''}; the ${inv.evidence.length} oldest are at ${joinDays(inv.evidence)} days.`;
+    const owner = inv.owners && inv.owners[0];
+    inv.suggested = `Suggested: unblock ${S}${top ? ` — start with the ${top.n} ${top.value} candidates` : ''}; the ${inv.evidence.length} oldest are at ${joinDays(inv.evidence)} days.${owner ? ` Talk to ${owner.name} (${owner.role}).` : ''}`;
   }
 
   else if (flag.id === 'overdue') {
     const od = overdueActives();
     const population = state.snapshotRows || [];
     inv.viewAllN = od.length;
+    inv.owners = ownersBlockFor(od, { type:'overdue' }, 'overdue');
     inv.contributors = decompose(population, od, {
       type:'rate',
       rateText: (v, dl, n, total, sr, cr) => `${v}: ${n} of ${total} overdue (${fmtPct(sr,0)} of its actives vs ${fmtPct(cr,0)} elsewhere)`,
@@ -1911,7 +2166,8 @@ function investigateFlag(flag){
     inv.evidence = od.slice().sort((a,b) => (dd(b)||0) - (dd(a)||0)).slice(0,3);
     inv.evidenceText = r => `${r.candidate_name||'—'} · ${r.job||'—'} · ${Math.round(dd(r)||0)}d in ${r.current_stage}`;
     inv.trend = null; // no historical snapshots of "overdue" exist to trend
-    inv.suggested = `Suggested: nudge the ${od.length} overdue candidates — the ${inv.evidence.length} longest-waiting are at ${joinDays(inv.evidence)} days.`;
+    const owner = inv.owners && inv.owners[0];
+    inv.suggested = `Suggested: nudge the ${od.length} overdue candidates${owner ? ` — start with ${owner.name} (${owner.role})` : ''}; the ${inv.evidence.length} longest-waiting are at ${joinDays(inv.evidence)} days.`;
   }
 
   else if (flag.id === 'offeraccept') {
@@ -2018,6 +2274,8 @@ function generateSampleData(){
   const OFFICES = ['New York','Remote','Austin'];
   const SOURCES = [['Referral','Employee referral'],['LinkedIn','Sourced'],['Careers site','Inbound'],['Indeed','Inbound'],['Agency','Sourced'],['University','Sourced']];
   const RECRUITERS = ['Dana Ruiz','Marcus Webb','Priya Anand','Sam O’Neill','Talia Brooks'];
+  // coordinators correlate with office so owner decompositions find signal
+  const COORDS_BY_OFFICE = { 'New York': ['Jess Park','Maya Cohen'], 'Remote': ['Leo Grant','Ana Torres'], 'Austin': ['Sam Ford'] };
   // 8 hiring managers, each consistently owning 1–2 reqs
   const HMS_BY_JOB = {
     'Backend Engineer': ['Nina Kowalski','Omar Haddad'],
@@ -2088,6 +2346,7 @@ function generateSampleData(){
       application_id: appId, candidate_id: 'C'+appId, candidate_name: name, email,
       job, department: dept, office, applied_at, current_stage, status,
       source, source_type: sourceType, recruiter, hiring_manager: pick(HMS_BY_JOB[job]),
+      coordinator: pick(COORDS_BY_OFFICE[office]),
       rejected_at, rejection_reason, hired_at, last_activity_at, stage_entered_at,
       raw_stage: current_stage, raw_status: status,
       stageDates: { screen: entered.Screen||null, onsite: entered.Onsite||null, offer: entered.Offer||null },
@@ -2101,7 +2360,7 @@ function loadSampleData(){
   state.mapping = { candidate_name:'candidate_name', candidate_id:'candidate_id', application_id:'application_id',
     email:'email', job:'job', department:'department', office:'office', applied_at:'applied_at',
     current_stage:'current_stage', status:'status', source:'source', source_type:'source_type', recruiter:'recruiter',
-    hiring_manager:'hiring_manager',
+    hiring_manager:'hiring_manager', coordinator:'coordinator',
     rejected_at:'rejected_at', rejection_reason:'rejection_reason', hired_at:'hired_at', last_activity_at:'last_activity_at',
     stage_entered_at:'stage_entered_at' };
   state.confidence = {}; for (const k in state.mapping) state.confidence[k] = 1;
@@ -2319,25 +2578,36 @@ function computeFinding(){
     return f ? f.medianDays : null;
   };
   const candidates = [];
+  // Significance gate (shared with the trend-fig callouts): a Δ-based headline
+  // needs ≥5 underlying events on each side AND a ≥15% relative change —
+  // anything weaker is noise and never reaches the headline.
+  const sigDelta = (cur, prevV, nCur, nPrev) => {
+    if (cur == null || prevV == null || nCur < 5 || nPrev < 5) return false;
+    return Math.abs(cur - prevV) / Math.max(Math.abs(prevV), 0.01) >= 0.15;
+  };
+  const resolvedOffers = rs => rs.filter(r=>r.status==='hired'||r.status==='declined').length;
   const oa1 = offerAccept(rows), oa0 = offerAccept(prev);
-  if (oa1!=null && oa0!=null) candidates.push({ score: Math.abs(oa1-oa0)*100*1.2,
+  if (sigDelta(oa1, oa0, resolvedOffers(rows), resolvedOffers(prev))) candidates.push({ score: Math.abs(oa1-oa0)*100*1.2,
     text: `Offer acceptance ${oa1<oa0?'fell':'rose'} ${Math.abs(Math.round((oa1-oa0)*100))} points to ${fmtPct(oa1,0)}.` });
   if (screenIdx>=0 && onsiteIdx>=0) {
     const w1 = stageWait(rows,'Onsite'), w0 = stageWait(prev,'Onsite');
-    if (w1!=null && w0!=null) candidates.push({ score: Math.abs(w1-w0)*1.4,
-      text: `Screen→onsite wait grew ${Math.abs(Math.round(w1-w0))} days to ${Math.round(w1)}.` });
+    const reachedOnsite = rs => rs.filter(r => stageIndex(r.current_stage) >= onsiteIdx).length;
+    if (sigDelta(w1, w0, reachedOnsite(rows), reachedOnsite(prev))) candidates.push({ score: Math.abs(w1-w0)*1.4,
+      text: `Screen→onsite wait ${w1>w0?'grew':'shrank'} ${Math.abs(Math.round(w1-w0))} days to ${Math.round(w1)}.` });
   }
-  if (rows.length && prev.length) {
+  if (sigDelta(rows.length, prev.length, rows.length, prev.length)) {
     const pct = (rows.length-prev.length)/prev.length*100;
     candidates.push({ score: Math.abs(pct)*0.35, text: `Applications ${pct>=0?'rose':'fell'} ${Math.abs(Math.round(pct))}% to ${fmtN(rows.length)}.` });
   }
   const t1 = medTTH(rows), t0 = medTTH(prev);
-  if (t1!=null && t0!=null) candidates.push({ score: Math.abs(t1-t0)*1.1,
+  const hiresWithDates = rs => rs.filter(r=>r.hired_at&&r.applied_at).length;
+  if (sigDelta(t1, t0, hiresWithDates(rows), hiresWithDates(prev))) candidates.push({ score: Math.abs(t1-t0)*1.1,
     text: `Time-to-hire ${t1>t0?'grew':'fell'} ${Math.abs(Math.round(t1-t0))} days to ${Math.round(t1)}.` });
   const r1 = computeRejectionReasonShare(rows), r0 = computeRejectionReasonShare(prev);
-  if (r1 && r0 && r1.reason===r0.reason) candidates.push({ score: Math.abs(r1.share-r0.share)*100,
+  const rejReasonN = rs => rs.filter(r=>r.status==='rejected' && r.rejection_reason).length;
+  if (r1 && r0 && r1.reason===r0.reason && sigDelta(r1.share, r0.share, rejReasonN(rows), rejReasonN(prev))) candidates.push({ score: Math.abs(r1.share-r0.share)*100,
     text: `"${r1.reason}" grew to ${fmtPct(r1.share,0)} of rejections.` });
-  else if (r1) candidates.push({ score: r1.share*60, text: `"${r1.reason}" is the top rejection reason at ${fmtPct(r1.share,0)}.` });
+  else if (r1 && rejReasonN(rows) >= 5) candidates.push({ score: r1.share*60, text: `"${r1.reason}" is the top rejection reason at ${fmtPct(r1.share,0)}.` });
   candidates.sort((a,b)=>b.score-a.score);
   const best = candidates[0];
   if (!best || best.score < 3) return { headline: 'Nothing unusual: pipeline within normal ranges.', sub: subLabel() };
@@ -2413,6 +2683,20 @@ function renderAttnPanel(flag){
   const closeBtn = el('button', { class:'attn-close', type:'button' }, '✕');
   closeBtn.addEventListener('click', () => { state.attnOpen = null; renderAttention(); });
   panel.appendChild(el('div', { class:'attn-panel-head' }, el('span', { class:'kicker' }, 'Where it concentrates'), closeBtn));
+  // OWNERS block: who to talk to, before the decomposition
+  if (inv.owners && inv.owners.length) {
+    const ob = el('div', { class:'attn-owners' }, el('span', { class:'kicker' }, 'Talk to'));
+    attachTip(ob.querySelector('.kicker'), tipHtml(
+      'Owner heuristic by stage position: top-of-funnel → recruiter; middle scheduling stages → coordinator first; the last pre-terminal stage → hiring manager first; recruiter is always the fallback.',
+      'unmapped roles drop out automatically'));
+    inv.owners.forEach((o, i) => {
+      if (i) ob.appendChild(el('span', { class:'owner-sep' }, '·'));
+      const b = el('button', { class:'owner-link', type:'button' }, o.text);
+      b.addEventListener('click', o.onClick);
+      ob.appendChild(b);
+    });
+    panel.appendChild(ob);
+  }
   if (inv.contributors.length) {
     for (const c of inv.contributors) {
       const line = el('button', { class:'attn-contrib', type:'button' }, c.text,
@@ -2467,15 +2751,16 @@ function buildExecSummary(){
   if (flags.length) {
     lines.push('');
     lines.push('Attention:');
-    for (const f of flags) lines.push(`- ${f.severity==='red'?'[!!]':'[!]'} ${f.text}`);
+    for (const f of flags) lines.push(`- ${f.severity==='red'?'[!!]':'[!]'} ${f.text}${f.talkTo ? ' — talk to ' + f.talkTo : ''}`);
   }
   return lines.join('\n');
 }
-async function copyExecSummary(){
-  const text = buildExecSummary();
+// shared clipboard write with textarea fallback, used by the exec summary and
+// the action-queue owner messages
+async function copyPlainText(text, successMsg){
   try {
     await navigator.clipboard.writeText(text);
-    toast('Executive summary copied.');
+    toast(successMsg);
   } catch (e) {
     try {
       const ta = document.createElement('textarea');
@@ -2483,8 +2768,140 @@ async function copyExecSummary(){
       document.body.appendChild(ta); ta.select();
       document.execCommand('copy');
       ta.remove();
-      toast('Executive summary copied.');
+      toast(successMsg);
     } catch (e2) { toast('Copy failed — clipboard unavailable.'); }
+  }
+}
+async function copyExecSummary(){
+  await copyPlainText(buildExecSummary(), 'Executive summary copied.');
+}
+
+/* ============================================================
+   RENDER: ACTION QUEUE — "This week" (promoted from lab)
+   Auto-built worklist: every overdue active candidate (overdueActives()),
+   grouped by primary owner (stageOwnerRoles), groups in STABLE order
+   (total overdue desc + name) so checking a row never reorders the list.
+   "Handled"/"snoozed" are purely local worklist state — they never modify
+   candidate data — persisted under actions:<fingerprint> keyed by row key.
+   ============================================================ */
+function persistActionsState(){
+  if (state.fingerprint) idbKeyval.set('actions:'+state.fingerprint, state.actionsState).catch(()=>{});
+}
+function loadActionsState(){
+  const fp = state.fingerprint;
+  state.actionsState = {};
+  idbKeyval.get('actions:'+fp).then(a => {
+    if (a && state.fingerprint === fp) { state.actionsState = a; queueRender(); }
+  }).catch(()=>{});
+}
+function actionRowState(key){ return (state.actionsState && state.actionsState[key]) || {}; }
+function setActionHandled(key, val){
+  state.actionsState = state.actionsState || {};
+  state.actionsState[key] = { ...state.actionsState[key], handled: val };
+  persistActionsState();
+  renderActionQueue();
+}
+function snoozeAction(key){
+  state.actionsState = state.actionsState || {};
+  state.actionsState[key] = { ...state.actionsState[key], snoozeUntil: Date.now() + 7*86400000 };
+  persistActionsState();
+  renderActionQueue();
+  toast('Snoozed 7 days.');
+}
+function clearActionsState(){
+  state.actionsState = {};
+  persistActionsState();
+  renderActionQueue();
+  toast('Worklist cleared.');
+}
+// ready-to-send plain-text note for an owner's overdue group, template by role
+function roleMessage(role, ownerName, rows){
+  const now = nowRef();
+  const stageCounts = new Map();
+  rows.forEach(r => stageCounts.set(r.current_stage, (stageCounts.get(r.current_stage)||0)+1));
+  const topStage = Array.from(stageCounts.entries()).sort((a,b)=>b[1]-a[1])[0][0];
+  const normDays = Math.round(stageNorm(topStage));
+  const list = rows.map(r => `${r.candidate_name || 'Candidate'} (${r.job || '—'}, ${Math.round(daysInCurrentStage(r, now) || 0)}d)`).join(', ');
+  const first = String(ownerName || '').split(/\s+/)[0] || ownerName;
+  const n = rows.length, plural = n === 1 ? '' : 's', isAre = n === 1 ? 'is' : 'are', hasHave = n === 1 ? 'has' : 'have';
+  if (role === 'coordinator') {
+    return `Hi ${first} — ${n} candidate${plural} ${isAre} waiting on ${topStage} scheduling past the ${normDays}d norm: ${list}. Can we get these moving this week?`;
+  }
+  if (role === 'hiring manager') {
+    return `Hi ${first} — ${n} candidate${plural} need${n===1?'s':''} a decision on ${topStage}: ${list}. These have been waiting past the ${normDays}d norm — can you review this week?`;
+  }
+  return `Hi ${first} — ${n} candidate${plural} ${hasHave} stalled past the ${normDays}d norm for ${topStage}: ${list}. Can we move ${n===1?'this one':'these'} forward or close ${n===1?'it':'them'} out?`;
+}
+function renderActionQueue(){
+  const section = $('#section-actions');
+  if (impliedMode() !== 'snapshot') { section.classList.add('hidden'); return; } // Current-pipeline mode only
+  section.classList.remove('hidden');
+  const now = nowRef();
+  const st = state.actionsState || {};
+  // overdueActives() is the shared overdue definition; snoozed rows hide until their date
+  const all = overdueActives().filter(r => {
+    const s = st[rowKey(r)];
+    return !(s && s.snoozeUntil && s.snoozeUntil > Date.now());
+  });
+  const wrap = $('#actions-list'); wrap.innerHTML = '';
+  if (!all.length) {
+    $('#actions-note').textContent = '';
+    wrap.appendChild(el('div', { class:'attn-none' }, 'No overdue candidates this week.'));
+    return;
+  }
+  const groups = new Map();
+  for (const r of all) {
+    const o = primaryOwner(r);
+    const key = o ? o.field + '|' + o.name : '__unassigned__';
+    if (!groups.has(key)) groups.set(key, { role: o ? o.role : null, name: o ? o.name : 'Unassigned', rows: [] });
+    groups.get(key).rows.push(r);
+  }
+  const pendingCount = g => g.rows.filter(r => !actionRowState(rowKey(r)).handled).length;
+  const groupArr = Array.from(groups.values());
+  // STABLE ordering: total overdue desc + name tiebreak — never by pending count,
+  // so checking a row as handled cannot reorder groups and teleport the row
+  groupArr.sort((a,b) => (b.rows.length - a.rows.length) || String(a.name).localeCompare(String(b.name)));
+  groupArr.forEach(g => g.rows.sort((a,b) => (daysInCurrentStage(b, now)||0) - (daysInCurrentStage(a, now)||0)));
+  const totalPending = groupArr.reduce((s,g) => s + pendingCount(g), 0);
+  const note = $('#actions-note');
+  note.textContent = `${fmtN(totalPending)} pending · ${fmtN(all.length)} overdue this week`;
+  attachTipOnce(note, tipHtml('Overdue actives this week, grouped by who owns their current stage.',
+    'overdue = waiting past 1.5× the stage\'s historical median'));
+  for (const g of groupArr) {
+    const head = el('div', { class:'aq-ghead' },
+      el('span', { class:'aq-gname' }, g.name),
+      g.role ? el('span', { class:'aq-grole' }, g.role) : null,
+      el('span', { class:'aq-gcount' }, `${pendingCount(g)} of ${g.rows.length}`));
+    if (g.role) {
+      const copyBtn = el('button', { class:'underline-btn aq-copy', type:'button' }, 'Copy message');
+      copyBtn.addEventListener('click', () => copyPlainText(roleMessage(g.role, g.name, g.rows), 'Message copied.'));
+      head.appendChild(copyBtn);
+    }
+    wrap.appendChild(head);
+    for (const r of g.rows) {
+      const key = rowKey(r);
+      const rs = actionRowState(key);
+      const tier = agingTier(r, now);
+      const row = el('div', { class:'aq-row' + (rs.handled ? ' handled' : '') });
+      const cb = el('input', { type:'checkbox', class:'aq-check' });
+      cb.checked = !!rs.handled;
+      cb.addEventListener('click', e => e.stopPropagation());
+      cb.addEventListener('change', () => setActionHandled(key, cb.checked));
+      const nameBtn = el('button', { class:'aq-name numlink', type:'button' }, r.candidate_name || 'Candidate');
+      nameBtn.addEventListener('click', () => { state.ledger.expanded.add(key); drillTo({ type:'row', key, name: r.candidate_name || 'Candidate' }); });
+      const days = daysInCurrentStage(r, now);
+      attachTip(nameBtn, tipHtml(`${r.job || '—'} · ${days!=null?Math.round(days):'—'}d in ${r.current_stage} — norm is ${Math.round(stageNorm(r.current_stage))}d.`,
+        'amber past 1.5×, red past 2.5× the stage\'s historical median · click to open in the ledger'));
+      const snoozeBtn = el('button', { class:'underline-btn muted aq-snooze', type:'button' }, 'Snooze 7d');
+      snoozeBtn.addEventListener('click', () => snoozeAction(key));
+      row.append(cb, nameBtn,
+        el('span', { class:'aq-job' }, r.job || '—'),
+        el('span', { class:'aq-stage' }, r.current_stage || '—'),
+        el('span', { class:'aq-days' + (tier ? ' '+tier : '') }, days!=null ? fmtDays(days) : '—'),
+        el('span', { class:'aq-role' }, g.role || '—'),
+        snoozeBtn);
+      wrap.appendChild(row);
+    }
   }
 }
 
@@ -2496,7 +2913,7 @@ function renderReqs(){
   if (!state.mapping.job) { section.classList.add('hidden'); return; }
   section.classList.remove('hidden');
   const isSnapshot = impliedMode() === 'snapshot';
-  const now = new Date();
+  const now = nowRef();
   const overdueSet = new Set(overdueActives());
   const stages = state.canonicalStages;
   const byJob = new Map();
@@ -2580,7 +2997,7 @@ function renderReqs(){
 
 function computeSnapshotStats(){
   const rows = state.snapshotRows || [];
-  const now = new Date();
+  const now = nowRef();
   const daysFor = r => { const s = r.stage_entered_at || r.applied_at; return s ? (now-s)/86400000 : null; };
   const items = [{ label:'Active now', value: fmtN(rows.length),
     tip: tipHtml('Active now — all candidates currently in process under the current filters.', `status = active (${fmtN(rows.length)})`),
@@ -2718,6 +3135,16 @@ function attachTip(elm, htmlOrFn){
   elm.addEventListener('mousemove', e => showRiverTooltip(e, typeof htmlOrFn === 'function' ? htmlOrFn() : htmlOrFn));
   elm.addEventListener('mouseleave', hideRiverTooltip);
 }
+// same, but safe to call on STATIC elements every render (updates the content
+// without stacking duplicate listeners)
+function attachTipOnce(elm, htmlOrFn){
+  elm.__tip = htmlOrFn;
+  if (elm.__tipWired) return;
+  elm.__tipWired = true;
+  elm.classList.add('has-tip');
+  elm.addEventListener('mousemove', e => showRiverTooltip(e, typeof elm.__tip === 'function' ? elm.__tip() : elm.__tip));
+  elm.addEventListener('mouseleave', hideRiverTooltip);
+}
 function tipHtml(main, formula){
   return `${escapeHtml(main)}${formula ? `<br><span class="tt-muted">${escapeHtml(formula)}</span>` : ''}`;
 }
@@ -2765,13 +3192,23 @@ function topReasonFor(stage, statuses){
   return top ? top[0] : null;
 }
 
-function renderRiver(){
-  const wrap = $('#river-wrap');
-  const width = Math.max(900, wrap.clientWidth || 900);
+/* ============================================================
+   FLOW VIEW DISPATCHER — funnel (default) | river share the same computed
+   flow data, header notes, escape hatch and time machine. (Promoted from
+   lab; the Board view and editions stayed behind.)
+   ============================================================ */
+const FLOW_VIEWS = [['funnel','Funnel'],['river','River']];
+function getFlowView(){
+  if (!state.flowView) { try { state.flowView = localStorage.getItem('flowView') || 'funnel'; } catch(e){ state.flowView = 'funnel'; } }
+  return state.flowView;
+}
+function setFlowView(v){
+  state.flowView = v;
+  try { localStorage.setItem('flowView', v); } catch(e){}
+  queueRender();
+}
+function renderFlowHeader(){
   const isSnapshot = impliedMode() === 'snapshot';
-  const stages = state.canonicalStages;
-  const flow = computeStageFlow(state.rows, stages, state.snapshotRows);
-  wrap.innerHTML = '';
   $('#river-note').textContent = isSnapshot
     ? 'Current pipeline — candidates active today, by current stage'
     : (state.filters.periodPreset === 'total'
@@ -2789,6 +3226,89 @@ function renderRiver(){
   } else {
     filteredNote.classList.add('hidden');
   }
+  // view toggle
+  const tog = $('#flow-view-toggle'); tog.innerHTML = '';
+  for (const [v, label] of FLOW_VIEWS) {
+    const b = el('button', { class: getFlowView() === v ? 'active' : '', type:'button' }, label);
+    b.addEventListener('click', () => setFlowView(v));
+    tog.appendChild(b);
+  }
+}
+function renderFlow(){
+  renderFlowHeader();
+  if (getFlowView() === 'river') renderRiver();
+  else renderFlowFunnel();
+}
+/* ---- FUNNEL view: classic horizontal funnel — the familiar exec format. ---- */
+function renderFlowFunnel(){
+  const wrap = $('#river-wrap'); wrap.innerHTML = '';
+  const isSnapshot = impliedMode() === 'snapshot';
+  const stages = state.canonicalStages;
+  const flow = computeStageFlow(state.rows, stages, state.snapshotRows);
+  const width = Math.max(700, wrap.clientWidth || 900);
+  const rowH = 34, labelW = 130, rightW = 150;
+  const plotW = width - labelW - rightW;
+  const rows = isSnapshot ? flow.filter(f => (f.activeNow || 0) > 0 || stageIndex(f.stage) < stages.length - 1) : flow;
+  const height = rows.length * rowH + 8;
+  const svg = svgEl('svg', { class:'funnel', width, height, viewBox:`0 0 ${width} ${height}` });
+  const maxN = Math.max(1, ...rows.map(f => isSnapshot ? (f.activeNow || 0) : (f.entered || 0)));
+  rows.forEach((f, i) => {
+    const y = i * rowH + 6;
+    const barH = 16;
+    svg.appendChild(svgEl('text', { class:'fn-label', x:labelW - 12, y:y + 12, 'text-anchor':'end' }, textNode(f.stage)));
+    if (isSnapshot) {
+      const n = f.activeNow || 0;
+      const w = (n / maxN) * plotW;
+      if (n > 0) {
+        const bar = svgEl('rect', { class:'fn-bar', x:labelW, y, width:Math.max(w, 3), height:barH });
+        bar.addEventListener('click', () => setSelection({ type:'active', stage: f.stage }));
+        bar.addEventListener('mousemove', e => showRiverTooltip(e, `<b>${f.stage}</b><br>${fmtN(n)} active · median ${fmtDays(f.medianDays)}`));
+        bar.addEventListener('mouseleave', hideRiverTooltip);
+        svg.appendChild(bar);
+      }
+      svg.appendChild(svgEl('text', { class:'fn-count', x:labelW + Math.max(w, 3) + 8, y:y + 12 }, textNode(fmtN(n) + (f.medianDays != null ? ` · ${fmtDays(f.medianDays)} median` : ''))));
+    } else {
+      const entered = f.entered || 0;
+      const advanced = f.advanced || 0;
+      const drained = (f.rejected || 0) + (f.withdrawn || 0);
+      const wEnt = (entered / maxN) * plotW;
+      const wAdv = entered ? wEnt * (advanced / entered) : 0;
+      const wDrn = entered ? wEnt * (drained / entered) : 0;
+      if (advanced > 0) {
+        const bar = svgEl('rect', { class:'fn-bar', x:labelW, y, width:Math.max(wAdv, 2), height:barH });
+        const isLast = i === rows.length - 1;
+        bar.addEventListener('click', () => setSelection(isLast ? { type:'status', status:'hired' } : { type:'reached', stage: stages[i + 1] }));
+        bar.addEventListener('mousemove', e => showRiverTooltip(e, `<b>${f.stage}</b><br>Advanced ${fmtN(advanced)} of ${fmtN(entered)} (${fmtPct(f.passPct, 0)})`));
+        bar.addEventListener('mouseleave', hideRiverTooltip);
+        svg.appendChild(bar);
+      }
+      if (entered - advanced - drained > 0.5) { // in-process remainder
+        const wInp = wEnt * ((entered - advanced - drained) / entered);
+        svg.appendChild(svgEl('rect', { class:'fn-inproc', x:labelW + wAdv, y, width:Math.max(wInp, 1), height:barH }));
+      }
+      if (drained > 0) {
+        const rest = svgEl('rect', { class:'fn-rest', x:labelW + (wEnt - wDrn), y, width:Math.max(wDrn, 2), height:barH });
+        rest.addEventListener('click', () => setSelection({ type:'reject', stage: f.stage }));
+        rest.addEventListener('mousemove', e => showRiverTooltip(e, `<b>${f.stage}</b><br>Rejected ${fmtN(f.rejected)} · withdrawn ${fmtN(f.withdrawn)} (${fmtPctSafe(drained, entered)} of entered)`));
+        rest.addEventListener('mouseleave', hideRiverTooltip);
+        svg.appendChild(rest);
+      }
+      svg.appendChild(svgEl('text', { class:'fn-count', x:labelW + wEnt + 8, y:y + 8 }, textNode(fmtN(entered))));
+      if (f.passPct != null) svg.appendChild(svgEl('text', { class:'fn-pass', x:labelW + wEnt + 8, y:y + 19 }, textNode(fmtPct(f.passPct, 0) + ' pass')));
+    }
+  });
+  wrap.appendChild(svg);
+  $('#river-caption').textContent = isSnapshot
+    ? 'Fig. Funnel — active candidates per stage.'
+    : 'Fig. Funnel — entered per stage; filled = advanced, gray = rejected/withdrawn, light = in process.';
+}
+function renderRiver(){
+  const wrap = $('#river-wrap');
+  const width = Math.max(900, wrap.clientWidth || 900);
+  const isSnapshot = impliedMode() === 'snapshot';
+  const stages = state.canonicalStages;
+  const flow = computeStageFlow(state.rows, stages, state.snapshotRows);
+  wrap.innerHTML = '';
   $('#river-caption').textContent = isSnapshot
     ? `Fig. Current pipeline occupancy across ${stages.length} stages.`
     : `Fig. Candidate flow across ${stages.length} stages, ${fmtN(state.rows.length)} applied.`;
@@ -3047,9 +3567,155 @@ let riverResizeObs = null;
 function setupRiverResize(){
   if (riverResizeObs) return;
   const wrap = $('#river-wrap');
-  const debounced = debounce(() => { renderRiver(); renderAging(); }, 150);
+  const debounced = debounce(() => { renderFlow(); renderAging(); }, 150);
   riverResizeObs = new ResizeObserver(debounced);
   riverResizeObs.observe(wrap.parentElement);
+}
+/* ============================================================
+   RENDER: TIME MACHINE control + COMPOSITION history (promoted from lab;
+   no replay animation — the scrubber and composition chart only)
+   ============================================================ */
+let _spanStartCache = null;
+function datasetSpanStart(){
+  if (_spanStartCache && _spanStartCache.n === state.rawRows.length) return _spanStartCache.d;
+  let min = null;
+  for (const r of state.rawRows) if (r.applied_at && (!min || r.applied_at < min)) min = r.applied_at;
+  _spanStartCache = { n: state.rawRows.length, d: min || new Date() };
+  return _spanStartCache.d;
+}
+// set the as-of date (normalized to end-of-day); within a day of now = back to live
+function setAsOf(date){
+  if (date) {
+    const today = new Date();
+    if (today.getTime() - date.getTime() < 86400000) date = null;
+    else { date = new Date(date); date.setHours(23,59,59,999); }
+  }
+  state.asOfDate = date;
+  queueRender(); // rAF-batched — scrubbing coalesces into one render per frame
+}
+function renderTimeMachine(){
+  const ctl = $('#tm-control'), note = $('#tm-noteline');
+  const isSnap = impliedMode() === 'snapshot' && state.rawRows.length > 0;
+  ctl.classList.toggle('hidden', !isSnap);
+  if (!isSnap) { note.classList.add('hidden'); return; }
+  const start = datasetSpanStart();
+  const days = Math.max(1, Math.round((new Date() - start) / 86400000));
+  const range = $('#tm-range');
+  range.max = days;
+  range.value = state.asOfDate ? Math.max(0, Math.min(days, Math.round((state.asOfDate - start) / 86400000))) : days;
+  $('#tm-readout').textContent = state.asOfDate ? dayjs(state.asOfDate).format('MMM D, YYYY') : 'today';
+  $('#tm-today').classList.toggle('hidden', !state.asOfDate);
+  if (state.asOfDate) {
+    note.classList.remove('hidden');
+    $('#tm-note-date').textContent = dayjs(state.asOfDate).format('MMM D, YYYY');
+    const share = asOfApproxShare(state.snapshotRows);
+    if (share > 0.005) {
+      $('#river-caption').textContent += ` ${fmtPct(share,0)} of positions interpolated from sparse timestamps.`;
+    }
+  } else {
+    note.classList.add('hidden');
+  }
+}
+let _compCache = null;
+function renderComposition(){
+  const section = $('#section-composition');
+  if (impliedMode() !== 'snapshot' || !state.rawRows.length) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+  attachTipOnce($('#comp-kicker'), tipHtml(
+    'Composition — candidates in process each week, stacked by stage, reconstructed from stage timestamps (interpolated where sparse).',
+    'click any point to jump the pipeline view to that date'));
+  $('#comp-note').textContent = 'weekly actives by stage · click to time-travel';
+  const stages = state.canonicalStages;
+  const N = stages.length;
+  const base = baseFilteredRows(null);
+  const start = datasetSpanStart();
+  const today = new Date();
+  const weeks = [];
+  for (let t = start.getTime(); t < today.getTime(); t += 7 * 86400000) {
+    const d = new Date(t);
+    d.setHours(23,59,59,999); // align bins with the time machine's end-of-day instants
+    weeks.push(d);
+  }
+  weeks.push(today);
+  // memoize the expensive per-week reconstruction; scrubbing doesn't change it
+  const key = state.rawRows.length + '|' + base.length + '|' + stages.join(',') + '|' + weeks.length + '|' +
+    JSON.stringify(Object.entries(state.filters.dims).map(([k,v]) => [k, Array.from(v).sort()])) + '|' + JSON.stringify(state.selection);
+  let data;
+  if (_compCache && _compCache.key === key) {
+    data = _compCache.data;
+  } else {
+    const iv = stageIntervals();
+    data = weeks.map(d => {
+      const counts = new Array(N).fill(0);
+      for (const r of base) {
+        const info = iv.get(r);
+        if (!info) continue;
+        if (!r.applied_at || r.applied_at > d) continue;
+        if (info.terminalAt && info.terminalAt <= d) continue;
+        if (r.hired_at && r.hired_at <= d) continue;
+        let idx = 0;
+        for (let i = info.K; i >= 0; i--) if (info.entries[i] && info.entries[i] <= d) { idx = i; break; }
+        if (idx === N - 1) continue;
+        counts[idx]++;
+      }
+      return { d, counts, total: counts.reduce((a,b) => a+b, 0) };
+    });
+    _compCache = { key, data };
+  }
+  const wrap = $('#comp-chart'); wrap.innerHTML = '';
+  const width = Math.max(700, wrap.clientWidth || 900);
+  const height = 200;
+  const padL = 40, padR = 24, padT = 12, padB = 26;
+  const plotW = width - padL - padR, plotH = height - padT - padB;
+  const maxY = Math.max(1, ...data.map(p => p.total));
+  const x = i => padL + (i / Math.max(1, data.length - 1)) * plotW;
+  const y = v => padT + plotH - (v / maxY) * plotH;
+  const svg = svgEl('svg', { class:'comp', width, height, viewBox:`0 0 ${width} ${height}` });
+  // stacked bands, first stage at the bottom, flat flow-ramp fills
+  const cumAt = (p, uptoIdx) => { let s = 0; for (let i = 0; i <= uptoIdx; i++) s += p.counts[i]; return s; };
+  for (let si = 0; si < N - 1; si++) {
+    if (!data.some(p => p.counts[si] > 0)) continue;
+    let dPath = `M${x(0)},${y(cumAt(data[0], si))}`;
+    for (let i = 1; i < data.length; i++) dPath += ` L${x(i)},${y(cumAt(data[i], si))}`;
+    for (let i = data.length - 1; i >= 0; i--) dPath += ` L${x(i)},${y(si === 0 ? 0 : cumAt(data[i], si - 1))}`;
+    const band = svgEl('path', { class:'comp-band', d: dPath + ' Z', fill:`var(--flow-${(si % 5) + 1})`, 'fill-opacity':'0.55' });
+    svg.appendChild(band);
+  }
+  svg.appendChild(svgEl('line', { class:'comp-baseline', x1:padL, y1:padT+plotH, x2:padL+plotW, y2:padT+plotH }));
+  svg.appendChild(svgEl('text', { class:'comp-axis', x:padL, y:height-8, 'text-anchor':'start' }, textNode(dayjs(data[0].d).format('MMM YYYY'))));
+  svg.appendChild(svgEl('text', { class:'comp-axis', x:padL+plotW, y:height-8, 'text-anchor':'end' }, textNode('today')));
+  svg.appendChild(svgEl('text', { class:'comp-axis', x:padL-5, y:y(maxY)+4, 'text-anchor':'end' }, textNode(String(maxY))));
+  // marker at the current as-of date
+  if (state.asOfDate) {
+    const ti = (state.asOfDate - data[0].d) / Math.max(1, data[data.length-1].d - data[0].d) * (data.length - 1);
+    const mx = x(Math.max(0, Math.min(data.length - 1, ti)));
+    svg.appendChild(svgEl('line', { class:'comp-marker', x1:mx, y1:padT, x2:mx, y2:padT+plotH }));
+  }
+  // hover: nearest week tooltip; click: jump the time machine there
+  const guide = svgEl('line', { class:'trend-guide', x1:0, y1:padT, x2:0, y2:padT+plotH, style:'display:none' });
+  svg.appendChild(guide);
+  const nearestIdx = (e) => {
+    const rect = svg.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (width / rect.width);
+    return Math.max(0, Math.min(data.length - 1, Math.round((mx - padL) / plotW * (data.length - 1))));
+  };
+  svg.addEventListener('mousemove', (e) => {
+    const i = nearestIdx(e);
+    guide.setAttribute('x1', x(i)); guide.setAttribute('x2', x(i));
+    guide.style.display = 'block';
+    const p = data[i];
+    const perStage = stages.slice(0, N-1).map((s, si) => p.counts[si] ? `${escapeHtml(s)}: ${p.counts[si]}` : null).filter(Boolean).join('<br>');
+    showRiverTooltip(e, `<b>${dayjs(p.d).format('MMM D, YYYY')}</b><br>${perStage || 'empty'}<br><span class="tt-muted">total in process: ${p.total} · click to view</span>`);
+  });
+  svg.addEventListener('mouseleave', () => { guide.style.display = 'none'; hideRiverTooltip(); });
+  svg.addEventListener('click', (e) => {
+    const i = nearestIdx(e);
+    hideRiverTooltip();
+    setAsOf(new Date(data[i].d));
+    setTimeout(() => document.getElementById('section-river').scrollIntoView({ behavior:'smooth', block:'start' }), 120);
+  });
+  wrap.appendChild(svg);
+  $('#comp-caption').textContent = `Fig. Candidates in process each week by stage, ${dayjs(data[0].d).format('MMM YYYY')} to today.`;
 }
 /* ============================================================
    RENDER: AGING BOARD — one row per stage, one dot per active
@@ -3061,7 +3727,7 @@ function renderAging(){
   const rows = state.snapshotRows || [];
   section.classList.remove('hidden');
   const wrap = $('#aging-board'); wrap.innerHTML = '';
-  const now = new Date();
+  const now = nowRef();
   const stages = state.canonicalStages.filter(s => rows.some(r => r.current_stage === s));
   if (!stages.length) {
     $('#aging-note').textContent = '';
@@ -3162,7 +3828,7 @@ function renderStatement(){
   const table = el('table', { class:'report-table' });
   const th = (label, tip) => { const t = el('th', {}, label); if (tip) attachTip(t, tip); return t; };
   if (isSnapshot) {
-    const now = new Date();
+    const now = nowRef();
     table.appendChild(el('thead', {}, el('tr', {},
       th('Stage', tipHtml('Canonical pipeline stage, in order.')),
       th('Active now', tipHtml('Candidates currently sitting in this stage.', 'status = active, current stage = row')),
@@ -3278,17 +3944,19 @@ function sparkPath(points, w, h, pad=4, padRight){
   return { line, area, xs, ys, min, max };
 }
 const TREND_DEFS = [
-  { id:'apps', title:'Applications', metric: rows => rows.length, field:'applied_at', rate:true, goodDir:'up',
+  // `count` = the underlying event count behind each bin's value, used by the
+  // significance gate on the Δ callouts (≥5 events on both sides required)
+  { id:'apps', title:'Applications', metric: rows => rows.length, count: rows => rows.length, field:'applied_at', rate:true, goodDir:'up',
     explain:'Candidates who applied, counted by application date.' },
-  { id:'hires', title:'Hires', metric: rows => rows.filter(r=>r.status==='hired').length, field:'hired_at', rate:true, goodDir:'up',
+  { id:'hires', title:'Hires', metric: rows => rows.filter(r=>r.status==='hired').length, count: rows => rows.filter(r=>r.status==='hired').length, field:'hired_at', rate:true, goodDir:'up',
     explain:'Candidates hired, counted by hire date.' },
-  { id:'offeraccept', title:'Offer accept %', metric: rows => { const h=rows.filter(r=>r.status==='hired').length,d=rows.filter(r=>r.status==='declined').length; return (h+d)?h/(h+d):0; }, field:'applied_at', pct:true, goodDir:'up',
+  { id:'offeraccept', title:'Offer accept %', metric: rows => { const h=rows.filter(r=>r.status==='hired').length,d=rows.filter(r=>r.status==='declined').length; return (h+d)?h/(h+d):0; }, count: rows => rows.filter(r=>r.status==='hired'||r.status==='declined').length, field:'applied_at', pct:true, goodDir:'up',
     explain:'Accepted ÷ resolved offers, grouped by the cohort\'s application date.' },
-  { id:'tth', title:'Median time-to-hire', metric: rows => median(rows.filter(r=>r.hired_at&&r.applied_at).map(r=>(r.hired_at-r.applied_at)/86400000))||0, field:'applied_at', days:true, goodDir:'down',
+  { id:'tth', title:'Median time-to-hire', metric: rows => median(rows.filter(r=>r.hired_at&&r.applied_at).map(r=>(r.hired_at-r.applied_at)/86400000))||0, count: rows => rows.filter(r=>r.hired_at&&r.applied_at).length, field:'applied_at', days:true, goodDir:'down',
     explain:'Median days from application to hire, by application cohort.' },
-  { id:'wait', title:'Screen→onsite wait', metric: rows => { const f = computeStageFlow(rows, state.canonicalStages, null, 'cohort').find(x=>x.stage==='Screen'); return f&&f.medianDays!=null?f.medianDays:0; }, field:'applied_at', days:true, goodDir:'down',
+  { id:'wait', title:'Screen→onsite wait', metric: rows => { const f = computeStageFlow(rows, state.canonicalStages, null, 'cohort').find(x=>x.stage==='Screen'); return f&&f.medianDays!=null?f.medianDays:0; }, count: rows => { const si = Math.max(1, state.canonicalStages.indexOf('Screen')); return rows.filter(r=>stageIndex(r.current_stage) >= si).length; }, field:'applied_at', days:true, goodDir:'down',
     explain:'Median days spent in Screen before advancing, by application cohort.' },
-  { id:'pipeline', title:'Pipeline size (active)', metric: rows => rows.filter(r=>r.status==='active').length, field:'applied_at', goodDir:'up',
+  { id:'pipeline', title:'Pipeline size (active)', metric: rows => rows.filter(r=>r.status==='active').length, count: rows => rows.filter(r=>r.status==='active').length, field:'applied_at', goodDir:'up',
     explain:'Candidates from each application cohort who are still in process today.' },
 ];
 const RES_ABBREV = { day:'d', week:'wk', month:'mo' };
@@ -3317,16 +3985,16 @@ function renderTrends(){
   const spanDays = Math.max(1, (range[1]-range[0])/86400000);
   const res = pickResolution(spanDays);
   TREND_DEFS.forEach((def,idx) => {
-    const bins = buildBins(state.rows, def.field, res, range).map(b => ({ ...b, value: (() => {
+    const bins = buildBins(state.rows, def.field, res, range).map(b => {
       const rowsInBin = state.rows.filter(r => r[def.field] && binKey(r[def.field],res)===b.key);
-      return def.metric(rowsInBin);
-    })() }));
+      return { ...b, value: def.metric(rowsInBin), n: def.count ? def.count(rowsInBin) : rowsInBin.length };
+    });
     let prevBins = null;
     if (state.prevRows && state.prevRange) {
-      prevBins = buildBins(state.prevRows, def.field, res, state.prevRange).map(b => ({ ...b, value: (() => {
+      prevBins = buildBins(state.prevRows, def.field, res, state.prevRange).map(b => {
         const rowsInBin = state.prevRows.filter(r => r[def.field] && binKey(r[def.field],res)===b.key);
-        return def.metric(rowsInBin);
-      })() }));
+        return { ...b, value: def.metric(rowsInBin), n: def.count ? def.count(rowsInBin) : rowsInBin.length };
+      });
     }
     const expanded = state.trendExpanded === def.id;
     // right gutter reserves room for the latest-value + Δ labels
@@ -3373,18 +4041,31 @@ function renderTrends(){
       const lx = w - padR + 8;
       const ly = Math.min(Math.max(sp.ys[li], 14), h-16);
       svg.appendChild(svgEl('text', { class:'trend-latest', x:lx, y:ly, 'text-anchor':'start' }, textNode(trendValueLabel(def, latest, res))));
-      // Δ vs comparison-period end where one exists, else vs start of window
-      const base = (prevBins && prevBins.length) ? prevBins[prevBins.length-1].value : vals[0];
+      // Δ vs the COMPARISON period's MATCHING bin (or the trailing-8-bin mean
+      // when no comparison exists). Colored only when the change is significant:
+      // |Δ| ≥ 15% relative AND ≥5 underlying events on both sides — anything
+      // weaker renders muted so the callouts stop promoting noise. The partial
+      // current bin never drives the callout (li is the last COMPLETE bin).
+      let base = null, nBase = 0;
+      if (prevBins && prevBins[li] != null) { base = prevBins[li].value; nBase = prevBins[li].n; }
+      else if (li >= 1) {
+        const win = bins.slice(Math.max(0, li-8), li);
+        base = win.reduce((s,b) => s+b.value, 0) / win.length;
+        nBase = Math.round(win.reduce((s,b) => s+b.n, 0) / win.length);
+      }
       let deltaTxt = null, deltaCls = 'flat';
       if (base != null && isFinite(base)) {
+        const nCur = bins[li].n;
+        const rel = Math.abs(latest-base) / Math.max(Math.abs(base), def.pct ? 0.01 : 1e-9);
+        const significant = rel >= 0.15 && nCur >= 5 && nBase >= 5;
         if (def.pct) {
           const dPt = Math.round((latest-base)*100);
           deltaTxt = (dPt>=0?'+':'')+dPt+'pt';
-          deltaCls = dPt===0 ? 'flat' : ((dPt>0) === (def.goodDir==='up') ? 'good' : 'bad');
+          deltaCls = (!significant || dPt===0) ? 'flat' : ((dPt>0) === (def.goodDir==='up') ? 'good' : 'bad');
         } else if (base !== 0) {
           const dPct = Math.round((latest-base)/Math.abs(base)*100);
           deltaTxt = (dPct>=0?'+':'')+dPct+'%';
-          deltaCls = dPct===0 ? 'flat' : ((dPct>0) === (def.goodDir==='up') ? 'good' : 'bad');
+          deltaCls = (!significant || dPct===0) ? 'flat' : ((dPct>0) === (def.goodDir==='up') ? 'good' : 'bad');
         }
       }
       if (deltaTxt) svg.appendChild(svgEl('text', { class:'trend-delta '+deltaCls, x:lx, y:ly+12, 'text-anchor':'start' }, textNode(deltaTxt)));
@@ -3484,7 +4165,7 @@ function renderSourcesAndPeople(){
       const active = rs.filter(r=>r.status==='active');
       const hires = rs.filter(r=>r.status==='hired').length;
       const offersOut = rs.filter(r=>r.current_stage==='Offer' && r.status==='active').length;
-      const now = new Date();
+      const now = nowRef();
       const waits = active.map(r => { const s=r.stage_entered_at||r.applied_at; return s?(now-s)/86400000:null; }).filter(x=>x!=null);
       return { recruiter, activeCount: active.length, hires, offersOut, medianWait: median(waits) };
     });
@@ -3532,7 +4213,7 @@ function renderSourcesAndPeople(){
    RENDER: LEDGER
    ============================================================ */
 function ledgerDaysInStage(r){
-  const now = new Date();
+  const now = nowRef();
   const start = r.stage_entered_at || r.applied_at;
   if (!start) return null;
   const end = r.status==='active' ? now : (r.rejected_at || r.hired_at || r.last_activity_at || now);
@@ -3576,14 +4257,20 @@ function renderLedger(){
   table.appendChild(thead);
   const tbody = el('tbody');
   pageRows.forEach(r => {
-    const key = r.application_id ?? (r.candidate_id+'|'+r.job);
+    const key = rowKey(r); // string key — matches the aging board / attention / action-queue expanders
     const tr = el('tr', { class:'clickable' });
     const days = ledgerDaysInStage(r);
-    // aging tint on days-in-stage for actives, with vs-median context on hover
+    // aging tint on days-in-stage for actives, with vs-median + talk-to context on hover
     const tier = agingTier(r);
-    const daysTd = el('td', { class: tier === 'red' ? 'alert' : tier === 'amber' ? 'warn-cell' : '' }, days!=null?fmtDays(days):'—');
-    if (tier) attachTip(daysTd, tipHtml(`${Math.round(days)}d — ${r.current_stage} norm is ${Math.round(stageNorm(r.current_stage))}d.`,
-      'amber past 1.5×, red past 2.5× the stage\'s historical median'));
+    const owner = tier ? primaryOwner(r) : null; // overdue rows name who to talk to
+    const daysTd = el('td', { class: tier === 'red' ? 'alert' : tier === 'amber' ? 'warn-cell' : '' },
+      days!=null?fmtDays(days):'—',
+      owner ? el('span', { class:'ledger-owner' }, '· ' + ownerInitials(owner.name)) : null);
+    if (tier) {
+      const who = ownersFor(r).map(o => `${o.name} (${o.role})`).join(' · ');
+      attachTip(daysTd, tipHtml(`${Math.round(days)}d — ${r.current_stage} norm is ${Math.round(stageNorm(r.current_stage))}d.${who ? ' Talk to: ' + who + '.' : ''}`,
+        'amber past 1.5×, red past 2.5× the stage\'s historical median'));
+    }
     tr.append(
       el('td', {}, r.candidate_name||'—'), el('td', {}, r.job||'—'), el('td', {}, r.current_stage||'—'),
       el('td', {}, r.status||'—'), daysTd,
@@ -3608,7 +4295,7 @@ function renderLedger(){
       closeBtn.addEventListener('click', (e) => { e.stopPropagation(); state.ledger.expanded.delete(key); renderLedger(); });
       const detail = el('div', { class:'ledger-row-detail' },
         el('div', { style:'display:flex; justify-content:space-between; gap:12px; align-items:baseline;' },
-          el('span', {}, `${r.email||'—'} · ${r.candidate_id||r.application_id||'—'}${r.hiring_manager?' · HM: '+r.hiring_manager:''}${r.rejection_reason?' · '+r.rejection_reason:''}`),
+          el('span', {}, `${r.email||'—'} · ${r.candidate_id||r.application_id||'—'}${r.hiring_manager?' · HM: '+r.hiring_manager:''}${r.coordinator?' · Coord: '+r.coordinator:''}${r.rejection_reason?' · '+r.rejection_reason:''}`),
           closeBtn),
         el('div', { class:'timeline' }, ...steps.flatMap(([label,date],i) => {
           const step = el('span', { class:'tl-step' }, el('span', { class:'tl-dot' }), el('span', {}, el('span', { class:'tl-label' }, label), ' '+fmtDate(date)));
@@ -3651,11 +4338,14 @@ function renderAll(){
   renderFilterDesk();
   renderFinding();
   renderAttention();
+  renderActionQueue();
   renderStats();
   renderReqs();
-  renderRiver();
+  renderFlow();
+  renderTimeMachine();
   setupRiverResize();
   renderAging();
+  renderComposition();
   renderStatement();
   renderTrends();
   renderSourcesAndPeople();
@@ -3836,6 +4526,24 @@ function wireEvents(){
   $('#fd-date-to').addEventListener('change', (e) => { state.filters.customTo = e.target.value ? new Date(e.target.value+'T23:59:59') : null; queueRender(); });
   $$('.fd-datefield button').forEach(b => b.addEventListener('click', () => { state.filters.dateField = b.dataset.datefield; queueRender(); }));
   $('#fd-search').addEventListener('input', debounce((e) => { state.filters.search = e.target.value; queueRender(); }, 150));
+  // time machine: scrubber, week steps, resets
+  $('#tm-range').addEventListener('input', (e) => {
+    const start = datasetSpanStart();
+    const v = parseInt(e.target.value, 10) || 0;
+    setAsOf(new Date(start.getTime() + v * 86400000));
+  });
+  $('#tm-back').addEventListener('click', () => {
+    const cur = state.asOfDate || new Date();
+    const start = datasetSpanStart();
+    setAsOf(new Date(Math.max(start.getTime(), cur.getTime() - 7 * 86400000)));
+  });
+  $('#tm-fwd').addEventListener('click', () => {
+    if (!state.asOfDate) return;
+    setAsOf(new Date(state.asOfDate.getTime() + 7 * 86400000)); // setAsOf snaps to live near today
+  });
+  $('#tm-today').addEventListener('click', () => setAsOf(null));
+  $('#tm-note-reset').addEventListener('click', () => setAsOf(null));
+  $('#btn-actions-clear').addEventListener('click', clearActionsState);
   $('#btn-add-filters').addEventListener('click', (e) => {
     e.stopPropagation();
     const panel = $('#fd-addfilters-panel');
