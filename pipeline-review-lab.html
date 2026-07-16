@@ -553,6 +553,59 @@ svg.chord .ch-label{ font-size:10px; fill:var(--ink); }
    solid edition inks but add fine line-art outlines instead */
 html.ed-blueprint svg.radial .rd-seg, html.ed-vintage svg.radial .rd-seg{ stroke:var(--ink); stroke-width:0.5; }
 html.ed-blueprint svg.chord .ch-ribbon, html.ed-vintage svg.chord .ch-ribbon{ stroke:var(--ink); stroke-width:0.4; }
+/* ============================================================
+   WILD ROUND C gallery viz: ridgeline · CFD · beeswarm · bump · waffle · slope
+   ============================================================ */
+svg.ridge text, svg.cfd text, svg.beeswarm text, svg.bump text, svg.slope text{ font-family:var(--sans); font-variant-numeric:tabular-nums; }
+svg.ridge .rg-area{ fill-opacity:0.55; stroke:var(--ink); stroke-width:0.75; cursor:pointer; }
+svg.ridge .rg-area:hover{ fill-opacity:0.75; }
+svg.ridge .rg-med{ stroke:var(--ink); stroke-width:1.25; pointer-events:none; }
+svg.ridge .rg-base{ stroke:var(--hairline); stroke-width:1; }
+svg.ridge .rg-label{ font-size:11px; font-weight:600; fill:var(--ink); }
+svg.ridge .rg-sub{ font-size:9.5px; fill:var(--muted); }
+svg.ridge .rg-axis{ font-size:9.5px; fill:var(--muted); }
+svg.cfd .cfd-band{ fill-opacity:0.75; stroke:var(--paper); stroke-width:0.75; cursor:pointer; }
+svg.cfd .cfd-band.muted{ fill-opacity:0.35; }
+svg.cfd .cfd-band:hover{ fill-opacity:0.9; }
+svg.cfd .cfd-baseline{ stroke:var(--hairline); stroke-width:1; }
+svg.cfd .cfd-axis{ font-size:9.5px; fill:var(--muted); }
+svg.cfd .cfd-label{ font-size:9.5px; fill:var(--ink); }
+svg.beeswarm .bw-dot{ cursor:pointer; opacity:0.85; }
+svg.beeswarm .bw-dot:hover{ stroke:var(--ink); stroke-width:1.25; opacity:1; }
+svg.beeswarm .bw-base{ stroke:var(--hairline); stroke-width:1; }
+svg.beeswarm .bw-label{ font-size:11px; font-weight:600; fill:var(--ink); }
+svg.beeswarm .bw-axis{ font-size:9.5px; fill:var(--muted); }
+svg.bump .bp-line{ fill:none; stroke-width:2; stroke-linecap:round; cursor:pointer; transition:opacity 120ms; }
+svg.bump .bp-dot{ cursor:pointer; }
+svg.bump .bp-line-grp{ transition:opacity 120ms; cursor:pointer; }
+svg.bump.hovering .bp-line-grp:not(.hovered){ opacity:0.2; }
+svg.bump .bp-name{ font-size:10.5px; font-weight:600; }
+svg.bump .bp-axis{ font-size:9.5px; fill:var(--muted); }
+.wf-group{ margin-top:12px; cursor:pointer; }
+.wf-group:first-child{ margin-top:0; }
+.wf-label{ font-size:11px; font-weight:600; color:var(--ink); margin-bottom:4px; font-variant-numeric:tabular-nums; }
+svg.waffle{ display:block; }
+svg.waffle .wf-sq{ opacity:0.85; }
+.wf-group:hover .wf-sq{ opacity:1; }
+svg.slope .sl-axis{ stroke:var(--hairline); stroke-width:1; }
+svg.slope .sl-axlabel{ font-size:10px; fill:var(--muted); letter-spacing:0.04em; }
+svg.slope .sl-grp{ cursor:pointer; }
+svg.slope .sl-line{ stroke-width:1.75; }
+svg.slope .sl-line.up, svg.slope .sl-dot.up{ stroke:var(--flow-3); }
+svg.slope .sl-dot.up{ fill:var(--flow-3); }
+svg.slope .sl-line.down, svg.slope .sl-dot.down{ stroke:var(--neg); }
+svg.slope .sl-dot.down{ fill:var(--neg); }
+svg.slope .sl-line.flat, svg.slope .sl-dot.flat{ stroke:var(--muted); }
+svg.slope .sl-dot.flat{ fill:var(--muted); }
+svg.slope .sl-val{ font-size:10px; fill:var(--ink); }
+svg.slope .sl-right.up{ fill:var(--pos-ink); font-weight:600; }
+svg.slope .sl-right.down{ fill:var(--neg); font-weight:600; }
+svg.slope .sl-right.flat{ fill:var(--muted); }
+/* blueprint/vintage line-art adjustments for the new viz */
+html.ed-blueprint svg.ridge .rg-area, html.ed-vintage svg.ridge .rg-area{ fill:url(#bp-hatch-sparse); fill-opacity:1; }
+html.ed-vintage svg.ridge .rg-area{ fill:url(#vp-stipple); }
+html.ed-blueprint svg.cfd .cfd-band, html.ed-vintage svg.cfd .cfd-band{ stroke:var(--ink); stroke-width:0.5; }
+html.ed-blueprint .wf-sq, html.ed-vintage .wf-sq{ stroke:var(--ink); stroke-width:0.5; }
 @media print{ .flow-view-toggle{ display:none !important; } }
 /* ============================================================
    CUSTOMIZE (lab round 6) — settings overlay + gallery visuals
@@ -1309,6 +1362,36 @@ html.dark .sheet-overlay{ background:rgba(0,0,0,0.6); }
       <div class="section-head"><span class="kicker" id="chord-kicker">Source ↔ outcome</span><span class="section-note" id="chord-note"></span></div>
       <div id="chord-chart"></div>
       <p class="river-caption" id="chord-caption"></p>
+    </section>
+    <section class="section hidden" id="section-ridge">
+      <div class="section-head"><span class="kicker" id="ridge-kicker">Where time goes</span><span class="section-note" id="ridge-note"></span></div>
+      <div id="ridge-chart"></div>
+      <p class="river-caption" id="ridge-caption"></p>
+    </section>
+    <section class="section hidden" id="section-cfd">
+      <div class="section-head"><span class="kicker" id="cfd-kicker">Cumulative flow</span><span class="section-note" id="cfd-note"></span></div>
+      <div id="cfd-chart"></div>
+      <p class="river-caption" id="cfd-caption"></p>
+    </section>
+    <section class="section hidden" id="section-beeswarm">
+      <div class="section-head"><span class="kicker" id="beeswarm-kicker">Time to decision</span><span class="section-note" id="beeswarm-note"></span></div>
+      <div id="beeswarm-chart"></div>
+      <p class="river-caption" id="beeswarm-caption"></p>
+    </section>
+    <section class="section hidden" id="section-bump">
+      <div class="section-head"><span class="kicker" id="bump-kicker">Source rankings</span><span class="section-note" id="bump-note"></span></div>
+      <div id="bump-chart"></div>
+      <p class="river-caption" id="bump-caption"></p>
+    </section>
+    <section class="section hidden" id="section-waffle">
+      <div class="section-head"><span class="kicker" id="waffle-kicker">Headcount</span><span class="section-note" id="waffle-note"></span></div>
+      <div id="waffle-chart"></div>
+      <p class="river-caption" id="waffle-caption"></p>
+    </section>
+    <section class="section hidden" id="section-slope">
+      <div class="section-head"><span class="kicker" id="slope-kicker">Did we get better</span><span class="section-note" id="slope-note"></span></div>
+      <div id="slope-chart"></div>
+      <p class="river-caption" id="slope-caption"></p>
     </section>
 
     <!-- ========== FOOTNOTE ========== -->
@@ -6846,6 +6929,403 @@ function renderChord(){
   $('#chord-caption').textContent = `Fig. Where candidates come from and how they end up, ${fmtN(state.rows.length)} in the period.`;
 }
 /* ============================================================
+   WILD ROUND C — six gallery visualizations
+   ============================================================ */
+/* raw day-durations for stage transition i → i+1, mirroring computeStageFlow's
+   stage-timestamp logic (keyword-matched stageDates; applied_at anchors the
+   first stage, hired_at the terminal one) */
+function transitionDurations(rows, i){
+  const stages = state.canonicalStages;
+  const kw = STAGE_TS_KEYWORDS.find(k => stages[i].toLowerCase().includes(k));
+  const nextStage = stages[i + 1];
+  const nextKw = nextStage ? STAGE_TS_KEYWORDS.find(k => nextStage.toLowerCase().includes(k)) : null;
+  const out = [];
+  for (const r of rows) {
+    const start = kw ? (r.stageDates && r.stageDates[kw]) : (i === 0 ? r.applied_at : null);
+    const end = nextKw ? (r.stageDates && r.stageDates[nextKw]) : (nextStage === stages[stages.length - 1] ? r.hired_at : null);
+    if (start && end && end >= start) out.push((end - start) / 86400000);
+  }
+  return out;
+}
+/* 9. RIDGELINE — stage-duration distributions as overlapping silhouettes.
+   Density = gaussian kernel over integer-day bins (σ scaled to the x range),
+   evaluated at 72 points; x capped at the p95 of all durations. */
+function renderRidge(){
+  const section = $('#section-ridge');
+  if (impliedMode() !== 'cohort' || !state.rows.length) { section.classList.add('hidden'); return; }
+  const stages = state.canonicalStages;
+  const series = [];
+  for (let i = 0; i < stages.length - 1; i++) {
+    const days = transitionDurations(state.rows, i);
+    if (days.length >= 5) series.push({ i, name: `${stages[i]}→${stages[i + 1]}`, days, med: median(days), p90: quantile(days, 0.9), n: days.length });
+  }
+  if (!series.length) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+  attachTipOnce($('#ridge-kicker'), tipHtml(
+    'Where time goes — the full distribution of days spent in each transition, not just the median. Wide, flat silhouettes mean unpredictable stages.',
+    'gaussian-smoothed day bins · x capped at the 95th percentile'));
+  const wrap = $('#ridge-chart'); wrap.innerHTML = '';
+  const cap = Math.max(5, Math.ceil(quantile(series.flatMap(s => s.days), 0.95)));
+  const width = Math.max(700, wrap.clientWidth || 900);
+  const labelW = 150, rightW = 40, rowH = 54, amp = 62, padT = 30;
+  const plotW = width - labelW - rightW;
+  const height = padT + series.length * rowH + 30;
+  const svg = svgEl('svg', { class:'ridge', width, height, viewBox:`0 0 ${width} ${height}` });
+  const X = d => labelW + Math.min(d, cap) / cap * plotW;
+  const PTS = 72, sigma = Math.max(0.8, cap / 30);
+  series.forEach((s, si) => {
+    const baseY = padT + (si + 1) * rowH;
+    // integer-day histogram → smoothed density
+    const bins = new Array(cap + 1).fill(0);
+    for (const d of s.days) bins[Math.min(cap, Math.round(d))]++;
+    const dens = [];
+    for (let p = 0; p <= PTS; p++) {
+      const x = p / PTS * cap;
+      let v = 0;
+      for (let d = 0; d <= cap; d++) if (bins[d]) v += bins[d] * Math.exp(-((x - d) ** 2) / (2 * sigma * sigma));
+      dens.push(v);
+    }
+    const maxV = Math.max(...dens, 1e-9);
+    let path = `M${labelW},${baseY}`;
+    dens.forEach((v, p) => { path += ` L${(labelW + p / PTS * plotW).toFixed(1)},${(baseY - (v / maxV) * amp).toFixed(1)}`; });
+    path += ` L${labelW + plotW},${baseY} Z`;
+    const ridge = svgEl('path', { class:'rg-area', d:path, fill:`var(--flow-${(si % 4) + 2})` });
+    ridge.addEventListener('mousemove', ev => {
+      const rect = svg.getBoundingClientRect();
+      const mx = (ev.clientX - rect.left) * (width / rect.width);
+      const day = Math.max(0, Math.min(cap, Math.round((mx - labelW) / plotW * cap)));
+      showRiverTooltip(ev, `<b>${escapeHtml(s.name)}</b><br>median ${fmtDays(s.med)} · p90 ${fmtDays(s.p90)} · n=${fmtN(s.n)}<br><span class="tt-muted">${bins[day] || 0} candidate${(bins[day]||0)===1?'':'s'} took ~${day}d · click to drill</span>`);
+    });
+    ridge.addEventListener('mouseleave', hideRiverTooltip);
+    ridge.addEventListener('click', () => { hideRiverTooltip(); setSelection({ type:'reached', stage: stages[s.i + 1] }); });
+    svg.appendChild(ridge);
+    // median tick + label lockup
+    const mx = X(s.med);
+    svg.appendChild(svgEl('line', { class:'rg-med', x1:mx, y1:baseY - amp * 0.85, x2:mx, y2:baseY }));
+    svg.appendChild(svgEl('text', { class:'rg-label', x:labelW - 10, y:baseY - 6, 'text-anchor':'end' }, textNode(s.name)));
+    svg.appendChild(svgEl('text', { class:'rg-sub', x:labelW - 10, y:baseY + 8, 'text-anchor':'end' }, textNode(`med ${Math.round(s.med)}d · n=${fmtN(s.n)}`)));
+    svg.appendChild(svgEl('line', { class:'rg-base', x1:labelW, y1:baseY, x2:labelW + plotW, y2:baseY }));
+  });
+  // shared x axis
+  const ay = padT + series.length * rowH + 14;
+  [0, Math.round(cap / 2), cap].forEach(d => {
+    svg.appendChild(svgEl('text', { class:'rg-axis', x:X(d), y:ay, 'text-anchor':'middle' }, textNode(d + 'd')));
+  });
+  wrap.appendChild(svg);
+  $('#ridge-note').textContent = `distribution of days per transition · ticks = medians · x capped at p95 (${cap}d)`;
+  $('#ridge-caption').textContent = 'Fig. How long each hop actually takes — the silhouettes are the full distributions.';
+}
+/* 10. CUMULATIVE FLOW DIAGRAM — weekly cumulative counts by furthest stage
+   reached (stage-entry timestamps from the time-machine reconstruction),
+   Applied at the bottom → Hired on top, terminal exits as muted bands above. */
+function renderCfd(){
+  const section = $('#section-cfd');
+  if (impliedMode() !== 'cohort' || !state.rows.length) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+  attachTipOnce($('#cfd-kicker'), tipHtml(
+    'Cumulative flow — every candidate stacked by the furthest stage they had reached as of each week. Widening gaps between bands = work piling up in that stage.',
+    'stage entries from timestamps (interpolated where sparse) · complements Composition, which is point-in-time actives'));
+  const wrap = $('#cfd-chart'); wrap.innerHTML = '';
+  const stages = state.canonicalStages;
+  const N = stages.length;
+  const iv = stageIntervals();
+  const rows = state.rows.filter(r => r.applied_at && iv.get(r));
+  if (!rows.length) { wrap.appendChild(el('div', { class:'attn-none' }, 'No candidates in view.')); return; }
+  const t0 = Math.min(...rows.map(r => +r.applied_at));
+  const t1 = Date.now();
+  const weeks = [];
+  for (let t = t0; t <= t1; t += 7 * 86400000) weeks.push(t);
+  weeks.push(t1);
+  // per week: counts[furthest-stage] + exited (rejected/withdrawn by then)
+  const data = weeks.map(t => {
+    const counts = new Array(N).fill(0);
+    let exited = 0;
+    for (const r of rows) {
+      if (+r.applied_at > t) continue;
+      const info = iv.get(r);
+      if ((r.status === 'rejected' || r.status === 'withdrawn') && r.rejected_at && +r.rejected_at <= t) { exited++; continue; }
+      let f = 0;
+      for (let i = info.K; i >= 0; i--) if (info.entries[i] && +info.entries[i] <= t) { f = i; break; }
+      counts[f]++;
+    }
+    return { t, counts, exited, total: counts.reduce((a, b) => a + b, 0) + exited };
+  });
+  const width = Math.max(700, wrap.clientWidth || 900);
+  const height = 220;
+  const padL = 44, padR = 110, padT = 12, padB = 24;
+  const plotW = width - padL - padR, plotH = height - padT - padB;
+  const maxY = Math.max(1, ...data.map(p => p.total));
+  const X = i => padL + i / Math.max(1, data.length - 1) * plotW;
+  const Y = v => padT + plotH - v / maxY * plotH;
+  const svg = svgEl('svg', { class:'cfd', width, height, viewBox:`0 0 ${width} ${height}` });
+  // stacked bands bottom-up: Applied … Hired, then exits (muted) on top
+  const cum = (p, upto) => { let s = 0; for (let i = 0; i <= upto; i++) s += p.counts[i]; return s; };
+  const bandPath = (topFn, botFn) => {
+    let d = `M${X(0)},${Y(topFn(data[0]))}`;
+    for (let i = 1; i < data.length; i++) d += ` L${X(i)},${Y(topFn(data[i]))}`;
+    for (let i = data.length - 1; i >= 0; i--) d += ` L${X(i)},${Y(botFn(data[i]))}`;
+    return d + ' Z';
+  };
+  const bands = [];
+  for (let si = 0; si < N; si++) {
+    if (!data.some(p => p.counts[si] > 0)) continue;
+    bands.push({ name: stages[si], fill: `var(--flow-${(si % 5) + 1})`, top: p => cum(p, si), bot: p => si === 0 ? 0 : cum(p, si - 1),
+      click: () => setSelection({ type:'reached', stage: stages[si] }) });
+  }
+  if (data.some(p => p.exited > 0)) {
+    bands.push({ name: 'Exited', fill: 'var(--rej)', muted: true, top: p => cum(p, N - 1) + p.exited, bot: p => cum(p, N - 1),
+      click: () => { pushDrill(); state.filters.dims.status = new Set(['rejected','withdrawn']); queueRender(); } });
+  }
+  bands.forEach(b => {
+    const path = svgEl('path', { class:'cfd-band' + (b.muted ? ' muted' : ''), d: bandPath(b.top, b.bot), fill: b.fill });
+    path.addEventListener('mousemove', ev => {
+      const rect = svg.getBoundingClientRect();
+      const mx = (ev.clientX - rect.left) * (width / rect.width);
+      const i = Math.max(0, Math.min(data.length - 1, Math.round((mx - padL) / plotW * (data.length - 1))));
+      const p = data[i];
+      const vals = stages.map((s, si) => p.counts[si] ? `${escapeHtml(s)}: ${p.counts[si]}` : null).filter(Boolean).join('<br>');
+      showRiverTooltip(ev, `<b>${dayjs(p.t).format('MMM D, YYYY')}</b><br>${vals}${p.exited ? `<br><span class="tt-muted">exited: ${p.exited}</span>` : ''}<br><span class="tt-muted">click for ${escapeHtml(b.name)}</span>`);
+    });
+    path.addEventListener('mouseleave', hideRiverTooltip);
+    path.addEventListener('click', () => { hideRiverTooltip(); b.click(); });
+    svg.appendChild(path);
+    // right-edge band label where the band is thick enough
+    const last = data[data.length - 1];
+    const yMid = (Y(b.top(last)) + Y(b.bot(last))) / 2;
+    if (Y(b.bot(last)) - Y(b.top(last)) > 9) {
+      svg.appendChild(svgEl('text', { class:'cfd-label', x:padL + plotW + 6, y:yMid + 3 }, textNode(`${b.name} ${fmtN(b.top(last) - b.bot(last))}`)));
+    }
+  });
+  svg.appendChild(svgEl('line', { class:'cfd-baseline', x1:padL, y1:padT + plotH, x2:padL + plotW, y2:padT + plotH }));
+  svg.appendChild(svgEl('text', { class:'cfd-axis', x:padL, y:height - 8, 'text-anchor':'start' }, textNode(dayjs(t0).format('MMM YYYY'))));
+  svg.appendChild(svgEl('text', { class:'cfd-axis', x:padL + plotW, y:height - 8, 'text-anchor':'end' }, textNode('today')));
+  svg.appendChild(svgEl('text', { class:'cfd-axis', x:padL - 5, y:Y(maxY) + 4, 'text-anchor':'end' }, textNode(fmtN(maxY))));
+  wrap.appendChild(svg);
+  $('#cfd-note').textContent = 'cumulative by furthest stage reached · weekly';
+  $('#cfd-caption').textContent = 'Fig. Cumulative flow — widening gaps between bands mean candidates piling up in that stage.';
+}
+/* 11. BEESWARM — time to decision, one dot per RESOLVED candidate, packed
+   rows per req. Greedy vertical relaxation: try offsets 0, ±5, ±10… until a
+   dot no longer collides with a placed neighbor within 2r horizontally. */
+function renderBeeswarm(){
+  const section = $('#section-beeswarm');
+  if (impliedMode() !== 'cohort' || !state.rows.length) { section.classList.add('hidden'); return; }
+  const resolved = state.rows.filter(r => r.status !== 'active' && r.applied_at && (r.rejected_at || r.hired_at));
+  if (resolved.length < 5) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+  attachTipOnce($('#beeswarm-kicker'), tipHtml(
+    'Time to decision — every resolved candidate as one dot: how many days from application to a terminal answer, split by req.',
+    'hired = flow color · declined = amber · rejected = gray · withdrawn = pale'));
+  const wrap = $('#beeswarm-chart'); wrap.innerHTML = '';
+  const dayFor = r => ((r.rejected_at || r.hired_at) - r.applied_at) / 86400000;
+  const byReq = new Map();
+  for (const r of resolved) { const j = r.job || '—'; if (!byReq.has(j)) byReq.set(j, []); byReq.get(j).push(r); }
+  let reqs = Array.from(byReq.entries()).sort((a, b) => b[1].length - a[1].length);
+  const moreReqs = Math.max(0, reqs.length - 6);
+  reqs = reqs.slice(0, 6);
+  // cap 400 dots: deterministic every-kth sample within each req
+  let shown = reqs.reduce((s, [, rs]) => s + rs.length, 0);
+  const step = Math.max(1, Math.ceil(shown / 400));
+  const cap = Math.max(10, Math.ceil(quantile(resolved.map(dayFor), 0.95)));
+  const width = Math.max(700, wrap.clientWidth || 900);
+  const labelW = 160, rightW = 30, rowH = 64;
+  const plotW = width - labelW - rightW;
+  const height = reqs.length * rowH + 34;
+  const svg = svgEl('svg', { class:'beeswarm', width, height, viewBox:`0 0 ${width} ${height}` });
+  const X = d => labelW + Math.min(d, cap) / cap * plotW;
+  const colorFor = r => r.status === 'hired' ? 'var(--flow-3)' : r.status === 'declined' ? 'var(--warn)' : r.status === 'withdrawn' ? 'var(--rej)' : 'var(--muted)';
+  const R = 3;
+  let sampled = 0, total = 0;
+  reqs.forEach(([job, rs], ri) => {
+    const cy = ri * rowH + rowH / 2 + 10;
+    svg.appendChild(svgEl('line', { class:'bw-base', x1:labelW, y1:cy, x2:labelW + plotW, y2:cy }));
+    svg.appendChild(svgEl('text', { class:'bw-label', x:labelW - 10, y:cy + 3, 'text-anchor':'end' }, textNode(job)));
+    const placed = [];
+    rs.sort((a, b) => dayFor(a) - dayFor(b));
+    rs.forEach((r, k) => {
+      total++;
+      if (k % step !== 0) return;
+      sampled++;
+      const x = X(dayFor(r));
+      let dy = 0;
+      for (let attempt = 0; attempt < 12; attempt++) {
+        dy = attempt === 0 ? 0 : (attempt % 2 ? 1 : -1) * Math.ceil(attempt / 2) * (R * 2 - 1);
+        if (!placed.some(p => Math.abs(p.x - x) < R * 2 && Math.abs(p.dy - dy) < R * 2 - 1)) break;
+      }
+      placed.push({ x, dy });
+      const dot = svgEl('circle', { class:'bw-dot', cx:x, cy:cy + dy, r:R, fill: colorFor(r) });
+      dot.addEventListener('mousemove', ev => showRiverTooltip(ev,
+        `<b>${escapeHtml(r.candidate_name || '—')}</b><br>${escapeHtml(job)} · ${escapeHtml(r.status)} after ${Math.round(dayFor(r))}d<br><span class="tt-muted">click to open in the ledger</span>`));
+      dot.addEventListener('mouseleave', hideRiverTooltip);
+      dot.addEventListener('click', () => {
+        hideRiverTooltip();
+        const key = rowKey(r);
+        state.ledger.expanded.add(key);
+        drillTo({ type:'row', key, name: r.candidate_name || 'Candidate' });
+      });
+      svg.appendChild(dot);
+    });
+  });
+  const ay = reqs.length * rowH + 22;
+  [0, Math.round(cap / 2), cap].forEach(d => svg.appendChild(svgEl('text', { class:'bw-axis', x:X(d), y:ay, 'text-anchor':'middle' }, textNode(d + 'd'))));
+  wrap.appendChild(svg);
+  $('#beeswarm-note').textContent = (step > 1 ? `showing every ${step}${step===2?'nd':step===3?'rd':'th'} of ${fmtN(total)} resolved · ` : '') +
+    (moreReqs ? `top 6 reqs (+${moreReqs} more) · ` : '') + `x capped at p95 (${cap}d)`;
+  $('#beeswarm-caption').textContent = 'Fig. Days to a decision, dot per resolved candidate — long gray tails are slow rejections.';
+}
+/* 12. BUMP CHART — source rank per quarter (by hires; by applications when
+   hires are sparse). Needs ≥2 quarters of data. */
+function renderBump(){
+  const section = $('#section-bump');
+  if (impliedMode() !== 'cohort' || !state.mapping.source || !state.rows.length) { section.classList.add('hidden'); return; }
+  const qKey = d => { const dd = dayjs(d); return dd.year() + '-Q' + (Math.floor(dd.month() / 3) + 1); };
+  const quarters = Array.from(new Set(state.rows.filter(r => r.applied_at).map(r => qKey(r.applied_at)))).sort();
+  if (quarters.length < 2) { section.classList.add('hidden'); return; }
+  const totalHires = state.rows.filter(r => r.status === 'hired').length;
+  const byHires = totalHires >= quarters.length * 2; // sparse-hire fallback → rank by applications
+  const metric = byHires ? (rs => rs.filter(r => r.status === 'hired').length) : (rs => rs.length);
+  const bySource = new Map();
+  for (const r of state.rows) { const s = r.source || '—'; if (!bySource.has(s)) bySource.set(s, []); bySource.get(s).push(r); }
+  const sources = Array.from(bySource.entries()).map(([name, rs]) => ({
+    name, total: metric(rs),
+    perQ: quarters.map(q => metric(rs.filter(r => r.applied_at && qKey(r.applied_at) === q))),
+  })).sort((a, b) => b.total - a.total).slice(0, 6);
+  if (sources.length < 2) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+  attachTipOnce($('#bump-kicker'), tipHtml(
+    `Source rankings — each quarter every source is ranked by ${byHires ? 'hires' : 'applications (hires too sparse to rank)'}; crossing lines are sources overtaking each other.`,
+    'top 6 sources by volume · rank 1 at the top'));
+  // rank per quarter (1 = best), ties broken by name for determinism
+  quarters.forEach((q, qi) => {
+    const order = sources.slice().sort((a, b) => (b.perQ[qi] - a.perQ[qi]) || a.name.localeCompare(b.name));
+    order.forEach((s, rank) => { (s.ranks = s.ranks || [])[qi] = rank + 1; });
+  });
+  const wrap = $('#bump-chart'); wrap.innerHTML = '';
+  const width = Math.max(700, wrap.clientWidth || 900);
+  const labelW = 130, rightW = 150, rowH = 30, padT = 26;
+  const plotW = width - labelW - rightW;
+  const height = padT + sources.length * rowH + 26;
+  const svg = svgEl('svg', { class:'bump', width, height, viewBox:`0 0 ${width} ${height}` });
+  const X = qi => labelW + qi / Math.max(1, quarters.length - 1) * plotW;
+  const Y = rank => padT + (rank - 1) * rowH + rowH / 2;
+  quarters.forEach((q, qi) => svg.appendChild(svgEl('text', { class:'bp-axis', x:X(qi), y:14, 'text-anchor':'middle' }, textNode(q))));
+  sources.forEach((s, si) => {
+    const color = REQ_COLORS[si % REQ_COLORS.length];
+    const g = svgEl('g', { class:'bp-line-grp' });
+    let d = `M${X(0)},${Y(s.ranks[0])}`;
+    for (let qi = 1; qi < quarters.length; qi++) d += ` L${X(qi)},${Y(s.ranks[qi])}`;
+    g.appendChild(svgEl('path', { class:'bp-line', d, stroke:color }));
+    quarters.forEach((q, qi) => {
+      g.appendChild(svgEl('circle', { class:'bp-dot', cx:X(qi), cy:Y(s.ranks[qi]), r:4, fill:color }));
+    });
+    g.appendChild(svgEl('text', { class:'bp-name', x:labelW - 10, y:Y(s.ranks[0]) + 3.5, 'text-anchor':'end', fill:color }, textNode(`${s.ranks[0]}. ${s.name}`)));
+    g.appendChild(svgEl('text', { class:'bp-name', x:labelW + plotW + 10, y:Y(s.ranks[quarters.length - 1]) + 3.5, fill:color }, textNode(`${s.ranks[quarters.length - 1]}. ${s.name}`)));
+    g.addEventListener('mousemove', ev => showRiverTooltip(ev,
+      `<b>${escapeHtml(s.name)}</b><br>${quarters.map((q, qi) => `${q}: ${s.perQ[qi]} ${byHires ? 'hire' + (s.perQ[qi]===1?'':'s') : 'apps'} (rank ${s.ranks[qi]})`).join('<br>')}<br><span class="tt-muted">click to drill to this source</span>`));
+    g.addEventListener('mouseleave', () => { svg.classList.remove('hovering'); g.classList.remove('hovered'); hideRiverTooltip(); });
+    g.addEventListener('mouseenter', () => { svg.classList.add('hovering'); g.classList.add('hovered'); });
+    g.addEventListener('click', () => { hideRiverTooltip(); drillToggleDim('source', s.name); });
+    svg.appendChild(g);
+  });
+  wrap.appendChild(svg);
+  $('#bump-note').textContent = `ranked by ${byHires ? 'hires' : 'applications'} per quarter · rank 1 on top`;
+  $('#bump-caption').textContent = `Fig. Source rankings by quarter — crossings are the story.`;
+}
+/* 13. WAFFLE — the pipeline as countable unit squares. 1 square = 1 candidate,
+   auto-scaling to 1 = N above 400 squares. Current mode: actives by stage;
+   cohort: everyone by outcome. */
+function renderWaffle(){
+  const section = $('#section-waffle');
+  const isSnapshot = impliedMode() === 'snapshot';
+  const rows = isSnapshot ? (state.snapshotRows || []) : state.rows;
+  if (!rows.length) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+  attachTipOnce($('#waffle-kicker'), tipHtml(
+    isSnapshot ? 'Headcount — every active candidate as one square, grouped by current stage.' : 'Headcount — every candidate in the period as one square, grouped by outcome.',
+    'squares auto-scale above 400 candidates; the note states the scale'));
+  const wrap = $('#waffle-chart'); wrap.innerHTML = '';
+  let groups;
+  if (isSnapshot) {
+    groups = state.canonicalStages.map((s, i) => ({ name:s, color:`var(--flow-${(i % 5) + 1})`,
+      n: rows.filter(r => r.current_stage === s).length,
+      drill: () => drillTo({ type:'active', stage:s }) })).filter(g => g.n > 0);
+  } else {
+    groups = CHORD_OUTCOMES.map(([status, label, color]) => ({ name:label, color,
+      n: rows.filter(r => r.status === status).length,
+      drill: () => drillTo({ type:'status', status }) })).filter(g => g.n > 0);
+  }
+  const total = rows.length;
+  const per = total > 400 ? Math.ceil(total / 400) : 1;
+  const SQ = 13, GAP = 3, COLS = 20;
+  for (const g of groups) {
+    const squares = Math.max(1, Math.round(g.n / per));
+    const rowsN = Math.ceil(squares / COLS);
+    const label = el('div', { class:'wf-label' }, `${g.name} — ${fmtN(g.n)}`);
+    const grid = svgEl('svg', { class:'waffle', width: COLS * (SQ + GAP), height: rowsN * (SQ + GAP), viewBox:`0 0 ${COLS * (SQ + GAP)} ${rowsN * (SQ + GAP)}` });
+    for (let i = 0; i < squares; i++) {
+      grid.appendChild(svgEl('rect', { class:'wf-sq', x:(i % COLS) * (SQ + GAP), y:Math.floor(i / COLS) * (SQ + GAP), width:SQ, height:SQ, fill:g.color }));
+    }
+    const block = el('div', { class:'wf-group' }, label, grid);
+    attachTip(block, tipHtml(`${g.name} — ${fmtN(g.n)} candidate${g.n===1?'':'s'} (${fmtPctSafe(g.n, total)}). Click to drill.`,
+      per > 1 ? `1 square ≈ ${per} candidates` : '1 square = 1 candidate'));
+    block.addEventListener('click', () => { hideRiverTooltip(); g.drill(); });
+    wrap.appendChild(block);
+  }
+  $('#waffle-note').textContent = per > 1 ? `1 square ≈ ${per} candidates (${fmtN(total)} total)` : `1 square = 1 candidate (${fmtN(total)} total)`;
+  $('#waffle-caption').textContent = isSnapshot
+    ? 'Fig. The current pipeline as headcount you can count.'
+    : 'Fig. The period cohort as headcount you can count, by outcome.';
+}
+/* 14. SLOPE CHART — per-stage pass rates, comparison period vs now. Needs a
+   comparison (historical presets only). */
+function renderSlope(){
+  const section = $('#section-slope');
+  if (impliedMode() !== 'cohort' || !state.prevRows || !state.prevRows.length || !state.rows.length) { section.classList.add('hidden'); return; }
+  const stages = state.canonicalStages;
+  const cur = computeStageFlow(state.rows, stages, null, 'cohort');
+  const prev = computeStageFlow(state.prevRows, stages, null, 'cohort');
+  const lines = [];
+  for (let i = 0; i < stages.length - 1; i++) {
+    const c = cur[i], p = prev[i];
+    if (c.passPct == null || p.passPct == null || c.entered < 5 || p.entered < 5) continue;
+    lines.push({ i, name:`${stages[i]}→${stages[i + 1]}`, cur:c.passPct, prev:p.passPct, nCur:c.entered, nPrev:p.entered });
+  }
+  if (!lines.length) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+  attachTipOnce($('#slope-kicker'), tipHtml(
+    'Did we get better — each stage\'s pass rate in the comparison period (left) vs this period (right). Rising flow-colored lines improved; falling alert lines worsened.',
+    'transitions with <5 entrants on either side are dropped'));
+  const wrap = $('#slope-chart'); wrap.innerHTML = '';
+  const width = Math.max(700, wrap.clientWidth || 900);
+  const height = 230;
+  const axL = width * 0.28, axR = width * 0.62;
+  const padT = 30, padB = 26, plotH = height - padT - padB;
+  const svg = svgEl('svg', { class:'slope', width, height, viewBox:`0 0 ${width} ${height}` });
+  const Y = v => padT + plotH - v * plotH; // v in 0..1
+  svg.appendChild(svgEl('line', { class:'sl-axis', x1:axL, y1:padT - 6, x2:axL, y2:padT + plotH + 6 }));
+  svg.appendChild(svgEl('line', { class:'sl-axis', x1:axR, y1:padT - 6, x2:axR, y2:padT + plotH + 6 }));
+  svg.appendChild(svgEl('text', { class:'sl-axlabel', x:axL, y:14, 'text-anchor':'middle' }, textNode(formatRangeLabel(state.prevRange[0], state.prevRange[1]))));
+  svg.appendChild(svgEl('text', { class:'sl-axlabel', x:axR, y:14, 'text-anchor':'middle' }, textNode(formatRangeLabel(state.periodRange[0], state.periodRange[1]))));
+  lines.forEach(L => {
+    const dPP = Math.round((L.cur - L.prev) * 100);
+    const cls = dPP > 2 ? 'up' : dPP < -2 ? 'down' : 'flat';
+    const g = svgEl('g', { class:'sl-grp' });
+    g.appendChild(svgEl('line', { class:'sl-line ' + cls, x1:axL, y1:Y(L.prev), x2:axR, y2:Y(L.cur) }));
+    g.appendChild(svgEl('circle', { class:'sl-dot ' + cls, cx:axL, cy:Y(L.prev), r:3.5 }));
+    g.appendChild(svgEl('circle', { class:'sl-dot ' + cls, cx:axR, cy:Y(L.cur), r:3.5 }));
+    g.appendChild(svgEl('text', { class:'sl-val', x:axL - 8, y:Y(L.prev) + 3.5, 'text-anchor':'end' }, textNode(`${L.name} ${fmtPct(L.prev, 0)}`)));
+    g.appendChild(svgEl('text', { class:'sl-val sl-right ' + cls, x:axR + 8, y:Y(L.cur) + 3.5 }, textNode(`${fmtPct(L.cur, 0)} (${dPP >= 0 ? '+' : ''}${dPP}pp)`)));
+    g.addEventListener('mousemove', ev => showRiverTooltip(ev,
+      `<b>${escapeHtml(L.name)}</b><br>${formatRangeLabel(state.prevRange[0], state.prevRange[1])}: ${fmtPct(L.prev, 0)} of ${fmtN(L.nPrev)}<br>${formatRangeLabel(state.periodRange[0], state.periodRange[1])}: ${fmtPct(L.cur, 0)} of ${fmtN(L.nCur)}<br><span class="tt-muted">click to drill to ${escapeHtml(stages[L.i])}</span>`));
+    g.addEventListener('mouseleave', hideRiverTooltip);
+    g.addEventListener('click', () => { hideRiverTooltip(); setSelection({ type:'stage', stage: stages[L.i] }); });
+    svg.appendChild(g);
+  });
+  wrap.appendChild(svg);
+  $('#slope-note').textContent = 'pass rate per transition · left = comparison, right = this period';
+  $('#slope-caption').textContent = 'Fig. Pass rates then vs now — the minimal "did we get better".';
+}
+/* ============================================================
    SECTION REGISTRY (lab round 6) — every report section, in default order.
    renderAll iterates this; the Customize screen edits visibility/order,
    persisted globally under lab:layout. Mode rules still live inside each
@@ -6880,6 +7360,18 @@ const SECTION_REGISTRY = [
     desc:'Recruiter-by-stage dots sized by active load, overdue in amber.' },
   { key:'chord',      title:'Source ↔ outcome chord', el:'section-chord',   render: () => renderChord(), gallery:true, modeNote:'cohort only',
     desc:'Ribbons from each source to its outcomes — where hires actually come from.' },
+  { key:'ridge',      title:'Stage-duration ridgeline', el:'section-ridge', render: () => renderRidge(), gallery:true, modeNote:'cohort only',
+    desc:'Overlapping duration silhouettes per stage transition — where time goes.' },
+  { key:'cfd',        title:'Cumulative flow diagram', el:'section-cfd',    render: () => renderCfd(), gallery:true, modeNote:'cohort only',
+    desc:'Kanban-style stacked bands of furthest stage reached over time; widening gaps = growing WIP.' },
+  { key:'beeswarm',   title:'Time-to-decision beeswarm', el:'section-beeswarm', render: () => renderBeeswarm(), gallery:true, modeNote:'cohort only',
+    desc:'One dot per resolved candidate — days to a decision, by req, colored by outcome.' },
+  { key:'bump',       title:'Source ranking bump chart', el:'section-bump', render: () => renderBump(), gallery:true, modeNote:'cohort only',
+    desc:'Source rankings per quarter as crossing lines — who rose, who fell.' },
+  { key:'waffle',     title:'Headcount waffle', el:'section-waffle',        render: () => renderWaffle(), gallery:true,
+    desc:'One square = one candidate — the pipeline as countable headcount.' },
+  { key:'slope',      title:'Pass-rate slope chart', el:'section-slope',    render: () => renderSlope(), gallery:true, modeNote:'historical only',
+    desc:'Per-stage pass rates, comparison vs now — the at-a-glance "did we get better".' },
 ];
 let _layout = null;
 function getLayout(){
@@ -6950,6 +7442,30 @@ function galleryThumb(key){
     add('path', { d:'M6,4 C40,4 44,4 78,6 L78,12 C44,10 40,10 6,12 Z', fill:'var(--flow-3)', opacity:0.7 });
     add('path', { d:'M6,14 C40,14 44,16 78,18 L78,24 C44,22 40,20 6,20 Z', fill:'var(--rej)', opacity:0.5 });
     add('path', { d:'M6,22 C40,24 44,26 78,26 L78,28 C44,28 40,26 6,26 Z', fill:'var(--rej)', opacity:0.35 });
+  } else if (key === 'ridge') {
+    add('path', { d:'M2,10 Q14,1 26,8 T50,10 T80,10 L80,10 L2,10 Z', fill:'var(--flow-2)', opacity:0.7 });
+    add('path', { d:'M2,19 Q20,8 34,16 T60,19 T80,19 L2,19 Z', fill:'var(--flow-3)', opacity:0.7 });
+    add('path', { d:'M2,28 Q26,16 44,25 T80,28 L2,28 Z', fill:'var(--flow-4)', opacity:0.7 });
+  } else if (key === 'cfd') {
+    add('path', { d:'M2,28 L2,20 C30,18 50,10 80,4 L80,28 Z', fill:'var(--flow-1)' });
+    add('path', { d:'M2,28 L2,24 C30,23 50,17 80,12 L80,28 Z', fill:'var(--flow-3)', opacity:0.8 });
+    add('path', { d:'M2,28 L2,27 C30,26 50,23 80,19 L80,28 Z', fill:'var(--flow-5)' });
+  } else if (key === 'beeswarm') {
+    [[8,6],[14,8],[20,5],[30,9],[44,6],[60,7],[12,22],[22,20],[36,23],[52,21],[70,24],[26,24]].forEach(([x,y],i) =>
+      add('circle', { cx:x, cy:y, r:2.2, fill: i % 4 === 0 ? 'var(--flow-3)' : 'var(--rej)', opacity:0.85 }));
+  } else if (key === 'bump') {
+    add('path', { d:'M4,6 L28,6 L52,16 L76,16', fill:'none', stroke:'var(--flow-3)', 'stroke-width':2 });
+    add('path', { d:'M4,16 L28,16 L52,6 L76,6', fill:'none', stroke:'var(--warn)', 'stroke-width':2 });
+    add('path', { d:'M4,25 L28,25 L52,25 L76,25', fill:'none', stroke:'var(--rej)', 'stroke-width':2 });
+  } else if (key === 'waffle') {
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 12; c++)
+      add('rect', { x:2+c*6.5, y:2+r*7, width:5, height:5, fill: c < 5 ? 'var(--flow-3)' : c < 9 ? 'var(--flow-2)' : 'var(--rej)', opacity:0.85 });
+  } else if (key === 'slope') {
+    add('line', { x1:14, y1:2, x2:14, y2:28, stroke:'var(--hairline)' });
+    add('line', { x1:68, y1:2, x2:68, y2:28, stroke:'var(--hairline)' });
+    add('path', { d:'M14,20 L68,8', fill:'none', stroke:'var(--flow-3)', 'stroke-width':2 });
+    add('path', { d:'M14,10 L68,18', fill:'none', stroke:'var(--neg)', 'stroke-width':2 });
+    add('path', { d:'M14,25 L68,24', fill:'none', stroke:'var(--muted)', 'stroke-width':2 });
   }
   return s;
 }
