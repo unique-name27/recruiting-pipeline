@@ -79,7 +79,11 @@ html.dark{
    ============================================================ */
 /* --- TERMINAL: ops-console. Dark is canonical; the light/dark toggle is
        inert here by design (vars override both) — noted in the switcher. --- */
-html.ed-terminal, html.ed-terminal.dark, html.ed-terminal.light{
+/* NOTE: the class is doubled to (0,2,1) specificity so this block beats the
+   OS-dark token block `html:not(.light):not(.dark)` — without it Terminal
+   silently rendered with broadsheet-dark COLORS under a dark OS (typography
+   applied, palette lost). Pre-existing bug, fixed in wild round D. */
+html.ed-terminal.ed-terminal, html.ed-terminal.dark, html.ed-terminal.light{
   --paper:#0C0C0C; --ink:#E8E8E3; --muted:#8A8A80; --hairline:rgba(232,232,227,0.20); --heavy:#E8E8E3;
   --flow-1:#A9F2C8; --flow-2:#6FE6A4; --flow-3:#35D17D; --flow-4:#1FA35C; --flow-5:#137A43;
   --rej:#55554F;
@@ -1068,6 +1072,56 @@ html.dark .sheet-overlay{ background:rgba(0,0,0,0.6); }
 .load-data-list .prow{ align-items:center; }
 
 /* ============================================================
+   PRESENT + WALL MODE (wild round D) — full-viewport scene overlay.
+   Edition-aware by construction: everything reads the active CSS vars.
+   ============================================================ */
+html.presenting{ overflow:hidden; }
+.present-root{ position:fixed; inset:0; background:var(--paper); color:var(--ink); z-index:800; display:flex; flex-direction:column; }
+.present-scene{
+  flex:1; display:flex; flex-direction:column; justify-content:center;
+  padding:6vh 8vw; overflow:hidden; cursor:pointer;
+  opacity:1; transition:opacity 400ms ease;
+}
+.present-scene.fading{ opacity:0; }
+@media (prefers-reduced-motion: reduce){ .present-scene{ transition:none; } }
+.present-kicker{
+  font-size:13px; font-weight:600; letter-spacing:0.14em; text-transform:uppercase;
+  color:var(--muted); margin-bottom:3vh;
+}
+.present-title{ font-family:var(--serif); font-weight:600; font-size:clamp(30px, 4.6vw, 68px); line-height:1.16; letter-spacing:-0.01em; max-width:24ch; }
+.present-title.red{ color:var(--neg); }
+.present-title.amber{ color:var(--warn); }
+.present-sub{ font-size:clamp(15px, 1.5vw, 22px); color:var(--muted); margin-top:3vh; max-width:60ch; }
+.present-suggest{ font-family:var(--serif); font-style:italic; font-size:clamp(15px, 1.5vw, 22px); color:var(--ink); margin-top:2vh; max-width:60ch; }
+.present-section-holder{ flex:1; min-height:0; overflow:hidden; cursor:default; }
+.present-section-holder .section{ margin-top:0 !important; border:none !important; padding:0 !important; }
+.present-section-holder table.report-table{ font-size:16px; }
+.present-section-holder table.report-table td{ padding:11px 14px; }
+.present-counter{ position:fixed; right:28px; bottom:18px; font-size:12.5px; color:var(--muted); font-variant-numeric:tabular-nums; z-index:801; }
+.present-hint{ position:fixed; left:28px; bottom:18px; font-size:11.5px; color:var(--muted); z-index:801; }
+.present-ticker{
+  flex-shrink:0; display:flex; align-items:center; gap:18px;
+  border-top:0.5px solid var(--hairline); padding:10px 28px; font-size:13px;
+  color:var(--muted); font-variant-numeric:tabular-nums; cursor:default;
+}
+.present-ticker .wall-speed{ margin-left:auto; color:var(--muted); font-size:12px; border-bottom:1px solid transparent; }
+.present-ticker .wall-speed:hover, .present-ticker .wall-speed:focus-visible{ color:var(--ink); border-bottom-color:var(--ink); outline:none; }
+/* print while presenting: one scene per page from the static print stack */
+.present-print-stack{ display:none; }
+@media print{
+  .present-root{ position:static; display:block; }
+  .present-root .present-scene, .present-root .present-ticker, .present-counter, .present-hint{ display:none !important; }
+  .present-print-stack{ display:block; }
+  .present-print-page{ page-break-after:always; padding:20px 0; }
+  .present-print-page .present-title{ font-size:28px; }
+  .present-print-page .present-kicker{ margin-bottom:10px; }
+  .present-print-page .present-sub, .present-print-page .present-suggest{ margin-top:8px; font-size:14px; }
+}
+/* customize gallery: 13 entries → two-column grid */
+.cz-gallery-grid{ display:grid; grid-template-columns:1fr 1fr; gap:0 28px; }
+@media (max-width:900px){ .cz-gallery-grid{ grid-template-columns:1fr; } }
+
+/* ============================================================
    TOAST
    ============================================================ */
 .toast-line{
@@ -1135,6 +1189,8 @@ html.dark .sheet-overlay{ background:rgba(0,0,0,0.6); }
         </div>
       </div>
       <button class="underline-btn" id="btn-customize">Customize</button>
+      <button class="underline-btn" id="btn-present">Present</button>
+      <button class="underline-btn" id="btn-wall">Wall</button>
       <button class="underline-btn kbd-hint" id="btn-palette" type="button">⌘ Ctrl K</button>
       <button class="underline-btn theme-toggle" id="btn-theme-toggle">Dark</button>
       <button class="underline-btn" id="btn-print">Export PDF</button>
@@ -4626,6 +4682,15 @@ function attachTipOnce(elm, htmlOrFn){
 function tipHtml(main, formula){
   return `${escapeHtml(main)}${formula ? `<br><span class="tt-muted">${escapeHtml(formula)}</span>` : ''}`;
 }
+// make a (SVG or HTML) click target keyboard-activatable: Tab focuses it,
+// Enter/Space fires its click handler (wild round D polish)
+function wireKeyActivate(elm){
+  elm.setAttribute('tabindex', '0');
+  elm.setAttribute('role', 'button');
+  elm.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); elm.dispatchEvent(new MouseEvent('click', { bubbles:true })); }
+  });
+}
 // a count that drills to the candidates behind it — real button, keyboard focusable
 function numlink(text, onClick, tip){
   const b = el('button', { class:'numlink', type:'button' }, text);
@@ -4835,6 +4900,7 @@ function renderFlowMetro(){
       `<b>${escapeHtml(s)}</b><br>${fmtN(stageTotals[i])} ${isSnapshot ? 'active at/past' : 'reached'}${stageExitTotals[i] && !isSnapshot ? `<br>${fmtN(stageExitTotals[i])} exited here` : ''}${isSnapshot && stageOverdue[i] ? `<br><span class="tt-muted">${fmtN(stageOverdue[i])} overdue</span>` : ''}`));
     bar.addEventListener('mouseleave', hideRiverTooltip);
     bar.addEventListener('click', () => { hideRiverTooltip(); setSelection({ type:'reached', stage:s }); });
+    wireKeyActivate(bar);
     svg.appendChild(bar);
     // classic 45° station-name lockup
     svg.appendChild(svgEl('text', { class:'mt-station-name', x:sx(i) + 5, y:y0 - 10, transform:`rotate(-45 ${sx(i) + 5} ${y0 - 10})` }, textNode(s.toUpperCase())));
@@ -4873,6 +4939,7 @@ function renderFlowMetro(){
       node.addEventListener('mouseenter', () => { svg.classList.add('hovering'); g.classList.add('hovered'); badges.classList.add('hovered'); });
       node.addEventListener('click', () => { hideRiverTooltip(); drillToggleDim('job', e.job); });
     }
+    wireKeyActivate(g);
   });
   // legend: req names in their line colors
   const ly = height - 12;
@@ -4952,6 +5019,7 @@ function renderFlowRadial(){
           if (e.isOther) setSelection({ type:'reached', stage: stages[i] });
           else drillCombo({ job: e.job }, { type:'reached', stage: stages[i] });
         });
+        wireKeyActivate(seg);
         svg.appendChild(seg);
       }
       // honest remainder: the part of the sector that never reached this ring
@@ -6235,14 +6303,24 @@ function renderTrends(){
   const spanDays = Math.max(1, (range[1]-range[0])/86400000);
   const res = pickResolution(spanDays);
   TREND_DEFS.forEach((def,idx) => {
+    // group rows by bin key ONCE per def instead of filtering all rows per bin
+    // (was the report's slowest path: rows × bins × defs dayjs calls)
+    const groupByBin = rowsArr => {
+      const m = new Map();
+      for (const r of rowsArr) { const dt = r[def.field]; if (!dt) continue; const k = binKey(dt, res); const arr = m.get(k); if (arr) arr.push(r); else m.set(k, [r]); }
+      return m;
+    };
+    const curGroups = groupByBin(state.rows);
+    const EMPTY_BIN = [];
     const bins = buildBins(state.rows, def.field, res, range).map(b => {
-      const rowsInBin = state.rows.filter(r => r[def.field] && binKey(r[def.field],res)===b.key);
+      const rowsInBin = curGroups.get(b.key) || EMPTY_BIN;
       return { ...b, value: def.metric(rowsInBin), n: def.count ? def.count(rowsInBin) : rowsInBin.length };
     });
     let prevBins = null;
     if (state.prevRows && state.prevRange) {
+      const prevGroups = groupByBin(state.prevRows);
       prevBins = buildBins(state.prevRows, def.field, res, state.prevRange).map(b => {
-        const rowsInBin = state.prevRows.filter(r => r[def.field] && binKey(r[def.field],res)===b.key);
+        const rowsInBin = prevGroups.get(b.key) || EMPTY_BIN;
         return { ...b, value: def.metric(rowsInBin), n: def.count ? def.count(rowsInBin) : rowsInBin.length };
       });
     }
@@ -6922,6 +7000,7 @@ function renderChord(){
       if (c.src.isOther) setSelection({ type:'status', status:c.status });
       else drillCombo({ source: c.src.name }, { type:'status', status:c.status });
     });
+    wireKeyActivate(ribbon);
     svg.appendChild(ribbon);
   }
   wrap.appendChild(svg);
@@ -6998,6 +7077,7 @@ function renderRidge(){
     });
     ridge.addEventListener('mouseleave', hideRiverTooltip);
     ridge.addEventListener('click', () => { hideRiverTooltip(); setSelection({ type:'reached', stage: stages[s.i + 1] }); });
+    wireKeyActivate(ridge);
     svg.appendChild(ridge);
     // median tick + label lockup
     const mx = X(s.med);
@@ -7225,6 +7305,7 @@ function renderBump(){
     g.addEventListener('mouseleave', () => { svg.classList.remove('hovering'); g.classList.remove('hovered'); hideRiverTooltip(); });
     g.addEventListener('mouseenter', () => { svg.classList.add('hovering'); g.classList.add('hovered'); });
     g.addEventListener('click', () => { hideRiverTooltip(); drillToggleDim('source', s.name); });
+    wireKeyActivate(g);
     svg.appendChild(g);
   });
   wrap.appendChild(svg);
@@ -7269,6 +7350,7 @@ function renderWaffle(){
     attachTip(block, tipHtml(`${g.name} — ${fmtN(g.n)} candidate${g.n===1?'':'s'} (${fmtPctSafe(g.n, total)}). Click to drill.`,
       per > 1 ? `1 square ≈ ${per} candidates` : '1 square = 1 candidate'));
     block.addEventListener('click', () => { hideRiverTooltip(); g.drill(); });
+    wireKeyActivate(block);
     wrap.appendChild(block);
   }
   $('#waffle-note').textContent = per > 1 ? `1 square ≈ ${per} candidates (${fmtN(total)} total)` : `1 square = 1 candidate (${fmtN(total)} total)`;
@@ -7319,6 +7401,7 @@ function renderSlope(){
       `<b>${escapeHtml(L.name)}</b><br>${formatRangeLabel(state.prevRange[0], state.prevRange[1])}: ${fmtPct(L.prev, 0)} of ${fmtN(L.nPrev)}<br>${formatRangeLabel(state.periodRange[0], state.periodRange[1])}: ${fmtPct(L.cur, 0)} of ${fmtN(L.nCur)}<br><span class="tt-muted">click to drill to ${escapeHtml(stages[L.i])}</span>`));
     g.addEventListener('mouseleave', hideRiverTooltip);
     g.addEventListener('click', () => { hideRiverTooltip(); setSelection({ type:'stage', stage: stages[L.i] }); });
+    wireKeyActivate(g);
     svg.appendChild(g);
   });
   wrap.appendChild(svg);
@@ -7534,8 +7617,9 @@ function openCustomize(){
       el('span', { class:'cz-mode' }, cur != null ? 'SLA' : `historical (${hist}d)`),
       inp));
   }
-  // gallery
+  // gallery — two-column grid now that it holds 13 entries
   body.appendChild(el('div', { class:'map-section-title' }, 'Gallery — optional visualizations'));
+  const gGrid = el('div', { class:'cz-gallery-grid' });
   for (const def of SECTION_REGISTRY.filter(d => d.gallery)) {
     const cb = el('input', { type:'checkbox' });
     cb.checked = l.enabled.has(def.key);
@@ -7544,10 +7628,11 @@ function openCustomize(){
       else l.enabled.delete(def.key);
       rebuild();
     });
-    body.appendChild(el('div', { class:'cz-gallery-row' }, cb, galleryThumb(def.key),
+    gGrid.appendChild(el('div', { class:'cz-gallery-row' }, cb, galleryThumb(def.key),
       el('div', {}, el('div', { class:'cz-g-name' }, def.title + (def.modeNote ? ' · ' + def.modeNote : '')),
         el('div', { class:'cz-g-desc' }, def.desc || ''))));
   }
+  body.appendChild(gGrid);
   const closeBtn = el('button', { class:'underline-btn primary', type:'button' }, 'Done');
   closeBtn.addEventListener('click', () => overlay.remove());
   sheet.append(
@@ -7784,6 +7869,151 @@ function toggleTheme(){
 }
 
 /* ============================================================
+   PRESENT + WALL MODE (wild round D)
+   Present: a full-screen deck auto-built from the CURRENT report state —
+   title card → one scene per Attention flag → key sections (flow, aging,
+   statement, forecast, visible gallery viz), capped at 10 scenes with flags
+   prioritized. Section scenes MOVE the live section node into the scene and
+   re-run its render fn so charts genuinely re-render at presentation width;
+   applySectionOrder() puts everything back on scene change/exit. The print
+   stack (Ctrl+P while presenting) uses STATIC CLONES, one scene per page.
+   Wall: the same scenes on a 15s timer with 400ms opacity fades (none under
+   prefers-reduced-motion), a clock+stats ticker, 1×/2× speed, full re-render
+   every loop; any key or click exits. Timers cleared on exit — no leaks.
+   ============================================================ */
+let presentState = null;
+function buildPresentScenes(){
+  const scenes = [];
+  const meta = state.files.map(f => f.name).join(', ');
+  scenes.push({ kind:'title', build: c => {
+    c.appendChild(el('div', { class:'present-kicker' }, 'Pipeline review — ' + subLabel()));
+    c.appendChild(el('h1', { class:'present-title' }, $('#finding-headline').textContent));
+    c.appendChild(el('p', { class:'present-sub' }, `${meta} · ${fmtN(state.rows.length)} candidates in view`));
+  }});
+  for (const f of (state._flags || [])) {
+    scenes.push({ kind:'flag', build: c => {
+      const inv = investigateFlag(f);
+      c.appendChild(el('div', { class:'present-kicker' }, 'Attention'));
+      c.appendChild(el('h1', { class:'present-title ' + f.severity }, f.text));
+      if (inv.contributors && inv.contributors[0]) c.appendChild(el('p', { class:'present-sub' }, inv.contributors[0].text));
+      if (inv.suggested) c.appendChild(el('p', { class:'present-suggest' }, inv.suggested));
+    }});
+  }
+  // key sections, priority order, only currently visible ones
+  const galleryKeys = orderedSectionDefs().filter(d => d.gallery && !isSectionOff(d)).map(d => d.key);
+  for (const key of ['flow','aging','statement','forecast'].concat(galleryKeys)) {
+    if (scenes.length >= 10) break;
+    const def = SECTION_REGISTRY.find(d => d.key === key);
+    if (!def) continue;
+    const sec = document.getElementById(def.el);
+    if (!sec || isSectionOff(def) || sec.classList.contains('hidden')) continue;
+    scenes.push({ kind:'section', def });
+  }
+  return scenes.slice(0, 10);
+}
+function showPresentScene(idx){
+  const ps = presentState;
+  if (!ps) return;
+  ps.idx = ((idx % ps.scenes.length) + ps.scenes.length) % ps.scenes.length;
+  const sc = ps.scenes[ps.idx];
+  if (ps.movedSection) { applySectionOrder(); ps.movedSection = false; }
+  ps.sceneEl.innerHTML = '';
+  if (sc.kind === 'section') {
+    ps.sceneEl.appendChild(el('div', { class:'present-kicker' }, sc.def.title));
+    const holder = el('div', { class:'present-section-holder' });
+    holder.addEventListener('click', e => { if (!ps.wall) e.stopPropagation(); }); // chart clicks shouldn't advance
+    ps.sceneEl.appendChild(holder);
+    holder.appendChild(document.getElementById(sc.def.el));
+    ps.movedSection = true;
+    try { sc.def.render(); } catch (e) { /* a failed scene render must never strand the deck */ }
+  } else {
+    sc.build(ps.sceneEl);
+  }
+  const counter = document.getElementById('present-counter');
+  if (counter) counter.textContent = (ps.idx + 1) + ' / ' + ps.scenes.length;
+}
+function presentNav(d){
+  const ps = presentState;
+  if (!ps) return;
+  if (ps.wall && !reducedMotion()) {
+    ps.sceneEl.classList.add('fading');
+    setTimeout(() => { if (!presentState) return; showPresentScene(ps.idx + d); ps.sceneEl.classList.remove('fading'); }, 400);
+  } else {
+    showPresentScene(ps.idx + d);
+  }
+}
+function updateWallTicker(){
+  const t = document.getElementById('wall-ticker-text');
+  if (!t) return;
+  const act = (state.snapshotRows || []).length;
+  const od = overdueActives().length;
+  const now = nowRef();
+  const offers = (state.snapshotRows || []).filter(r => nextStepState(r, now).state === 'offer-out').length;
+  t.textContent = `${dayjs().format('ddd HH:mm')} · ${fmtN(act)} active · ${fmtN(od)} lack a next step · ${fmtN(offers)} offer${offers === 1 ? '' : 's'} out`;
+}
+function openPresent(wall){
+  if (presentState) closePresent();
+  if (!state.rawRows.length) { toast('Load data first.'); return; }
+  state.renderQueued = false; renderAll(); // scenes reflect the freshest state
+  const root = el('div', { class:'present-root', id:'present-root' });
+  const sceneEl = el('div', { class:'present-scene' });
+  root.appendChild(sceneEl);
+  root.appendChild(el('div', { class:'present-counter', id:'present-counter' }));
+  if (!wall) root.appendChild(el('div', { class:'present-hint' }, '→ next · ← back · P / Esc exit · Ctrl+P prints the deck'));
+  presentState = { scenes: buildPresentScenes(), idx: 0, wall: !!wall, sceneEl, root, movedSection: false, speed: 1, timers: [] };
+  if (wall) {
+    const ticker = el('div', { class:'present-ticker' }, el('span', { id:'wall-ticker-text' }));
+    const speedBtn = el('button', { class:'wall-speed', type:'button' }, '1×');
+    speedBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      presentState.speed = presentState.speed === 1 ? 2 : 1;
+      speedBtn.textContent = presentState.speed + '×';
+      startWallCycle();
+    });
+    speedBtn.addEventListener('keydown', e => e.stopPropagation()); // operating the control shouldn't exit
+    ticker.addEventListener('click', e => e.stopPropagation());
+    ticker.appendChild(speedBtn);
+    root.appendChild(ticker);
+    presentState.timers.push(setInterval(updateWallTicker, 1000));
+    startWallCycle();
+    root.addEventListener('click', () => closePresent()); // any click exits the wall
+  } else {
+    sceneEl.addEventListener('click', () => presentNav(1)); // click advances
+  }
+  document.body.appendChild(root);
+  document.documentElement.classList.add('presenting');
+  showPresentScene(0);
+  if (wall) updateWallTicker();
+}
+function startWallCycle(){
+  const ps = presentState;
+  if (!ps || !ps.wall) return;
+  if (ps.cycleTimer) clearInterval(ps.cycleTimer);
+  ps.cycleTimer = setInterval(() => {
+    if (!presentState) return;
+    const next = (ps.idx + 1) % ps.scenes.length;
+    if (next === 0) {
+      // loop wrap: refresh the underlying report + rebuild scenes from it
+      if (ps.movedSection) { applySectionOrder(); ps.movedSection = false; }
+      state.renderQueued = false; renderAll();
+      ps.scenes = buildPresentScenes();
+    }
+    presentNav(1);
+  }, 15000 / ps.speed);
+}
+function closePresent(){
+  const ps = presentState;
+  if (!ps) return;
+  presentState = null;
+  if (ps.cycleTimer) clearInterval(ps.cycleTimer);
+  ps.timers.forEach(t => clearInterval(t));
+  if (ps.movedSection) applySectionOrder(); // return the moved section to the report
+  ps.root.remove();
+  document.documentElement.classList.remove('presenting');
+  state.renderQueued = false; renderAll(); // moved sections re-render at report width
+}
+
+/* ============================================================
    COMMAND PALETTE (lab round 9) — Ctrl+K jump box.
    Fuzzy-ish matching (substring beats subsequence) across candidates,
    reqs, people, sources, visible report sections and fixed commands.
@@ -7824,6 +8054,8 @@ function buildPaletteIndex(){
     items.push({ type:'Commands', label:'Copy executive summary', run: copyExecSummary });
     if (impliedMode() === 'snapshot') items.push({ type:'Commands', label:'Replay pipeline history', run: () => { if (!replay.playing) startReplay(); } });
     items.push({ type:'Commands', label:'Reset filters', run: clearAllFilters });
+    items.push({ type:'Commands', label:'Start presentation', ctx:'P', run: () => openPresent(false) });
+    items.push({ type:'Commands', label:'Wall mode (ambient display)', run: () => openPresent(true) });
     // report sections currently on the page
     for (const def of orderedSectionDefs()) {
       if (isSectionOff(def)) continue;
@@ -8005,6 +8237,47 @@ function wireEvents(){
   });
   $('#btn-palette').addEventListener('click', () => openPalette());
   attachTipOnce($('#btn-palette'), tipHtml('Command palette — jump to any candidate, req, person, section or command.', 'Ctrl+K'));
+  $('#btn-present').addEventListener('click', () => openPresent(false));
+  attachTipOnce($('#btn-present'), tipHtml('Present — a full-screen deck built from the current report state.', 'shortcut: P · arrows navigate · Esc exits'));
+  $('#btn-wall').addEventListener('click', () => openPresent(true));
+  attachTipOnce($('#btn-wall'), tipHtml('Wall — ambient auto-cycling display for a TV; 15s per scene with a live ticker.', 'any key or click exits'));
+  // present/wall keyboard: arrows + space advance, P toggles, any key exits the wall
+  window.addEventListener('keydown', (e) => {
+    if (e.target && e.target.matches && e.target.matches('input, textarea, select')) return;
+    if (presentState) {
+      if (e.key === 'Escape') return; // the Escape chain below owns exit
+      if (presentState.wall) { e.preventDefault(); closePresent(); return; } // any key exits the wall
+      if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); presentNav(1); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); presentNav(-1); }
+      else if (e.key === 'p' || e.key === 'P') { e.preventDefault(); closePresent(); }
+      return;
+    }
+    if ((e.key === 'p' || e.key === 'P') && !e.ctrlKey && !e.metaKey && !e.altKey && state.rawRows.length && !paletteIsOpen() && !document.getElementById('customize-overlay')) {
+      e.preventDefault();
+      openPresent(false);
+    }
+  });
+  // Ctrl+P while presenting: build a static-clone print stack, one scene per page
+  window.addEventListener('beforeprint', () => {
+    if (!presentState || presentState.printStack) return;
+    const stack = el('div', { class:'present-print-stack' });
+    for (const sc of presentState.scenes) {
+      const page = el('div', { class:'present-print-page' });
+      if (sc.kind === 'section') {
+        page.appendChild(el('div', { class:'present-kicker' }, sc.def.title));
+        const secNode = document.getElementById(sc.def.el);
+        if (secNode) page.appendChild(secNode.cloneNode(true));
+      } else {
+        sc.build(page);
+      }
+      stack.appendChild(page);
+    }
+    presentState.root.appendChild(stack);
+    presentState.printStack = stack;
+  });
+  window.addEventListener('afterprint', () => {
+    if (presentState && presentState.printStack) { presentState.printStack.remove(); presentState.printStack = null; }
+  });
 
   // Ctrl+K / Cmd+K toggles the command palette
   window.addEventListener('keydown', (e) => {
@@ -8013,10 +8286,11 @@ function wireEvents(){
       if (paletteIsOpen()) closePalette(); else openPalette();
     }
   });
-  // Escape chain: palette > overlays > open popovers/panels > expanded trend fig > expanded ledger row > drill pop
+  // Escape chain: present/wall > palette > overlays > open popovers/panels > expanded trend fig > expanded ledger row > drill pop
   window.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    if (paletteIsOpen()) { closePalette(); return; } // palette closes before anything else
+    if (presentState) { closePresent(); return; } // present/wall exits before anything else
+    if (paletteIsOpen()) { closePalette(); return; } // palette closes next
     const cz = document.getElementById('customize-overlay');
     if (cz) { cz.remove(); return; } // settings overlay closes next
     if (replay.playing) { stopReplay(false); return; } // then the replay pauses
