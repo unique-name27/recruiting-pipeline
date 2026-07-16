@@ -336,7 +336,22 @@ svg.aging .aging-count{ font-size:10px; fill:var(--muted); font-variant-numeric:
 svg.aging .aging-dot{ fill:var(--flow-3); cursor:pointer; }
 svg.aging .aging-dot.amber{ fill:var(--warn); }
 svg.aging .aging-dot.red{ fill:var(--neg); }
+/* next-step state shapes: hollow = scheduled (in motion, never red),
+   half-tone = awaiting feedback; offer-out renders as a diamond <rect> */
+svg.aging .aging-dot.scheduled{ fill:var(--paper); stroke:var(--flow-3); stroke-width:1.25; }
+svg.aging .aging-dot.scheduled.amber{ fill:var(--paper); stroke:var(--warn); }
+svg.aging .aging-dot.awaiting{ fill-opacity:0.4; stroke:var(--flow-3); stroke-width:1; }
+svg.aging .aging-dot.awaiting.amber{ fill:var(--warn); stroke:var(--warn); }
+svg.aging .aging-dot.awaiting.red{ fill:var(--neg); stroke:var(--neg); }
 svg.aging .aging-dot:hover{ stroke:var(--ink); stroke-width:1.25; }
+.aging-legend{ display:flex; gap:18px; margin-top:8px; font-size:11px; color:var(--muted); flex-wrap:wrap; }
+.aging-legend-item{ display:inline-flex; align-items:center; gap:5px; }
+.aging-glyph{ width:9px; height:9px; display:inline-block; flex-shrink:0; }
+.aging-glyph.g-needs{ background:var(--flow-3); border-radius:50%; }
+.aging-glyph.g-sched{ background:var(--paper); border:1.5px solid var(--flow-3); border-radius:50%; }
+.aging-glyph.g-await{ background:var(--flow-3); opacity:0.45; border-radius:50%; }
+.aging-glyph.g-offer{ background:var(--flow-3); width:7px; height:7px; transform:rotate(45deg); }
+.aging-unmapped{ font-size:11px; color:var(--muted); margin-top:4px; font-style:italic; font-family:var(--serif); }
 svg.aging .aging-overdue{ font-size:11px; font-weight:600; cursor:pointer; font-variant-numeric:tabular-nums; }
 svg.aging .aging-overdue.amber{ fill:var(--warn); }
 svg.aging .aging-overdue.red{ fill:var(--neg); }
@@ -499,6 +514,7 @@ html.dark .sheet-overlay{ background:rgba(0,0,0,0.6); }
 .aq-days.amber{ color:var(--warn); font-weight:600; }
 .aq-days.red{ color:var(--neg); font-weight:600; }
 .aq-role{ width:100px; flex-shrink:0; color:var(--muted); font-size:10.5px; text-transform:uppercase; letter-spacing:0.05em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.aq-action{ width:230px; flex-shrink:0; color:var(--muted); font-size:11.5px; text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .aq-snooze{ flex-shrink:0; font-size:11.5px; }
 /* ============================================================
    OWNERS / "Talk to" (promoted from lab)
@@ -808,6 +824,8 @@ const CANONICAL = [
   ['recruiter','Recruiter','opt',['recruiter','credited to','recruiter name','recruiter_name'],''],
   ['coordinator','Coordinator','opt',['coordinator','recruiting coordinator','rc','interview coordinator'],'Enables coordinator filter + owner heuristics'],
   ['hiring_manager','Hiring manager','opt',['hiring manager','hiring_manager','hm','manager'],'Enables hiring-manager filter'],
+  ['next_event_at','Next event at','opt',['next event','next event at','scheduled interview','interview scheduled','next interview','upcoming interview','interview date','next_event_at'],'Distinguishes scheduled candidates from ones needing action'],
+  ['offer_extended_at','Offer extended at','opt',['offer sent','offer extended','offer date','offer sent at','offer extended at','offer_extended_at'],'Tracks offers awaiting candidate response'],
   ['rejected_at','Rejected at','opt',['rejected at','rejection date','rejected_at'],'Powers rejection analysis'],
   ['rejection_reason','Rejection reason','opt',['rejection reason','rejection_reason','reason'],''],
   ['hired_at','Hired at','opt',['hired at','hire date','start date','hired_at'],'Powers time-to-hire'],
@@ -1580,6 +1598,7 @@ function rowMatchesSelection(r){
   }
   if (s.type === 'status') return r.status === s.status;
   if (s.type === 'row') return rowKey(r) === s.key;
+  if (s.type === 'rows') return s.keys.has(rowKey(r)); // arbitrary candidate set (e.g. offers awaiting response)
   return true;
 }
 function rowKey(r){ return String(r.application_id ?? (r.candidate_id + '|' + r.job)); }
@@ -1702,6 +1721,7 @@ function selectionLabel(s){
   if (s.type==='overdue') return s.stage ? `Overdue · ${s.stage}` : 'Overdue to advance';
   if (s.type==='status') return ({ hired:'Hired', active:'Active', declined:'Offer declined', withdrawn:'Withdrawn', rejected:'Rejected' })[s.status] || s.status;
   if (s.type==='row') return s.name || 'Single candidate';
+  if (s.type==='rows') return s.label || 'Candidate set';
   return 'Filtered';
 }
 function periodPresetLabel(p){
@@ -1833,12 +1853,95 @@ function histStageMedians(){
 }
 /* ---- shared aging definition ----
    ONE source of truth used by the overdue flag, the aging board, the Overdue
-   stat, the ledger tint, the pool overlay and the statement column:
-   amber past 1.5× the stage's historical median, red past 2.5× (14d fallback). */
+   stat, the ledger tint, the pool overlay, the action queue and the
+   statement column. "Overdue" means LACKS A TIMELY NEXT STEP, not merely
+   "in a stage a long time": a candidate with an upcoming scheduled event is
+   in motion and never overdue (except a mild flag when the event is far
+   out). The per-state thresholds live in agingTier below. */
 function stageNorm(stage){ return histStageMedians()[stage] || 14; }
+/* ---- next-step state engine ----
+   What is this candidate actually waiting on?
+   - scheduled:          next_event_at in the future → in motion.
+   - awaiting-feedback:  the event happened and the stage hasn't changed
+                         since → the org owes feedback. Clock restarts at
+                         the event date.
+   - offer-out:          offer_extended_at set at the last pre-terminal
+                         stage → waiting on the CANDIDATE. Clock = days
+                         since extension.
+   - needs-step:         none of the above → nothing is pending (the
+                         disaster bucket). Clock = days since stage entry.
+   Unmapped fields degrade gracefully: without next_event_at everything is
+   needs-step (the old behavior); without offer_extended_at Offer actives
+   are needs-step. */
+function nextStepState(r, now){
+  now = now || nowRef();
+  const stages = state.canonicalStages;
+  const idx = stageIndex(r.current_stage);
+  const lastPre = stages.length - 2;
+  if (state.mapping.offer_extended_at && r.offer_extended_at && r.offer_extended_at <= now && idx === lastPre) {
+    return { state:'offer-out', since: r.offer_extended_at };
+  }
+  if (state.mapping.next_event_at && r.next_event_at) {
+    if (r.next_event_at > now) return { state:'scheduled', since: r.stage_entered_at || r.applied_at };
+    // event already happened and the stage hasn't advanced since → feedback owed
+    if (!r.stage_entered_at || r.stage_entered_at <= r.next_event_at) {
+      return { state:'awaiting-feedback', since: r.next_event_at };
+    }
+  }
+  return { state:'needs-step', since: r.stage_entered_at || r.applied_at };
+}
+// the row's needed action, in words — leads every state-aware tooltip/row
+function neededAction(r, ns, now){
+  now = now || nowRef();
+  if (ns.state === 'scheduled') {
+    const when = dayjs(r.next_event_at).format('MMM D');
+    return agingTier(r, now) === 'amber' ? `scheduled far out (${when})` : `scheduled ${when}`;
+  }
+  if (ns.state === 'awaiting-feedback') return `awaiting feedback (interviewed ${dayjs(ns.since).format('MMM D')})`;
+  if (ns.state === 'offer-out') return `offer out ${Math.round((now - ns.since)/86400000)}d — follow up`;
+  const idx = Math.max(0, stageIndex(r.current_stage));
+  if (idx === 0) return 'needs review';
+  if (idx >= state.canonicalStages.length - 2) return 'needs decision to advance';
+  return 'needs scheduling';
+}
+// state-aware owner: feedback chases belong to the recruiter (HM at late
+// stages), offer follow-ups to the recruiter; needs-step falls back to the
+// stage-position heuristic (coordinator for scheduling, HM for decisions)
+function stateOwnerFor(r, ns){
+  const idx = Math.max(0, stageIndex(r.current_stage));
+  const N = state.canonicalStages.length;
+  let pri = null;
+  if (ns.state === 'offer-out') pri = ['recruiter'];
+  else if (ns.state === 'awaiting-feedback') pri = (idx >= N - 2) ? ['hiring_manager','recruiter'] : ['recruiter'];
+  if (pri) {
+    const o = pri.filter(f => state.mapping[f]).map(f => ({ field:f, role:ROLE_LABEL[f], name:r[f] })).filter(x => x.name);
+    if (o.length) return o[0];
+  }
+  return primaryOwner(r);
+}
+/* state-appropriate overdue tiers:
+   needs-step        amber > 1.5× stage norm, red > 2.5× (days in stage)
+   awaiting-feedback amber > 2d, red > 5d (days since the event)
+   offer-out         amber > 5d, red > 10d (days since extension)
+   scheduled         never red; amber only when the event is more than
+                     1.5× the stage norm away ("scheduled far out") */
 function agingTier(r, now){
   if (r.status !== 'active') return null;
-  const d = daysInCurrentStage(r, now || nowRef());
+  now = now || nowRef();
+  const ns = nextStepState(r, now);
+  if (ns.state === 'scheduled') {
+    const away = (r.next_event_at - now)/86400000;
+    return away > stageNorm(r.current_stage) * 1.5 ? 'amber' : null;
+  }
+  if (ns.state === 'awaiting-feedback') {
+    const d = (now - ns.since)/86400000;
+    return d > 5 ? 'red' : d > 2 ? 'amber' : null;
+  }
+  if (ns.state === 'offer-out') {
+    const d = (now - ns.since)/86400000;
+    return d > 10 ? 'red' : d > 5 ? 'amber' : null;
+  }
+  const d = daysInCurrentStage(r, now);
   if (d == null) return null;
   const m = stageNorm(r.current_stage);
   if (d > 2.5 * m) return 'red';
@@ -1848,6 +1951,31 @@ function agingTier(r, now){
 function overdueActives(){
   const now = nowRef();
   return (state.snapshotRows || []).filter(r => agingTier(r, now) != null);
+}
+// overdue set partitioned by needed action → "8 need scheduling, 4 await feedback…"
+function overdueBreakdownParts(od, now){
+  now = now || nowRef();
+  const cnt = { sched:0, dec:0, review:0, fb:0, offer:0, far:0 };
+  for (const r of od) {
+    const ns = nextStepState(r, now);
+    if (ns.state === 'awaiting-feedback') cnt.fb++;
+    else if (ns.state === 'offer-out') cnt.offer++;
+    else if (ns.state === 'scheduled') cnt.far++;
+    else {
+      const idx = Math.max(0, stageIndex(r.current_stage));
+      if (idx === 0) cnt.review++;
+      else if (idx >= state.canonicalStages.length - 2) cnt.dec++;
+      else cnt.sched++;
+    }
+  }
+  const parts = [];
+  if (cnt.review) parts.push(`${cnt.review} need review`);
+  if (cnt.sched) parts.push(`${cnt.sched} need scheduling`);
+  if (cnt.dec) parts.push(`${cnt.dec} need a decision`);
+  if (cnt.fb) parts.push(`${cnt.fb} await interview feedback`);
+  if (cnt.offer) parts.push(`${cnt.offer} offer${cnt.offer===1?'':'s'} need${cnt.offer===1?'s':''} follow-up`);
+  if (cnt.far) parts.push(`${cnt.far} scheduled far out`);
+  return parts;
 }
 /* ---- accountability: who to talk to about a stuck candidate ----
    Stage-owner heuristic by POSITION, not stage name: the top-of-funnel stage
@@ -1985,19 +2113,38 @@ function computeFlags(){
       text: `${bn.stage} median ${Math.round(bn.medianDays)}d — ${ratio ? ratio.toFixed(1) : '?'}× other stages; ${fmtN(waiting)} candidate${waiting===1?'':'s'} waiting.`,
       apply: () => setSelection(isSnapshot ? { type:'active', stage: bn.stage } : { type:'stage', stage: bn.stage }) });
   }
-  // 2. overdue candidates
+  // 2. overdue = lacks a timely next step (state-aware breakdown)
   const od = overdueActives();
   if (od.length) {
-    const byStage = new Map();
-    od.forEach(r => byStage.set(r.current_stage, (byStage.get(r.current_stage)||0)+1));
-    const parts = stages.filter(s => byStage.has(s)).map(s => `${byStage.get(s)} in ${s}`).join(', ');
+    const parts = overdueBreakdownParts(od).join(', ');
     const odOwner = topOwners(od, 1)[0];
     flags.push({ id:'overdue', data:{ count: od.length },
       talkTo: odOwner ? `${odOwner.name} (${odOwner.role})` : null,
-      ruleTip: tipHtml('Flags active candidates waiting more than 1.5× the historical median for their stage.', 'historical medians from past candidates\' stage durations'),
+      ruleTip: tipHtml('Flags active candidates who lack a timely next step: nothing scheduled and past the stage norm, interview feedback pending >2d, or an offer out >5d. Scheduled candidates are in motion and not flagged (amber only when the event is far out).', 'map "scheduled interview" / "offer sent" columns to enable the distinction'),
       severity: od.length >= Math.max(8, (state.snapshotRows||[]).length*0.25) ? 'red' : 'amber', score: 60 + od.length,
-      text: `${od.length} candidate${od.length===1?'':'s'} overdue to advance — ${parts}.`,
+      text: `${od.length} candidate${od.length===1?'':'s'} lack${od.length===1?'s':''} a next step — ${parts}.`,
       apply: () => setSelection({ type:'overdue' }) });
+  }
+  // 2b. offers awaiting response: 2+ offers out for 5+ days → follow up
+  {
+    const nowO = nowRef();
+    const offersOut = (state.snapshotRows||[]).filter(r => {
+      const ns = nextStepState(r, nowO);
+      return ns.state === 'offer-out' && (nowO - ns.since)/86400000 > 5;
+    });
+    if (offersOut.length >= 2) {
+      const oldest = Math.max(...offersOut.map(r => (nowO - nextStepState(r, nowO).since)/86400000));
+      const keys = new Set(offersOut.map(rowKey));
+      const ownCounts = new Map();
+      for (const r of offersOut) { const o = stateOwnerFor(r, nextStepState(r, nowO)); if (o) ownCounts.set(`${o.name} (${o.role})`, (ownCounts.get(`${o.name} (${o.role})`)||0)+1); }
+      const topOwn = Array.from(ownCounts.entries()).sort((a,b)=>b[1]-a[1])[0];
+      flags.push({ id:'offersout', data:{ count: offersOut.length, oldest },
+        talkTo: topOwn ? topOwn[0] : null,
+        ruleTip: tipHtml('Flags when 2+ extended offers have waited 5+ days for a candidate response.', 'red when the oldest is past 10d — follow up before they go cold'),
+        severity: oldest > 10 ? 'red' : 'amber', score: 85 + offersOut.length,
+        text: `${offersOut.length} offers awaiting candidate response 5+ days — oldest ${Math.round(oldest)}d. Follow up.`,
+        apply: () => drillTo({ type:'rows', keys, label:'Offers awaiting response' }) });
+    }
   }
   if (!isSnapshot) {
     // 3. offer acceptance falling vs comparison
@@ -2168,6 +2315,27 @@ function investigateFlag(flag){
     inv.trend = null; // no historical snapshots of "overdue" exist to trend
     const owner = inv.owners && inv.owners[0];
     inv.suggested = `Suggested: nudge the ${od.length} overdue candidates${owner ? ` — start with ${owner.name} (${owner.role})` : ''}; the ${inv.evidence.length} longest-waiting are at ${joinDays(inv.evidence)} days.`;
+  }
+
+  else if (flag.id === 'offersout') {
+    const offers = (state.snapshotRows || []).filter(r => {
+      const ns = nextStepState(r, now);
+      return ns.state === 'offer-out' && (now - ns.since)/86400000 > 5;
+    });
+    const daysOut = r => (now - nextStepState(r, now).since)/86400000;
+    const keys = new Set(offers.map(rowKey));
+    inv.viewAllN = offers.length;
+    const om = new Map();
+    for (const r of offers) { const o = stateOwnerFor(r, nextStepState(r, now)); if (!o) continue; const k = o.field+'|'+o.name; if (!om.has(k)) om.set(k, { field:o.field, role:o.role, name:o.name, count:0 }); om.get(k).count++; }
+    inv.owners = Array.from(om.values()).sort((a,b)=>b.count-a.count).slice(0,3).map(o => ({
+      text: `${o.name} (${o.role} — ${o.count} offer${o.count===1?'':'s'} out)`, name:o.name, role:o.role,
+      onClick: () => drillCombo({ [o.field]: o.name }, { type:'rows', keys, label:'Offers awaiting response' }) }));
+    inv.contributors = offers.slice().sort((a,b)=>daysOut(b)-daysOut(a)).slice(0,5).map(r => ({
+      text: `${r.candidate_name||'—'}: offer out ${Math.round(daysOut(r))}d (${r.job||'—'})`, n: 1,
+      onClick: () => { const key = rowKey(r); state.ledger.expanded.add(key); drillTo({ type:'row', key, name: r.candidate_name || 'Candidate' }); } }));
+    inv.evidence = [];
+    inv.trend = null;
+    inv.suggested = `Suggested: call the ${offers.length} candidates with offers out 5+ days — silence past a week usually means a competing offer.`;
   }
 
   else if (flag.id === 'offeraccept') {
@@ -2342,12 +2510,28 @@ function generateSampleData(){
     else { status='active'; current_stage=STAGES[stageIdx]; }
     const stage_entered_at = entered[current_stage] || applied_at;
     const last_activity_at = rejected_at || hired_at || stage_entered_at;
+    // scheduling reality: ~55% of Screen/Onsite actives have a next event
+    // (half upcoming within 1-10d, half already happened 1-6d ago -> awaiting
+    // feedback), ~70% of Offer actives have an offer out 1-8d ago. Deterministic.
+    let next_event_at = null, offer_extended_at = null;
+    if (status === 'active' && (current_stage === 'Screen' || current_stage === 'Onsite') && rnd() < 0.55) {
+      if (rnd() < 0.5) {
+        next_event_at = new Date(now.getTime() + (1 + rnd()*9) * 86400000); // upcoming: scheduled
+      } else {
+        const ago = (1 + rnd()*5) * 86400000; // happened: awaiting feedback (never before stage entry)
+        next_event_at = new Date(Math.max(stage_entered_at.getTime() + 3600000, now.getTime() - ago));
+      }
+    } else if (status === 'active' && current_stage === 'Offer' && rnd() < 0.70) {
+      const ago = (1 + rnd()*7) * 86400000;
+      offer_extended_at = new Date(Math.max(stage_entered_at.getTime(), now.getTime() - ago));
+    }
     const row = {
       application_id: appId, candidate_id: 'C'+appId, candidate_name: name, email,
       job, department: dept, office, applied_at, current_stage, status,
       source, source_type: sourceType, recruiter, hiring_manager: pick(HMS_BY_JOB[job]),
       coordinator: pick(COORDS_BY_OFFICE[office]),
       rejected_at, rejection_reason, hired_at, last_activity_at, stage_entered_at,
+      next_event_at, offer_extended_at,
       raw_stage: current_stage, raw_status: status,
       stageDates: { screen: entered.Screen||null, onsite: entered.Onsite||null, offer: entered.Offer||null },
       _extra: { Level: pick(LEVELS) }, // demo extra source column for the customizable filter desk
@@ -2361,6 +2545,7 @@ function loadSampleData(){
     email:'email', job:'job', department:'department', office:'office', applied_at:'applied_at',
     current_stage:'current_stage', status:'status', source:'source', source_type:'source_type', recruiter:'recruiter',
     hiring_manager:'hiring_manager', coordinator:'coordinator',
+    next_event_at:'next_event_at', offer_extended_at:'offer_extended_at',
     rejected_at:'rejected_at', rejection_reason:'rejection_reason', hired_at:'hired_at', last_activity_at:'last_activity_at',
     stage_entered_at:'stage_entered_at' };
   state.confidence = {}; for (const k in state.mapping) state.confidence[k] = 1;
@@ -2814,23 +2999,48 @@ function clearActionsState(){
   renderActionQueue();
   toast('Worklist cleared.');
 }
-// ready-to-send plain-text note for an owner's overdue group, template by role
-function roleMessage(role, ownerName, rows){
+// ready-to-send plain-text note for an owner's overdue group — ACTION-AWARE:
+// a scheduling ask, a feedback chase, a decision ask and an offer follow-up
+// read differently, so the message is composed per needed action.
+function actionMessage(ownerName, rows){
   const now = nowRef();
-  const stageCounts = new Map();
-  rows.forEach(r => stageCounts.set(r.current_stage, (stageCounts.get(r.current_stage)||0)+1));
-  const topStage = Array.from(stageCounts.entries()).sort((a,b)=>b[1]-a[1])[0][0];
-  const normDays = Math.round(stageNorm(topStage));
-  const list = rows.map(r => `${r.candidate_name || 'Candidate'} (${r.job || '—'}, ${Math.round(daysInCurrentStage(r, now) || 0)}d)`).join(', ');
   const first = String(ownerName || '').split(/\s+/)[0] || ownerName;
-  const n = rows.length, plural = n === 1 ? '' : 's', isAre = n === 1 ? 'is' : 'are', hasHave = n === 1 ? 'has' : 'have';
-  if (role === 'coordinator') {
-    return `Hi ${first} — ${n} candidate${plural} ${isAre} waiting on ${topStage} scheduling past the ${normDays}d norm: ${list}. Can we get these moving this week?`;
+  const by = { review: [], sched: [], fb: [], dec: [], offer: [] };
+  for (const r of rows) {
+    const ns = nextStepState(r, now);
+    if (ns.state === 'awaiting-feedback') by.fb.push({ r, ns });
+    else if (ns.state === 'offer-out') by.offer.push({ r, ns });
+    else if (ns.state === 'scheduled') continue; // in motion — never part of the ask
+    else {
+      const idx = Math.max(0, stageIndex(r.current_stage));
+      (idx === 0 ? by.review : idx >= state.canonicalStages.length - 2 ? by.dec : by.sched).push({ r, ns });
+    }
   }
-  if (role === 'hiring manager') {
-    return `Hi ${first} — ${n} candidate${plural} need${n===1?'s':''} a decision on ${topStage}: ${list}. These have been waiting past the ${normDays}d norm — can you review this week?`;
+  const who = x => `${x.r.candidate_name || 'Candidate'} (${x.r.job || '—'}`;
+  const segs = [];
+  if (by.sched.length) {
+    const topStage = by.sched[0].r.current_stage;
+    const normDays = Math.round(stageNorm(topStage));
+    const list = by.sched.map(x => `${who(x)}, ${Math.round(daysInCurrentStage(x.r, now) || 0)}d)`).join(', ');
+    segs.push(`${by.sched.length} candidate${by.sched.length===1?' is':'s are'} waiting to get an interview scheduled past the ${normDays}d norm: ${list}. Can we get these on the calendar this week?`);
   }
-  return `Hi ${first} — ${n} candidate${plural} ${hasHave} stalled past the ${normDays}d norm for ${topStage}: ${list}. Can we move ${n===1?'this one':'these'} forward or close ${n===1?'it':'them'} out?`;
+  if (by.review.length) {
+    const list = by.review.map(x => `${who(x)}, ${Math.round(daysInCurrentStage(x.r, now) || 0)}d)`).join(', ');
+    segs.push(`${by.review.length} new application${by.review.length===1?'':'s'} still need${by.review.length===1?'s':''} a first review: ${list}.`);
+  }
+  if (by.fb.length) {
+    const list = by.fb.map(x => `${who(x)}, interviewed ${dayjs(x.ns.since).format('MMM D')})`).join(', ');
+    segs.push(`${by.fb.length} candidate${by.fb.length===1?' has':'s have'} interviewed but feedback hasn't landed: ${list}. Can we chase the panel?`);
+  }
+  if (by.dec.length) {
+    const list = by.dec.map(x => `${who(x)}, ${Math.round(daysInCurrentStage(x.r, now) || 0)}d)`).join(', ');
+    segs.push(`${by.dec.length} candidate${by.dec.length===1?' is':'s are'} waiting on a decision to advance: ${list}. Can we make the call?`);
+  }
+  if (by.offer.length) {
+    const list = by.offer.map(x => `${who(x)}, out ${Math.round((now - x.ns.since)/86400000)}d)`).join(', ');
+    segs.push(`${by.offer.length} offer${by.offer.length===1?' is':'s are'} out awaiting a response: ${list}. Worth a follow-up call?`);
+  }
+  return `Hi ${first} — ` + segs.join(' ');
 }
 function renderActionQueue(){
   const section = $('#section-actions');
@@ -2838,8 +3048,10 @@ function renderActionQueue(){
   section.classList.remove('hidden');
   const now = nowRef();
   const st = state.actionsState || {};
-  // overdueActives() is the shared overdue definition; snoozed rows hide until their date
+  // overdueActives() is the shared overdue definition; scheduled candidates
+  // are in motion and excluded entirely; snoozed rows hide until their date
   const all = overdueActives().filter(r => {
+    if (nextStepState(r, now).state === 'scheduled') return false;
     const s = st[rowKey(r)];
     return !(s && s.snoozeUntil && s.snoozeUntil > Date.now());
   });
@@ -2851,7 +3063,7 @@ function renderActionQueue(){
   }
   const groups = new Map();
   for (const r of all) {
-    const o = primaryOwner(r);
+    const o = stateOwnerFor(r, nextStepState(r, now)); // state-aware: feedback chases → recruiter, offers → recruiter
     const key = o ? o.field + '|' + o.name : '__unassigned__';
     if (!groups.has(key)) groups.set(key, { role: o ? o.role : null, name: o ? o.name : 'Unassigned', rows: [] });
     groups.get(key).rows.push(r);
@@ -2865,8 +3077,8 @@ function renderActionQueue(){
   const totalPending = groupArr.reduce((s,g) => s + pendingCount(g), 0);
   const note = $('#actions-note');
   note.textContent = `${fmtN(totalPending)} pending · ${fmtN(all.length)} overdue this week`;
-  attachTipOnce(note, tipHtml('Overdue actives this week, grouped by who owns their current stage.',
-    'overdue = waiting past 1.5× the stage\'s historical median'));
+  attachTipOnce(note, tipHtml('Candidates lacking a timely next step this week, grouped by who owns the needed action.',
+    'scheduled candidates are in motion and excluded · needs-step past the stage norm, feedback pending >2d, offer out >5d'));
   for (const g of groupArr) {
     const head = el('div', { class:'aq-ghead' },
       el('span', { class:'aq-gname' }, g.name),
@@ -2874,7 +3086,7 @@ function renderActionQueue(){
       el('span', { class:'aq-gcount' }, `${pendingCount(g)} of ${g.rows.length}`));
     if (g.role) {
       const copyBtn = el('button', { class:'underline-btn aq-copy', type:'button' }, 'Copy message');
-      copyBtn.addEventListener('click', () => copyPlainText(roleMessage(g.role, g.name, g.rows), 'Message copied.'));
+      copyBtn.addEventListener('click', () => copyPlainText(actionMessage(g.name, g.rows), 'Message copied.'));
       head.appendChild(copyBtn);
     }
     wrap.appendChild(head);
@@ -2890,15 +3102,19 @@ function renderActionQueue(){
       const nameBtn = el('button', { class:'aq-name numlink', type:'button' }, r.candidate_name || 'Candidate');
       nameBtn.addEventListener('click', () => { state.ledger.expanded.add(key); drillTo({ type:'row', key, name: r.candidate_name || 'Candidate' }); });
       const days = daysInCurrentStage(r, now);
-      attachTip(nameBtn, tipHtml(`${r.job || '—'} · ${days!=null?Math.round(days):'—'}d in ${r.current_stage} — norm is ${Math.round(stageNorm(r.current_stage))}d.`,
-        'amber past 1.5×, red past 2.5× the stage\'s historical median · click to open in the ledger'));
+      const ns = nextStepState(r, now);
+      attachTip(nameBtn, tipHtml(`${neededAction(r, ns, now)} — ${r.job || '—'}, ${days!=null?Math.round(days):'—'}d in ${r.current_stage}.`,
+        'overdue = lacks a timely next step · click to open in the ledger'));
       const snoozeBtn = el('button', { class:'underline-btn muted aq-snooze', type:'button' }, 'Snooze 7d');
       snoozeBtn.addEventListener('click', () => snoozeAction(key));
+      // the days column shows the STATE clock: time since the event for
+      // feedback chases, since extension for offers, since stage entry otherwise
+      const clockDays = (ns.state === 'awaiting-feedback' || ns.state === 'offer-out') ? (now - ns.since)/86400000 : days;
       row.append(cb, nameBtn,
         el('span', { class:'aq-job' }, r.job || '—'),
         el('span', { class:'aq-stage' }, r.current_stage || '—'),
-        el('span', { class:'aq-days' + (tier ? ' '+tier : '') }, days!=null ? fmtDays(days) : '—'),
-        el('span', { class:'aq-role' }, g.role || '—'),
+        el('span', { class:'aq-days' + (tier ? ' '+tier : '') }, clockDays!=null ? fmtDays(clockDays) : '—'),
+        el('span', { class:'aq-action' }, neededAction(r, ns, now)),
         snoozeBtn);
       wrap.appendChild(row);
     }
@@ -3004,7 +3220,7 @@ function computeSnapshotStats(){
     drill: () => drillTo({ type:'status', status:'active' }) }];
   const odAll = overdueActives();
   items.push({ label:'Overdue', value: fmtN(odAll.length), cls: odAll.length ? 'alert' : '',
-    tip: tipHtml('Overdue — actives waiting past 1.5× their stage\'s historical median.', `${fmtN(odAll.length)} of ${fmtN(rows.length)} actives; red dots on the aging board are past 2.5×`),
+    tip: tipHtml(`Overdue — actives lacking a timely next step (${fmtN(odAll.length)} of ${fmtN(rows.length)} actives). Definition change: candidates with an upcoming scheduled event are in motion and no longer counted.`, 'needs-step past the stage norm · feedback pending >2d · offer out >5d'),
     drill: odAll.length ? () => drillTo({ type:'overdue' }) : null });
   for (const stage of state.canonicalStages) {
     const n = rows.filter(r => r.current_stage === stage).length;
@@ -3748,6 +3964,25 @@ function renderAging(){
   // deterministic vertical jitter so overlapping dots separate without dancing between renders
   const jitterFor = key => ((parseInt(fnvHash(key), 16) % 1000) / 1000 - 0.5) * 16;
   const clusterMode = rows.length > 150;
+  // shape encodes the next-step state: solid = needs step, hollow = scheduled
+  // (in motion, never red), half-tone = awaiting feedback, diamond = offer out
+  const markFor = (r, ns, tier, mx, my) => {
+    if (ns.state === 'offer-out') return svgEl('rect', { class:'aging-dot' + (tier ? ' ' + tier : ''), x:mx-3.5, y:my-3.5, width:7, height:7, transform:`rotate(45 ${mx} ${my})` });
+    let cls = 'aging-dot';
+    if (ns.state === 'scheduled') cls += ' scheduled';
+    else if (ns.state === 'awaiting-feedback') cls += ' awaiting';
+    if (tier) cls += ' ' + tier;
+    return svgEl('circle', { class:cls, cx:mx, cy:my, r:3.5 });
+  };
+  // tooltip lede: what the candidate is actually waiting on
+  const stateLede = (r, ns) => {
+    if (ns.state === 'scheduled') return `${escapeHtml(r.current_stage)} scheduled ${dayjs(r.next_event_at).format('MMM D')}${agingTier(r, now) === 'amber' ? ' — far out' : ''}`;
+    if (ns.state === 'awaiting-feedback') return `Interviewed ${dayjs(ns.since).format('MMM D')} — awaiting feedback ${Math.round((now - ns.since)/86400000)}d`;
+    if (ns.state === 'offer-out') return `Offer out ${Math.round((now - ns.since)/86400000)}d — follow up`;
+    const idx = Math.max(0, stageIndex(r.current_stage));
+    const verb = idx === 0 ? 'Needs review' : (idx >= state.canonicalStages.length - 2 ? 'Needs decision' : 'Needs scheduling');
+    return `${verb} — ${Math.round(daysInCurrentStage(r, now) || 0)}d in ${escapeHtml(r.current_stage)}`;
+  };
   stages.forEach((s, i) => {
     const y0 = i * rowH;
     const cy = y0 + rowH / 2 + 5;
@@ -3755,7 +3990,7 @@ function renderAging(){
     const norm = stageNorm(s);
     const thr = norm * 1.5;
     svg.appendChild(svgEl('line', { class:'aging-baseline', x1:labelW, y1:cy, x2:labelW + plotW, y2:cy }));
-    // dashed threshold marker at 1.5× the historical median
+    // dashed threshold marker at 1.5× the historical median (needs-step clock)
     const tx = x(thr);
     svg.appendChild(svgEl('line', { class:'aging-thresh', x1:tx, y1:y0 + 8, x2:tx, y2:y0 + rowH - 4 }));
     svg.appendChild(svgEl('text', { class:'aging-thresh-label', x:tx + 4, y:y0 + 12 }, textNode('norm ' + Math.round(thr) + 'd')));
@@ -3766,9 +4001,13 @@ function renderAging(){
       for (const r of inStage) {
         const d = dd(r);
         const tier = agingTier(r, now);
-        const dot = svgEl('circle', { class:'aging-dot' + (tier ? ' ' + tier : ''), cx:x(d), cy:cy + jitterFor(rowKey(r)), r:3.5 });
-        dot.addEventListener('mousemove', e => showRiverTooltip(e,
-          `<b>${escapeHtml(r.candidate_name || '—')}</b><br>${escapeHtml(r.job || '—')} · ${escapeHtml(r.recruiter || '—')}<br>${Math.round(d)}d in ${escapeHtml(s)} — median ${Math.round(norm)}d`));
+        const ns = nextStepState(r, now);
+        const dot = markFor(r, ns, tier, x(d), cy + jitterFor(rowKey(r)));
+        dot.addEventListener('mousemove', e => {
+          const who = tier ? ownersFor(r).map(o => `${escapeHtml(o.name)} (${o.role})`).join(' · ') : '';
+          showRiverTooltip(e,
+            `<b>${escapeHtml(r.candidate_name || '—')}</b><br>${stateLede(r, ns)}<br>${escapeHtml(r.job || '—')} · ${escapeHtml(r.recruiter || '—')} · ${Math.round(d)}d in ${escapeHtml(s)} (norm ${Math.round(norm)}d)${who ? `<br><span class="tt-muted">talk to: ${who}</span>` : ''}`);
+        });
         dot.addEventListener('mouseleave', hideRiverTooltip);
         dot.addEventListener('click', () => {
           const key = rowKey(r);
@@ -3799,7 +4038,7 @@ function renderAging(){
       const t = svgEl('text', { class:'aging-overdue ' + (anyRed ? 'red' : 'amber'), x:labelW + plotW + 12, y:cy + 3.5, 'text-anchor':'start' },
         textNode(odIn.length + ' overdue'));
       t.addEventListener('click', () => drillTo({ type:'overdue', stage:s }));
-      t.addEventListener('mousemove', e => showRiverTooltip(e, tipHtml(`${odIn.length} of ${inStage.length} ${s} actives are past 1.5× the stage's historical median (${Math.round(norm)}d). Click to see them.`)));
+      t.addEventListener('mousemove', e => showRiverTooltip(e, tipHtml(`${odIn.length} of ${inStage.length} ${s} actives lack a timely next step. Click to see them.`, 'needs-step past the stage norm · feedback pending >2d · offer out >5d')));
       t.addEventListener('mouseleave', hideRiverTooltip);
       svg.appendChild(t);
     }
@@ -3814,6 +4053,17 @@ function renderAging(){
   }
   svg.appendChild(svgEl('text', { class:'aging-axis', x:x(trueMax), y:ay + 13, 'text-anchor':'end' }, textNode('max ' + Math.round(trueMax) + 'd')));
   wrap.appendChild(svg);
+  // shape legend + unmapped-fields hint
+  const legend = el('div', { class:'aging-legend' });
+  const item = (glyphCls, label) => el('span', { class:'aging-legend-item' }, el('span', { class:'aging-glyph ' + glyphCls }), label);
+  legend.appendChild(item('g-needs', 'needs step'));
+  if (state.mapping.next_event_at) { legend.appendChild(item('g-sched', 'scheduled (in motion)')); legend.appendChild(item('g-await', 'awaiting feedback')); }
+  if (state.mapping.offer_extended_at) legend.appendChild(item('g-offer', 'offer out'));
+  wrap.appendChild(legend);
+  if (!state.mapping.next_event_at || !state.mapping.offer_extended_at) {
+    wrap.appendChild(el('div', { class:'aging-unmapped' },
+      'Map “scheduled interview” / “offer sent” columns to distinguish waiting-for-event from needs-action.'));
+  }
 }
 /* ============================================================
    RENDER: STATEMENT OF FLOW
@@ -3832,7 +4082,8 @@ function renderStatement(){
     table.appendChild(el('thead', {}, el('tr', {},
       th('Stage', tipHtml('Canonical pipeline stage, in order.')),
       th('Active now', tipHtml('Candidates currently sitting in this stage.', 'status = active, current stage = row')),
-      th('Overdue', tipHtml('Actives waiting past 1.5× this stage\'s historical median.', 'red when any are past 2.5×')),
+      th('Overdue', tipHtml('Actives lacking a timely next step in this stage.', 'needs-step past the stage norm · feedback pending >2d · offer out >5d · scheduled candidates are NOT counted')),
+      th('In motion', tipHtml('Actives with an upcoming scheduled event — waiting FOR something, not ON someone.', 'next event date in the future')),
       th('Median days in stage', tipHtml('Median time actives have been waiting in this stage.', 'stage entered date → today, 50th percentile')),
       th('Oldest', tipHtml('Longest current wait in this stage.', 'max of days-in-stage among actives')),
       th('Δ active vs prior', tipHtml('Change in active count vs the comparison period.', 'no comparison in Current-pipeline view')))));
@@ -3842,6 +4093,7 @@ function renderStatement(){
       const inStage = (state.snapshotRows||[]).filter(r => r.current_stage === f.stage);
       const odIn = inStage.filter(r => agingTier(r, now) != null);
       const odRed = odIn.some(r => agingTier(r, now) === 'red');
+      const inMotion = inStage.filter(r => nextStepState(r, now).state === 'scheduled').length;
       const tr = el('tr', { class:'clickable'+(state.selection&&state.selection.type==='active'&&state.selection.stage===f.stage?' selected':'') });
       tr.addEventListener('click', () => setSelection({ type:'active', stage:f.stage }));
       tr.append(
@@ -3849,6 +4101,7 @@ function renderStatement(){
         el('td', {}, f.activeNow > 0 ? numlink(fmtN(f.activeNow), () => drillTo({ type:'active', stage:f.stage })) : el('span', { class:'zero' }, '—')),
         el('td', { class: odIn.length ? (odRed ? 'alert' : 'warn-cell') : '' },
           odIn.length ? numlink(fmtN(odIn.length), () => drillTo({ type:'overdue', stage:f.stage })) : el('span', { class:'zero' }, '—')),
+        el('td', {}, inMotion > 0 ? el('span', { class:'muted-pct' }, fmtN(inMotion)) : el('span', { class:'zero' }, '—')),
         el('td', { class:isBottleneck?'warn-cell':'' }, f.medianDays!=null?fmtDays(f.medianDays):'—'),
         el('td', {}, f.oldest!=null?fmtDays(f.oldest):'—'), el('td', {}, '—'));
       tbody.appendChild(tr);
@@ -4260,16 +4513,19 @@ function renderLedger(){
     const key = rowKey(r); // string key — matches the aging board / attention / action-queue expanders
     const tr = el('tr', { class:'clickable' });
     const days = ledgerDaysInStage(r);
-    // aging tint on days-in-stage for actives, with vs-median + talk-to context on hover
+    // aging tint on days-in-stage for actives — the tooltip leads with the
+    // candidate's next-step state, not raw tenure
     const tier = agingTier(r);
-    const owner = tier ? primaryOwner(r) : null; // overdue rows name who to talk to
+    const ns = r.status === 'active' ? nextStepState(r) : null;
+    const owner = tier && ns ? stateOwnerFor(r, ns) : null; // overdue rows name who owns the needed action
     const daysTd = el('td', { class: tier === 'red' ? 'alert' : tier === 'amber' ? 'warn-cell' : '' },
       days!=null?fmtDays(days):'—',
       owner ? el('span', { class:'ledger-owner' }, '· ' + ownerInitials(owner.name)) : null);
-    if (tier) {
-      const who = ownersFor(r).map(o => `${o.name} (${o.role})`).join(' · ');
-      attachTip(daysTd, tipHtml(`${Math.round(days)}d — ${r.current_stage} norm is ${Math.round(stageNorm(r.current_stage))}d.${who ? ' Talk to: ' + who + '.' : ''}`,
-        'amber past 1.5×, red past 2.5× the stage\'s historical median'));
+    if (ns && (tier || ns.state !== 'needs-step')) {
+      const who = tier ? ownersFor(r).map(o => `${o.name} (${o.role})`).join(' · ') : '';
+      const lede = neededAction(r, ns);
+      attachTip(daysTd, tipHtml(`${lede.charAt(0).toUpperCase()+lede.slice(1)} — ${Math.round(days)}d in ${r.current_stage} (norm ${Math.round(stageNorm(r.current_stage))}d).${who ? ' Talk to: ' + who + '.' : ''}`,
+        'overdue = lacks a timely next step · scheduled = in motion'));
     }
     tr.append(
       el('td', {}, r.candidate_name||'—'), el('td', {}, r.job||'—'), el('td', {}, r.current_stage||'—'),
