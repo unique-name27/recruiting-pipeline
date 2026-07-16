@@ -517,6 +517,42 @@ svg.funnel .fn-bar{ fill:var(--flow-3); cursor:pointer; }
 svg.funnel .fn-rest{ fill:var(--rej); opacity:0.4; cursor:pointer; }
 svg.funnel .fn-inproc{ fill:var(--flow-1); opacity:0.7; }
 svg.funnel .fn-bar:hover, svg.funnel .fn-rest:hover{ opacity:0.85; }
+/* ============================================================
+   METRO + RADIAL flow views, CHORD gallery viz (wild round B)
+   ============================================================ */
+svg.metro text, svg.radial text, svg.chord text{ font-family:var(--sans); font-variant-numeric:tabular-nums; }
+svg.metro .mt-line{ fill:none; stroke-linecap:round; stroke-linejoin:round; cursor:pointer; transition:opacity 120ms; }
+svg.metro.hovering .mt-linegrp:not(.hovered), svg.metro.hovering .mt-badge:not(.hovered){ opacity:0.22; }
+svg.metro .mt-station-bar{ fill:var(--paper); stroke:var(--ink); stroke-width:1.5; cursor:pointer; }
+svg.metro .mt-station-bar:hover{ stroke-width:2.5; }
+svg.metro .mt-station-ghost{ fill:none; stroke:var(--muted); stroke-width:1; stroke-dasharray:2 2; }
+svg.metro .mt-station-name{ font-size:10px; font-weight:600; fill:var(--ink); letter-spacing:0.06em; }
+svg.metro .mt-badge{ cursor:pointer; transition:opacity 120ms; }
+svg.metro .mt-badge circle{ fill:var(--paper); stroke-width:1.25; }
+svg.metro .mt-badge text{ font-size:8.5px; fill:var(--ink); font-weight:600; }
+svg.metro .mt-exit{ stroke:var(--rej); stroke-width:1.5; fill:none; stroke-linecap:round; }
+svg.metro .mt-exit-label{ font-size:9px; fill:var(--muted); }
+svg.metro .mt-od{ cursor:pointer; }
+svg.metro .mt-od circle{ fill:var(--warn); }
+svg.metro .mt-od text{ font-size:8.5px; font-weight:700; fill:var(--paper); }
+svg.metro .mt-legend{ font-size:10.5px; font-weight:600; }
+svg.metro .mt-legend-more{ font-size:10.5px; fill:var(--muted); }
+svg.radial .rd-seg{ stroke:var(--paper); stroke-width:0.75; cursor:pointer; }
+svg.radial .rd-seg:hover{ stroke:var(--ink); stroke-width:1; }
+svg.radial .rd-gap{ fill:var(--rej); opacity:0.16; }
+svg.radial .rd-axis{ stroke:var(--hairline); stroke-width:1; }
+svg.radial .rd-stage-label{ font-size:9px; fill:var(--muted); paint-order:stroke; stroke:var(--paper); stroke-width:2.5px; stroke-linejoin:round; }
+svg.radial .rd-req-label{ font-size:9.5px; fill:var(--ink); pointer-events:none; paint-order:stroke; stroke:var(--paper); stroke-width:2.5px; stroke-linejoin:round; }
+svg.radial .rd-center{ font-family:var(--serif); font-size:27px; font-weight:600; fill:var(--ink); }
+svg.radial .rd-center-sub{ font-size:9.5px; fill:var(--muted); letter-spacing:0.08em; text-transform:uppercase; }
+svg.chord .ch-ribbon{ opacity:0.55; cursor:pointer; stroke:var(--paper); stroke-width:0.5; transition:opacity 120ms; }
+svg.chord.hovering .ch-ribbon:not(.hovered){ opacity:0.12; }
+svg.chord .ch-ribbon.hovered{ opacity:0.85; }
+svg.chord .ch-label{ font-size:10px; fill:var(--ink); }
+/* blueprint/vintage: hatch fills turn to mud at ribbon/wedge widths — keep
+   solid edition inks but add fine line-art outlines instead */
+html.ed-blueprint svg.radial .rd-seg, html.ed-vintage svg.radial .rd-seg{ stroke:var(--ink); stroke-width:0.5; }
+html.ed-blueprint svg.chord .ch-ribbon, html.ed-vintage svg.chord .ch-ribbon{ stroke:var(--ink); stroke-width:0.4; }
 @media print{ .flow-view-toggle{ display:none !important; } }
 /* ============================================================
    CUSTOMIZE (lab round 6) — settings overlay + gallery visuals
@@ -1268,6 +1304,11 @@ html.dark .sheet-overlay{ background:rgba(0,0,0,0.6); }
       <div class="section-head"><span class="kicker" id="recmatrix-kicker">Recruiter load</span><span class="section-note" id="recmatrix-note"></span></div>
       <div id="recmatrix-chart"></div>
       <p class="river-caption" id="recmatrix-caption"></p>
+    </section>
+    <section class="section hidden" id="section-chord">
+      <div class="section-head"><span class="kicker" id="chord-kicker">Source ↔ outcome</span><span class="section-note" id="chord-note"></span></div>
+      <div id="chord-chart"></div>
+      <p class="river-caption" id="chord-caption"></p>
     </section>
 
     <!-- ========== FOOTNOTE ========== -->
@@ -4550,7 +4591,7 @@ function topReasonFor(stage, statuses){
    FLOW VIEW DISPATCHER (lab) — river | board | funnel share the same
    computed flow data, header notes, escape hatch, time machine + replay.
    ============================================================ */
-const FLOW_VIEWS = [['river','River'],['board','Board'],['funnel','Funnel']];
+const FLOW_VIEWS = [['river','River'],['board','Board'],['funnel','Funnel'],['metro','Metro'],['radial','Radial']];
 function getFlowView(){
   if (!state.flowView) { try { state.flowView = localStorage.getItem('lab:flowView') || 'river'; } catch(e){ state.flowView = 'river'; } }
   return state.flowView;
@@ -4592,7 +4633,270 @@ function renderFlow(){
   const v = getFlowView();
   if (v === 'board') renderFlowBoard();
   else if (v === 'funnel') renderFlowFunnel();
+  else if (v === 'metro') renderFlowMetro();
+  else if (v === 'radial') renderFlowRadial();
   else renderRiver();
+}
+/* ---- shared per-req stage series for the metro + radial views ----
+   counts[i] = candidates of the req who reached stage i (cohort) / actives
+   at-or-past stage i (snapshot). Reqs sorted by volume; past `cap` they
+   aggregate into an "Other reqs" entry (radial) or a "…and N more" note. */
+function flowReqSeries(cap){
+  const isSnapshot = impliedMode() === 'snapshot';
+  const stages = state.canonicalStages;
+  const rows = isSnapshot ? (state.snapshotRows || []) : state.rows;
+  const now = nowRef();
+  const byReq = new Map();
+  for (const r of rows) { const j = r.job || '—'; if (!byReq.has(j)) byReq.set(j, []); byReq.get(j).push(r); }
+  let entries = Array.from(byReq.entries()).map(([job, rs]) => ({
+    job, total: rs.length,
+    counts: stages.map((s, i) => rs.filter(r => stageIndex(r.current_stage) >= i).length),
+    atStage: stages.map(s => rs.filter(r => r.current_stage === s).length),
+    exits: stages.map(s => rs.filter(r => (r.status==='rejected'||r.status==='withdrawn') && r.current_stage===s).length),
+    overdue: stages.map(s => rs.filter(r => r.current_stage===s && agingTier(r, now) != null).length),
+    hires: rs.filter(r => r.status==='hired').length,
+  })).filter(e => e.total > 0).sort((a,b) => b.total - a.total);
+  let more = 0, other = null;
+  if (cap && entries.length > cap) {
+    const rest = entries.slice(cap);
+    more = rest.length;
+    other = { job:`Other reqs (${rest.length})`, isOther:true,
+      total: rest.reduce((s,e)=>s+e.total,0),
+      counts: stages.map((_,i)=>rest.reduce((s,e)=>s+e.counts[i],0)),
+      atStage: stages.map((_,i)=>rest.reduce((s,e)=>s+e.atStage[i],0)),
+      exits: stages.map((_,i)=>rest.reduce((s,e)=>s+e.exits[i],0)),
+      overdue: stages.map((_,i)=>rest.reduce((s,e)=>s+e.overdue[i],0)),
+      hires: rest.reduce((s,e)=>s+e.hires,0) };
+    entries = entries.slice(0, cap);
+  }
+  return { entries, more, other, isSnapshot, stages };
+}
+// categorical line/wedge hues resolved through edition vars
+const REQ_COLORS = ['var(--flow-3)','var(--flow-4)','var(--warn)','var(--flow-2)','var(--neg)','var(--flow-5)','var(--flow-1)','var(--muted)'];
+/* ---- METRO MAP view: the pipeline as a transit map (wild round B). ----
+   Stations = stages (interchange bars + 45°-rotated name lockups); each req
+   is a colored line whose per-segment thickness ∝ candidates reaching the
+   next station; lines fan out of a single 45° origin junction and terminate
+   with a tick at their furthest stage. Station badges carry per-line counts;
+   gray 45° stubs below stations are rejection/withdrawal exits (cohort) and
+   amber badges are overdue counts (current mode). */
+function renderFlowMetro(){
+  const wrap = $('#river-wrap'); wrap.innerHTML = '';
+  const { entries, more, isSnapshot, stages } = flowReqSeries(8);
+  if (!entries.length) {
+    wrap.appendChild(el('div', { class:'attn-none' }, 'No candidates in view.'));
+    $('#river-caption').textContent = '';
+    return;
+  }
+  const N = stages.length;
+  const width = Math.max(760, wrap.clientWidth || 900);
+  const laneGap = 26, topY = 84;
+  const nLanes = entries.length;
+  const exitRoom = isSnapshot ? 34 : 56;
+  const legendRoom = 26;
+  const height = topY + nLanes * laneGap + exitRoom + legendRoom;
+  const marginL = 96, marginR = 60;
+  const svg = svgEl('svg', { class:'metro', width, height, viewBox:`0 0 ${width} ${height}` });
+  const sx = i => marginL + (N > 1 ? i * ((width - marginL - marginR) / (N - 1)) : 0);
+  const laneY = j => topY + j * laneGap;
+  const maxCount = Math.max(1, ...entries.map(e => e.counts[0]));
+  const thick = c => Math.max(2, (c / maxCount) * 12);
+  // stage totals for station tooltips (from the same series, incl. capped reqs)
+  const rowsAll = isSnapshot ? (state.snapshotRows || []) : state.rows;
+  const stageTotals = stages.map((s, i) => rowsAll.filter(r => stageIndex(r.current_stage) >= i).length);
+  const stageExitTotals = stages.map(s => rowsAll.filter(r => (r.status==='rejected'||r.status==='withdrawn') && r.current_stage===s).length);
+  const now = nowRef();
+  const stageOverdue = stages.map(s => (state.snapshotRows||[]).filter(r => r.current_stage===s && agingTier(r, now) != null).length);
+  // per-req line groups: 45° fan from a common origin, then straight lane runs
+  const origin = { x: marginL - 58, y: topY + ((nLanes - 1) * laneGap) / 2 };
+  const lineGroups = [];
+  entries.forEach((e, j) => {
+    const color = REQ_COLORS[j % REQ_COLORS.length];
+    const g = svgEl('g', { class:'mt-linegrp' });
+    const y = laneY(j);
+    // terminus: furthest stage the line reaches (cohort: Hired when hires exist)
+    let lastIdx = 0;
+    for (let i = 0; i < N; i++) if (e.counts[i] > 0) lastIdx = i;
+    if (!isSnapshot && e.hires > 0) lastIdx = N - 1;
+    // 45° approach from the origin junction into the lane (run = rise), rounded join
+    const dy = Math.abs(y - origin.y);
+    const jx = Math.min(origin.x + Math.max(dy, 10), sx(0));
+    const approach = svgEl('path', { class:'mt-line', d:`M${origin.x},${origin.y} L${jx},${y} L${sx(0)},${y}`, stroke:color, 'stroke-width':thick(e.counts[0]) });
+    g.appendChild(approach);
+    // straight inter-station segments, thickness ∝ count reaching the NEXT station
+    for (let i = 0; i < lastIdx; i++) {
+      if (e.counts[i + 1] <= 0 && !(i + 1 === N - 1 && e.hires > 0)) break;
+      const w = thick(Math.max(e.counts[i + 1], 1));
+      g.appendChild(svgEl('path', { class:'mt-line', d:`M${sx(i)},${y} L${sx(i + 1)},${y}`, stroke:color, 'stroke-width':w }));
+    }
+    // terminus tick (45°)
+    const tx = sx(lastIdx);
+    g.appendChild(svgEl('path', { class:'mt-line mt-terminus', d:`M${tx + 4},${y - 6} L${tx + 12},${y + 2}`, stroke:color, 'stroke-width':2 }));
+    svg.appendChild(g);
+    lineGroups.push({ g, e, color, y, lastIdx });
+  });
+  // interchange station bars span the lanes of lines present at that stage
+  stages.forEach((s, i) => {
+    const present = lineGroups.filter(l => l.e.counts[i] > 0 || l.lastIdx >= i);
+    if (!present.length && stageTotals[i] === 0) {
+      // zero-count station: small ghost circle keeps the axis honest
+      const gx = sx(i);
+      svg.appendChild(svgEl('circle', { class:'mt-station-ghost', cx:gx, cy:topY - 14, r:4 }));
+      svg.appendChild(svgEl('text', { class:'mt-station-name', x:gx + 5, y:topY - 24, transform:`rotate(-45 ${gx + 5} ${topY - 24})` }, textNode(s.toUpperCase())));
+      return;
+    }
+    const ys = present.map(l => l.y);
+    const y0 = Math.min(...ys) - 9, y1 = Math.max(...ys) + 9;
+    const bar = svgEl('rect', { class:'mt-station-bar', x:sx(i) - 5.5, y:y0, width:11, height:Math.max(18, y1 - y0), rx:5.5 });
+    bar.addEventListener('mousemove', ev => showRiverTooltip(ev,
+      `<b>${escapeHtml(s)}</b><br>${fmtN(stageTotals[i])} ${isSnapshot ? 'active at/past' : 'reached'}${stageExitTotals[i] && !isSnapshot ? `<br>${fmtN(stageExitTotals[i])} exited here` : ''}${isSnapshot && stageOverdue[i] ? `<br><span class="tt-muted">${fmtN(stageOverdue[i])} overdue</span>` : ''}`));
+    bar.addEventListener('mouseleave', hideRiverTooltip);
+    bar.addEventListener('click', () => { hideRiverTooltip(); setSelection({ type:'reached', stage:s }); });
+    svg.appendChild(bar);
+    // classic 45° station-name lockup
+    svg.appendChild(svgEl('text', { class:'mt-station-name', x:sx(i) + 5, y:y0 - 10, transform:`rotate(-45 ${sx(i) + 5} ${y0 - 10})` }, textNode(s.toUpperCase())));
+    // exits (cohort): thin gray 45° branch stub with count
+    if (!isSnapshot && stageExitTotals[i] > 0) {
+      const ex = sx(i), ey = y1 + 2;
+      svg.appendChild(svgEl('path', { class:'mt-exit', d:`M${ex},${ey} L${ex + 16},${ey + 16}` }));
+      svg.appendChild(svgEl('text', { class:'mt-exit-label', x:ex + 20, y:ey + 22 }, textNode(fmtN(stageExitTotals[i]) + ' out')));
+    }
+    // overdue (current mode): small amber badge under the station
+    if (isSnapshot && stageOverdue[i] > 0) {
+      const bx = sx(i), by = y1 + 14;
+      const badge = svgEl('g', { class:'mt-od' });
+      badge.appendChild(svgEl('circle', { cx:bx, cy:by, r:8 }));
+      badge.appendChild(svgEl('text', { x:bx, y:by + 3, 'text-anchor':'middle' }, textNode(String(stageOverdue[i]))));
+      badge.addEventListener('mousemove', ev => showRiverTooltip(ev, overdueTipHtml(`${stageOverdue[i]} of the ${s} actives lack a timely next step. Click to see them.`)));
+      badge.addEventListener('mouseleave', hideRiverTooltip);
+      badge.addEventListener('click', () => { hideRiverTooltip(); drillTo({ type:'overdue', stage:s }); });
+      svg.appendChild(badge);
+    }
+  });
+  // per-line station badges + hover/click wiring (badges drawn above bars)
+  lineGroups.forEach(({ g, e, color, y, lastIdx }) => {
+    const badges = svgEl('g', { class:'mt-badge' });
+    stages.forEach((s, i) => {
+      if (i > lastIdx || e.counts[i] <= 0) return;
+      badges.appendChild(svgEl('circle', { cx:sx(i), cy:y, r:7, stroke:color }));
+      badges.appendChild(svgEl('text', { x:sx(i), y:y + 2.8, 'text-anchor':'middle' }, textNode(String(e.counts[i]))));
+    });
+    svg.appendChild(badges);
+    const tip = ev => showRiverTooltip(ev,
+      `<b>${escapeHtml(e.job)}</b><br>${stages.map((s, i) => e.counts[i] > 0 ? `${escapeHtml(s)}: ${e.counts[i]}` : null).filter(Boolean).join(' · ')}${e.hires ? `<br><span class="tt-muted">${fmtN(e.hires)} hired</span>` : ''}<br><span class="tt-muted">click to drill to this req</span>`);
+    for (const node of [g, badges]) {
+      node.addEventListener('mousemove', tip);
+      node.addEventListener('mouseleave', () => { svg.classList.remove('hovering'); g.classList.remove('hovered'); badges.classList.remove('hovered'); hideRiverTooltip(); });
+      node.addEventListener('mouseenter', () => { svg.classList.add('hovering'); g.classList.add('hovered'); badges.classList.add('hovered'); });
+      node.addEventListener('click', () => { hideRiverTooltip(); drillToggleDim('job', e.job); });
+    }
+  });
+  // legend: req names in their line colors
+  const ly = height - 12;
+  let lx = marginL;
+  entries.forEach((e, j) => {
+    const t = svgEl('text', { class:'mt-legend', x:lx, y:ly, fill:REQ_COLORS[j % REQ_COLORS.length] }, textNode(e.job));
+    svg.appendChild(t);
+    lx += Math.min(e.job.length, 24) * 6.4 + 22;
+  });
+  if (more) svg.appendChild(svgEl('text', { class:'mt-legend-more', x:lx, y:ly }, textNode(`…and ${more} more`)));
+  wrap.appendChild(svg);
+  $('#river-caption').textContent = isSnapshot
+    ? 'Fig. Metro map — each line is a req; thickness = actives at or past each station; amber badges = overdue.'
+    : 'Fig. Metro map — each line is a req; thickness = candidates reaching each station; gray stubs = exits.';
+}
+/* ---- RADIAL view: the funnel as concentric rings (wild round B). ----
+   Ring i = stage i (Applied innermost, Hired as a thin outermost ring).
+   Each req owns a fixed angular sector sized by its stage-0 volume; at each
+   outer ring its wedge keeps the sector's START angle and narrows to its
+   reached-count share — the pipeline literally narrows outward. The unfilled
+   sector remainder renders as a faint gray arc so ring areas stay honest.
+   Annular-sector path math: with angles in radians measured clockwise from
+   12 o'clock, a point at radius r is (cx + r·sin a, cy − r·cos a); the wedge
+   is outer-arc a0→a1 (sweep 1), a chord in, inner-arc a1→a0 (sweep 0). */
+function radialArcPath(cx, cy, r0, r1, a0, a1){
+  a1 = Math.min(a1, a0 + Math.PI * 2 - 0.0001); // full-circle arcs collapse — clamp
+  const p = (r, a) => (cx + r * Math.sin(a)).toFixed(2) + ',' + (cy - r * Math.cos(a)).toFixed(2);
+  const large = (a1 - a0) > Math.PI ? 1 : 0;
+  return `M${p(r1, a0)} A${r1},${r1} 0 ${large} 1 ${p(r1, a1)} L${p(r0, a1)} A${r0},${r0} 0 ${large} 0 ${p(r0, a0)} Z`;
+}
+function renderFlowRadial(){
+  const wrap = $('#river-wrap'); wrap.innerHTML = '';
+  const series = flowReqSeries(8);
+  const { entries, other, isSnapshot, stages } = series;
+  const wedges = other ? entries.concat([other]) : entries.slice();
+  if (!wedges.length) {
+    wrap.appendChild(el('div', { class:'attn-none' }, 'No candidates in view.'));
+    $('#river-caption').textContent = '';
+    return;
+  }
+  const N = stages.length;
+  const width = Math.max(700, wrap.clientWidth || 900);
+  const size = Math.min(520, width - 40);
+  const height = size + 30;
+  const cx = width / 2, cy = height / 2 + 4;
+  const r0 = 52, hiredW = 9;
+  const Rmax = size / 2 - 24;
+  const ringW = (Rmax - r0 - hiredW) / Math.max(1, N - 1);
+  const rIn = i => i === N - 1 ? Rmax - hiredW : r0 + i * ringW;
+  const rOut = i => i === N - 1 ? Rmax : r0 + (i + 1) * ringW;
+  const svg = svgEl('svg', { class:'radial', width, height, viewBox:`0 0 ${width} ${height}` });
+  // angular allocation: req sectors ∝ stage-0 counts, 1.5° pads between
+  const PAD = 1.5 * Math.PI / 180;
+  const grandTotal = wedges.reduce((s, e) => s + e.counts[0], 0) || 1;
+  const usable = Math.PI * 2 - PAD * wedges.length;
+  let a = 0;
+  const sectors = wedges.map((e, j) => {
+    const w = (e.counts[0] / grandTotal) * usable;
+    const sec = { e, j, a0: a, w };
+    a += w + PAD;
+    return sec;
+  });
+  const stageTotals = stages.map((_, i) => wedges.reduce((s, e) => s + e.counts[i], 0));
+  sectors.forEach(({ e, j, a0, w }) => {
+    if (w <= 0) return;
+    const color = REQ_COLORS[j % REQ_COLORS.length];
+    for (let i = 0; i < N; i++) {
+      if (e.counts[0] <= 0) continue;
+      const wi = w * (e.counts[i] / e.counts[0]); // narrows outward, start-aligned
+      if (e.counts[i] > 0) {
+        const seg = svgEl('path', { class:'rd-seg', d: radialArcPath(cx, cy, rIn(i), rOut(i), a0, a0 + wi), fill: i === N - 1 ? 'var(--flow-5)' : color, 'fill-opacity': i === N - 1 ? 1 : (0.45 + 0.5 * (i / Math.max(1, N - 1))) });
+        seg.addEventListener('mousemove', ev => showRiverTooltip(ev,
+          `<b>${escapeHtml(e.job)}</b> · ${escapeHtml(stages[i])}<br>${fmtN(e.counts[i])} ${isSnapshot ? 'active at/past' : 'reached'} (${fmtPctSafe(e.counts[i], stageTotals[i])} of stage)<br><span class="tt-muted">click to drill</span>`));
+        seg.addEventListener('mouseleave', hideRiverTooltip);
+        seg.addEventListener('click', () => {
+          hideRiverTooltip();
+          if (e.isOther) setSelection({ type:'reached', stage: stages[i] });
+          else drillCombo({ job: e.job }, { type:'reached', stage: stages[i] });
+        });
+        svg.appendChild(seg);
+      }
+      // honest remainder: the part of the sector that never reached this ring
+      if (i > 0 && wi < w - 0.002 && e.counts[0] > 0) {
+        svg.appendChild(svgEl('path', { class:'rd-gap', d: radialArcPath(cx, cy, rIn(i), rOut(i), a0 + wi, a0 + w) }));
+      }
+    }
+    // req label on the innermost ring, only where the wedge is wide enough
+    if (w > 0.34) {
+      const mid = a0 + w / 2, rm = (rIn(0) + rOut(0)) / 2;
+      svg.appendChild(svgEl('text', { class:'rd-req-label', x: cx + rm * Math.sin(mid), y: cy - rm * Math.cos(mid) + 3, 'text-anchor':'middle' },
+        textNode(e.job.length > 14 ? e.job.slice(0, 13) + '…' : e.job)));
+    }
+  });
+  // radial stage axis at 12 o'clock with labels per ring
+  svg.appendChild(svgEl('line', { class:'rd-axis', x1:cx, y1:cy - r0 + 6, x2:cx, y2:cy - Rmax - 6 }));
+  stages.forEach((s, i) => {
+    const rm = (rIn(i) + rOut(i)) / 2;
+    svg.appendChild(svgEl('text', { class:'rd-stage-label', x:cx + 4, y:cy - rm + 3 }, textNode(s)));
+  });
+  // center: the headline number
+  const centerN = isSnapshot ? (state.snapshotRows || []).length : state.rows.length;
+  svg.appendChild(svgEl('text', { class:'rd-center', x:cx, y:cy + 2, 'text-anchor':'middle' }, textNode(fmtN(centerN))));
+  svg.appendChild(svgEl('text', { class:'rd-center-sub', x:cx, y:cy + 18, 'text-anchor':'middle' }, textNode(isSnapshot ? 'active' : 'applied')));
+  wrap.appendChild(svg);
+  $('#river-caption').textContent = isSnapshot
+    ? 'Fig. Radial pipeline — rings are stages (Applied innermost); wedges are reqs, narrowing outward as actives sit deeper.'
+    : 'Fig. Radial pipeline — rings are stages (Applied innermost, Hired the outer band); wedges are reqs, narrowing as candidates fall away; gray = never reached.';
 }
 function renderRiver(){
   const wrap = $('#river-wrap');
@@ -6441,6 +6745,106 @@ function renderRecMatrix(){
   $('#recmatrix-note').textContent = 'dot area ∝ actives · amber core = overdue';
   $('#recmatrix-caption').textContent = 'Fig. Who is carrying the load, and where it is going stale.';
 }
+/* 8. Source ↔ outcome chord (wild round B) — a bipartite ribbon diagram on a
+   circle: sources occupy the LEFT semicircle, outcomes the RIGHT; ribbon
+   width ∝ candidate count. Arc math matches radialArcPath (angles clockwise
+   from 12 o'clock); ribbons run outer-arc → quadratic Bézier through the
+   circle center → outer-arc → Bézier back, the standard chord construction. */
+const CHORD_OUTCOMES = [
+  ['hired', 'Hired', 'var(--flow-3)'],
+  ['declined', 'Offer declined', 'var(--warn)'],
+  ['rejected', 'Rejected', 'var(--rej)'],
+  ['withdrawn', 'Withdrawn', 'var(--muted)'],
+  ['active', 'In process', 'var(--flow-1)'],
+];
+function renderChord(){
+  const section = $('#section-chord');
+  if (impliedMode() !== 'cohort' || !state.mapping.source || !state.rows.length) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+  attachTipOnce($('#chord-kicker'), tipHtml(
+    'Source ↔ outcome — every candidate flows from the source that produced them (left) to how they ended up (right); ribbon width ∝ count.',
+    'top 8 sources by volume; the rest aggregate into "Other"'));
+  const wrap = $('#chord-chart'); wrap.innerHTML = '';
+  // top-8 sources by volume, rest into "Other"
+  const bySource = new Map();
+  for (const r of state.rows) { const s = r.source || '—'; if (!bySource.has(s)) bySource.set(s, []); bySource.get(s).push(r); }
+  let sources = Array.from(bySource.entries()).map(([name, rs]) => ({ name, rs })).sort((a,b) => b.rs.length - a.rs.length);
+  if (sources.length > 8) {
+    const rest = sources.slice(8);
+    sources = sources.slice(0, 8);
+    sources.push({ name:`Other (${rest.length})`, rs: rest.flatMap(s => s.rs), isOther:true });
+  }
+  const cells = []; // { src, outcome, n }
+  for (const src of sources) {
+    for (const [status, label, color] of CHORD_OUTCOMES) {
+      const n = src.rs.filter(r => r.status === status).length;
+      if (n > 0) cells.push({ src, status, label, color, n });
+    }
+  }
+  if (!cells.length) { wrap.appendChild(el('div', { class:'attn-none' }, 'No candidates in view.')); $('#chord-caption').textContent = ''; return; }
+  const width = Math.max(700, wrap.clientWidth || 900);
+  const height = 420;
+  const cx = width / 2, cy = height / 2, R = Math.min(178, height / 2 - 32);
+  const svg = svgEl('svg', { class:'chord', width, height, viewBox:`0 0 ${width} ${height}` });
+  const pt = (r, a) => [cx + r * Math.sin(a), cy - r * Math.cos(a)];
+  // angular allocation: sources on the left semicircle (185°–355°), outcomes
+  // on the right (5°–175°), each node sized by its share with 2° pads
+  const D = Math.PI / 180;
+  const layout = (nodes, from, to) => {
+    const pad = 2 * D;
+    const usable = (to - from) - pad * nodes.length;
+    const total = nodes.reduce((s, n) => s + n.total, 0) || 1;
+    let a = from + pad / 2;
+    for (const n of nodes) {
+      n.a0 = a; n.a1 = a + usable * (n.total / total);
+      n.cursor = n.a0; // ribbons consume the node arc sequentially
+      a = n.a1 + pad;
+    }
+  };
+  const srcNodes = sources.map(s => ({ key:s.name, total: s.rs.length, src:s }));
+  const outNodes = CHORD_OUTCOMES.map(([status, label, color]) => ({ key:status, label, color,
+    total: cells.filter(c => c.status === status).reduce((s, c) => s + c.n, 0) })).filter(n => n.total > 0);
+  layout(srcNodes, 185 * D, 355 * D);
+  layout(outNodes, 5 * D, 175 * D);
+  const srcByName = new Map(srcNodes.map(n => [n.key, n]));
+  const outByStatus = new Map(outNodes.map(n => [n.key, n]));
+  // node arcs (thin annular bands) + labels
+  for (const n of srcNodes) {
+    svg.appendChild(svgEl('path', { class:'ch-arc', d: radialArcPath(cx, cy, R + 3, R + 11, n.a0, n.a1), fill:'var(--ink)' }));
+    const mid = (n.a0 + n.a1) / 2, [lx, ly] = pt(R + 18, mid);
+    svg.appendChild(svgEl('text', { class:'ch-label', x:lx, y:ly + 3, 'text-anchor':'end' }, textNode(n.key)));
+  }
+  for (const n of outNodes) {
+    svg.appendChild(svgEl('path', { class:'ch-arc', d: radialArcPath(cx, cy, R + 3, R + 11, n.a0, n.a1), fill:n.color }));
+    const mid = (n.a0 + n.a1) / 2, [lx, ly] = pt(R + 18, mid);
+    svg.appendChild(svgEl('text', { class:'ch-label', x:lx, y:ly + 3, 'text-anchor':'start' }, textNode(n.label)));
+  }
+  // ribbons: consume each node's arc in cell order so widths tile exactly
+  cells.sort((a, b) => srcByName.get(a.src.name).a0 - srcByName.get(b.src.name).a0);
+  for (const c of cells) {
+    const sn = srcByName.get(c.src.name), on = outByStatus.get(c.status);
+    const sw = (sn.a1 - sn.a0) * (c.n / sn.total);
+    const ow = (on.a1 - on.a0) * (c.n / on.total);
+    const s0 = sn.cursor, s1 = sn.cursor + sw; sn.cursor = s1;
+    const o0 = on.cursor, o1 = on.cursor + ow; on.cursor = o1;
+    const [ax, ay] = pt(R, s0), [bx, by] = pt(R, s1), [ex, ey] = pt(R, o0), [fx, fy] = pt(R, o1);
+    const d = `M${ax},${ay} A${R},${R} 0 0 1 ${bx},${by} Q${cx},${cy} ${ex},${ey} A${R},${R} 0 0 1 ${fx},${fy} Q${cx},${cy} ${ax},${ay} Z`;
+    const ribbon = svgEl('path', { class:'ch-ribbon', d, fill:c.color });
+    ribbon.addEventListener('mousemove', ev => showRiverTooltip(ev,
+      `<b>${escapeHtml(c.src.name)}</b> → ${escapeHtml(c.label)}<br>${fmtN(c.n)} candidate${c.n===1?'':'s'} (${fmtPctSafe(c.n, sn.total)} of source)<br><span class="tt-muted">click to drill</span>`));
+    ribbon.addEventListener('mouseleave', () => { svg.classList.remove('hovering'); ribbon.classList.remove('hovered'); hideRiverTooltip(); });
+    ribbon.addEventListener('mouseenter', () => { svg.classList.add('hovering'); ribbon.classList.add('hovered'); });
+    ribbon.addEventListener('click', () => {
+      hideRiverTooltip();
+      if (c.src.isOther) setSelection({ type:'status', status:c.status });
+      else drillCombo({ source: c.src.name }, { type:'status', status:c.status });
+    });
+    svg.appendChild(ribbon);
+  }
+  wrap.appendChild(svg);
+  $('#chord-note').textContent = 'sources left · outcomes right · ribbon width ∝ candidates';
+  $('#chord-caption').textContent = `Fig. Where candidates come from and how they end up, ${fmtN(state.rows.length)} in the period.`;
+}
 /* ============================================================
    SECTION REGISTRY (lab round 6) — every report section, in default order.
    renderAll iterates this; the Customize screen edits visibility/order,
@@ -6474,6 +6878,8 @@ const SECTION_REGISTRY = [
     desc:'This period\'s funnel against the comparison, with Δpp pass rates.' },
   { key:'recmatrix',  title:'Recruiter load matrix', el:'section-recmatrix', render: () => renderRecMatrix(), gallery:true, modeNote:'Current only',
     desc:'Recruiter-by-stage dots sized by active load, overdue in amber.' },
+  { key:'chord',      title:'Source ↔ outcome chord', el:'section-chord',   render: () => renderChord(), gallery:true, modeNote:'cohort only',
+    desc:'Ribbons from each source to its outcomes — where hires actually come from.' },
 ];
 let _layout = null;
 function getLayout(){
@@ -6540,6 +6946,10 @@ function galleryThumb(key){
     [[64,50],[44,40],[26,30]].forEach(([a,b],i) => { add('rect', { x:2, y:2+i*10, width:a, height:4, fill:'var(--flow-3)' }); add('rect', { x:2, y:7+i*10, width:b, height:3, fill:'var(--rej)', opacity:0.5 }); });
   } else if (key === 'recmatrix') {
     [[12,8,5],[7,11,3],[4,6,9]].forEach((row,r) => row.forEach((n,c) => add('circle', { cx:12+c*26, cy:6+r*9, r:n/3+1.5, fill:'var(--flow-3)' })));
+  } else if (key === 'chord') {
+    add('path', { d:'M6,4 C40,4 44,4 78,6 L78,12 C44,10 40,10 6,12 Z', fill:'var(--flow-3)', opacity:0.7 });
+    add('path', { d:'M6,14 C40,14 44,16 78,18 L78,24 C44,22 40,20 6,20 Z', fill:'var(--rej)', opacity:0.5 });
+    add('path', { d:'M6,22 C40,24 44,26 78,26 L78,28 C44,28 40,26 6,26 Z', fill:'var(--rej)', opacity:0.35 });
   }
   return s;
 }
