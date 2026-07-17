@@ -72,6 +72,160 @@ html.dark{
     color-scheme: dark;
   }
 }
+/* ============================================================
+   EDITIONS (promoted from lab) — complete switchable skins, declared
+   AFTER the token blocks. NOTE: each var selector doubles its class to
+   (0,2,1) specificity so it beats the OS-dark block above. Broadsheet =
+   no root class (the default look, untouched). Print always falls back
+   to Broadsheet.
+   ============================================================ */
+/* --- COMIC: 2px black outlines, CMYK accents, Bangers display,
+       speech-bubble tooltips, POW severity badges. Locks light.
+       Data numerals stay Archivo for legibility. --- */
+html.ed-comic.ed-comic, html.ed-comic.dark, html.ed-comic.light{
+  --paper:#FFFFFF; --ink:#111111; --muted:#575757; --hairline:rgba(17,17,17,0.35); --heavy:#111111;
+  --flow-1:#FFF171; --flow-2:#FFD100; --flow-3:#00A6E0; --flow-4:#0077B6; --flow-5:#E5007E;
+  --rej:#C9C9C9;
+  --neg:#E02020; --warn:#FF9E00;
+  --pos-ink:#0077B6;
+  --serif:'Bangers','Archivo',sans-serif;
+  --sans:'Archivo','IBM Plex Sans',sans-serif;
+  color-scheme: light;
+}
+html.ed-comic .section{ border:2px solid #111; padding:14px 18px; margin-top:26px; }
+html.ed-comic .section-head{ transform:rotate(-1deg); } /* heads only — tables stay straight */
+html.ed-comic .kicker{ font-family:'Bangers',cursive; font-size:17px; letter-spacing:0.05em; color:#111; text-transform:none; }
+html.ed-comic .finding-headline{ font-family:'Bangers',cursive; font-weight:400; font-size:30px; letter-spacing:0.02em; }
+html.ed-comic .masthead-title{ font-family:'Bangers',cursive; font-weight:400; font-size:32px; letter-spacing:0.03em; }
+html.ed-comic .stat-value{ font-family:var(--sans); font-weight:700; }
+html.ed-comic .stat-value .numlink{ font-family:var(--sans); font-weight:700; }
+html.ed-comic .river-caption, html.ed-comic .attn-suggested, html.ed-comic .attn-trend figcaption,
+html.ed-comic .fd-comparison, html.ed-comic .tm-readout{ font-family:var(--sans); font-style:normal; }
+html.ed-comic .masthead-actions button, html.ed-comic .underline-btn{ border:2px solid #111; padding:1px 7px; background:#fff; }
+html.ed-comic .underline-btn:hover{ background:#FFF171; border-bottom-color:#111; }
+html.ed-comic .masthead .heavy-rule{ border-top-width:3px; }
+/* speech-bubble tooltip with a CSS-triangle tail */
+html.ed-comic .river-tooltip{ border:2px solid #111; border-radius:8px; overflow:visible; }
+html.ed-comic .river-tooltip::after{
+  content:''; position:absolute; left:14px; bottom:-9px; width:0; height:0;
+  border-style:solid; border-width:9px 9px 0 0; border-color:#111 transparent transparent transparent;
+}
+/* POW! starburst severity badges */
+html.ed-comic .attn-dot, html.ed-comic .flag-dot{
+  width:15px; height:15px; border-radius:0;
+  clip-path:polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+html.ed-comic svg.river .corridor{ stroke:#111; stroke-width:2; }
+html.ed-comic svg.river .drain{ fill:url(#cb-halftone); stroke:#111; stroke-width:1; }
+html.ed-comic svg.funnel .fn-bar{ stroke:#111; stroke-width:2; }
+html.ed-comic svg.funnel .fn-rest{ fill:url(#cb-halftone); opacity:1; stroke:#111; stroke-width:1; }
+html.ed-comic .trend-area{ fill:url(#cb-halftone); opacity:0.5; }
+html.ed-comic svg.aging .aging-dot{ stroke:#111; stroke-width:1; }
+/* --- 90s: deliberate kitsch. Times everywhere, beveled chrome,
+       hit-counter stats, rainbow rules (the ONE granted gradient
+       exception). Locks light. --- */
+html.ed-web1.ed-web1, html.ed-web1.dark, html.ed-web1.light{
+  --paper:#FFFFFF; --ink:#000000; --muted:#444444; --hairline:#9A9A9A; --heavy:#000000;
+  --flow-1:#FFFF00; --flow-2:#00CC00; --flow-3:#0000EE; --flow-4:#FF0000; --flow-5:#008000;
+  --rej:#C0C0C0;
+  --neg:#FF0000; --warn:#FF8C00;
+  --pos-ink:#008000;
+  --serif:'Times New Roman', Times, serif;
+  --sans:'Times New Roman', Times, serif;
+  color-scheme: light;
+}
+html.ed-web1 body{ background-image:repeating-linear-gradient(45deg, #F2F2F2 0 2px, #FFFFFF 2px 8px); }
+html.ed-web1 .masthead, html.ed-web1 .filterdesk, html.ed-web1 .popover, html.ed-web1 .sheet, html.ed-web1 .fd-panel{ background:#FFFFFF; }
+html.ed-web1 .masthead-actions button, html.ed-web1 .underline-btn, html.ed-web1 .fd-select,
+html.ed-web1 .ledger-pagination button, html.ed-web1 .fd-dim > button{
+  background:#C0C0C0; border:2px outset #FFFFFF; padding:1px 8px; color:#000; text-decoration:none;
+}
+html.ed-web1 .masthead-actions button:active, html.ed-web1 .underline-btn:active{ border-style:inset; }
+html.ed-web1 .numlink, html.ed-web1 a{ color:#0000EE; text-decoration:underline; }
+html.ed-web1 a:visited{ color:#551A8B; }
+html.ed-web1 table.report-table td, html.ed-web1 table.report-table thead th{ border:1px solid #808080; }
+html.ed-web1 table.report-table thead th{ background:#E0E0E0; color:#000; }
+/* hit-counter stats */
+html.ed-web1 .stat-value{
+  background:#000; color:#00FF00; font-family:'Courier New',monospace; font-weight:700;
+  display:inline-block; padding:2px 8px; letter-spacing:3px; font-size:20px;
+}
+html.ed-web1 .stat-value .numlink{ color:#00FF00; font-family:'Courier New',monospace; font-size:20px; text-decoration:none; }
+/* centered kickers over rainbow rules — the granted gradient exception */
+html.ed-web1 .section-head{ display:block; text-align:center; }
+html.ed-web1 .section-head .section-note, html.ed-web1 .section-head .section-action{ margin-left:0; display:inline-block; margin-top:2px; }
+html.ed-web1 .kicker{ font-size:17px; font-weight:700; letter-spacing:0.02em; color:#000; }
+html.ed-web1 .section-head::after{
+  content:''; display:block; height:4px; margin-top:5px;
+  background:linear-gradient(90deg, #FF0000, #FF8C00, #FFFF00, #00CC00, #0000EE, #4B0082, #8F00FF);
+}
+/* primitive chart rendering */
+html.ed-web1 svg rect, html.ed-web1 svg line{ shape-rendering:crispEdges; }
+html.ed-web1 svg.river .corridor-label.on-flow, html.ed-web1 svg.river .corridor-label.secondary{ fill:#FFFFFF; }
+/* --- 1890s: aged paper, Playfair nameplate, drop cap, engraved
+       hatch/stipple charts, vertical table hairlines, oxblood alarms.
+       Locks light. --- */
+html.ed-vintage.ed-vintage, html.ed-vintage.dark, html.ed-vintage.light{
+  --paper:#F4ECDC; --ink:#221A10; --muted:#77685A; --hairline:rgba(34,26,16,0.28); --heavy:#221A10;
+  --flow-1:#E2D6BC; --flow-2:#C8B794; --flow-3:#9A8560; --flow-4:#6C5A3E; --flow-5:#463A26;
+  --rej:#C8B794;
+  --neg:#6B1B14; --warn:#8A5A18;
+  --pos-ink:#463A26;
+  --serif:'Playfair Display', Georgia, 'Times New Roman', serif;
+  --sans:'IBM Plex Sans', system-ui, sans-serif;
+  color-scheme: light;
+}
+/* ornate centered nameplate with fleuron flourishes (pure CSS, no images) */
+html.ed-vintage .masthead-row{ flex-direction:column; align-items:center; gap:6px; text-align:center; }
+html.ed-vintage .masthead-title{ font-size:44px; font-weight:900; letter-spacing:0.005em; }
+html.ed-vintage .masthead-title::before{ content:'❧'; font-size:20px; color:var(--muted); vertical-align:middle; margin-right:18px; font-weight:400; }
+html.ed-vintage .masthead-title::after{ content:'☙'; font-size:20px; color:var(--muted); vertical-align:middle; margin-left:18px; font-weight:400; }
+html.ed-vintage .masthead-meta{ flex:none; font-variant-caps:small-caps; letter-spacing:0.08em; }
+html.ed-vintage .masthead-actions{ justify-content:center; }
+html.ed-vintage .masthead .heavy-rule{ border-top:4px double var(--heavy); }
+html.ed-vintage .kicker{ font-family:var(--serif); font-variant-caps:small-caps; text-transform:none; letter-spacing:0.14em; font-size:13.5px; font-weight:700; color:var(--ink); }
+html.ed-vintage .section{ border-top:4px double var(--ink); padding-top:12px; margin-top:34px; }
+html.ed-vintage .finding-headline{ font-weight:800; font-size:27px; }
+html.ed-vintage .finding-headline::first-letter{ font-size:2.4em; float:left; line-height:0.78; padding:4px 8px 0 0; font-weight:900; }
+html.ed-vintage .finding-sub{ clear:left; padding-top:3px; font-style:italic; font-family:var(--serif); }
+html.ed-vintage .stat-value{ font-weight:800; }
+/* period tables: vertical hairlines + double head rule */
+html.ed-vintage table.report-table td, html.ed-vintage table.report-table thead th{ border-left:0.5px solid var(--hairline); }
+html.ed-vintage table.report-table td:first-child, html.ed-vintage table.report-table thead th:first-child{ border-left:none; }
+html.ed-vintage table.report-table thead th{ border-bottom:3px double var(--ink); }
+/* engraved charts: fine hatching and stipple instead of flat tints */
+html.ed-vintage svg.river .corridor{ fill:url(#vp-hatch); stroke:var(--ink); stroke-width:0.75; }
+html.ed-vintage svg.river .drain{ fill:url(#vp-stipple); stroke:var(--muted); stroke-width:0.5; }
+html.ed-vintage svg.river .corridor-label.on-flow, html.ed-vintage svg.river .corridor-label.secondary{ fill:var(--ink); paint-order:stroke; stroke:var(--paper); stroke-width:2.5px; stroke-linejoin:round; }
+html.ed-vintage svg.funnel .fn-bar{ fill:url(#vp-hatch); stroke:var(--ink); stroke-width:0.75; }
+html.ed-vintage svg.funnel .fn-rest{ fill:url(#vp-stipple); stroke:var(--muted); stroke-width:0.5; opacity:1; }
+html.ed-vintage svg.funnel .fn-inproc{ fill:none; stroke:var(--muted); stroke-dasharray:2 2; }
+html.ed-vintage .trend-area{ fill:url(#vp-stipple); opacity:1; }
+html.ed-vintage .river-tooltip{ border:1px solid var(--ink); border-top-width:3px; border-top-style:double; }
+/* print always reads as Broadsheet */
+@media print{
+  html, html.ed-comic, html.ed-web1, html.ed-vintage{
+    --paper:#FBFAF8; --ink:#141412; --muted:#6B6A64; --hairline:rgba(20,20,18,0.14); --heavy:#141412;
+    --flow-1:#9FE1CB; --flow-2:#5DCAA5; --flow-3:#1D9E75; --flow-4:#0F6E56; --flow-5:#085041;
+    --rej:#B4B2A9; --neg:#A32D2D; --warn:#BA7517; --pos-ink:#0F6E56;
+    --serif:'Newsreader', Georgia, serif;
+    --sans:'IBM Plex Sans', system-ui, sans-serif;
+  }
+  html.ed-comic .section{ border:none; padding:0; }
+  html.ed-comic .section-head{ transform:none; }
+  html.ed-comic .kicker, html.ed-comic .finding-headline, html.ed-comic .masthead-title{ font-family:var(--serif); font-size:revert; letter-spacing:0; }
+  html.ed-web1 body{ background-image:none; }
+  html.ed-web1 .section-head{ display:flex; text-align:left; }
+  html.ed-web1 .section-head::after{ content:none; }
+  html.ed-web1 .stat-value{ background:none; color:var(--ink); font-family:var(--serif); letter-spacing:0; padding:0; }
+  html.ed-web1 .stat-value .numlink{ color:var(--ink); font-family:var(--serif); }
+  html.ed-web1 table.report-table td, html.ed-web1 table.report-table thead th{ border:none; border-bottom:0.5px solid var(--hairline); background:none; }
+  html.ed-vintage .masthead-row{ flex-direction:row; align-items:baseline; text-align:left; }
+  html.ed-vintage .masthead-title{ font-size:27px; font-weight:600; }
+  html.ed-vintage .masthead-title::before, html.ed-vintage .masthead-title::after{ content:none; }
+  html.ed-vintage .finding-headline::first-letter{ font-size:inherit; float:none; padding:0; font-weight:inherit; }
+  html.ed-vintage .section{ border-top:none; }
+}
 *{ box-sizing:border-box; }
 html,body{ margin:0; padding:0; background:var(--paper); color:var(--ink); }
 body{
@@ -403,28 +557,12 @@ table.report-table td.zero{ color:var(--muted); }
 #reqs-table-wrap td:first-child{ white-space:nowrap; }
 
 /* ============================================================
-   TRENDS small multiples
+   SPARK / MINI-CHART primitives — the Trends section was removed, but the
+   attention-panel evidence figs and composition guide still use these
    ============================================================ */
-.trend-grid{ display:flex; flex-wrap:wrap; gap:22px 32px; }
-.trend-fig{ cursor:pointer; position:relative; margin:0; }
-.trend-fig svg{ display:block; }
-.trend-fig figcaption{ font-family:var(--serif); font-style:italic; font-size:11.5px; color:var(--muted); margin-top:5px; }
-.trend-fig.expanded{ flex-basis:100%; }
-.trend-fig.expanded svg{ width:100%; height:240px; }
-.trend-axis-label{ font-size:9.5px; fill:var(--muted); font-family:var(--sans); }
 .trend-line{ fill:none; stroke:var(--flow-3); stroke-width:1.6; }
-.trend-line-prev{ fill:none; stroke:var(--muted); stroke-width:1; stroke-dasharray:3 2; }
 .trend-area{ fill:var(--flow-1); opacity:0.35; }
-.trend-dot{ fill:var(--flow-4); }
 .trend-latest{ font-size:11px; font-weight:600; fill:var(--ink); font-family:var(--sans); font-variant-numeric:tabular-nums; }
-.trend-delta{ font-size:10.5px; font-family:var(--sans); font-variant-numeric:tabular-nums; }
-.trend-delta.good{ fill:var(--pos-ink); }
-.trend-delta.bad{ fill:var(--neg); }
-.trend-delta.flat{ fill:var(--muted); }
-.trend-gridline{ stroke:var(--hairline); stroke-width:0.5; }
-.trend-point-label{ font-size:10px; fill:var(--muted); font-family:var(--sans); font-variant-numeric:tabular-nums; }
-.trend-collapse{ position:absolute; top:0; right:0; font-size:11px; color:var(--muted); padding:2px 4px; }
-.trend-collapse:hover{ color:var(--ink); }
 
 /* ============================================================
    SOURCES & PEOPLE
@@ -569,6 +707,27 @@ svg.comp .comp-marker{ stroke:var(--ink); stroke-width:1; stroke-dasharray:3 3; 
 }
 
 /* ============================================================
+   PRESENT MODE (promoted from lab) — full-viewport scene overlay,
+   edition-aware via CSS vars
+   ============================================================ */
+html.presenting{ overflow:hidden; }
+.present-root{ position:fixed; inset:0; background:var(--paper); color:var(--ink); z-index:800; display:flex; flex-direction:column; }
+.present-scene{ flex:1; display:flex; flex-direction:column; justify-content:center; padding:6vh 8vw; overflow:hidden; cursor:pointer; }
+.present-kicker{ font-size:13px; font-weight:600; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); margin-bottom:3vh; }
+.present-title{ font-family:var(--serif); font-weight:600; font-size:clamp(30px, 4.6vw, 68px); line-height:1.16; letter-spacing:-0.01em; max-width:24ch; }
+.present-title.red{ color:var(--neg); }
+.present-title.amber{ color:var(--warn); }
+.present-sub{ font-size:clamp(15px, 1.5vw, 22px); color:var(--muted); margin-top:3vh; max-width:60ch; }
+.present-suggest{ font-family:var(--serif); font-style:italic; font-size:clamp(15px, 1.5vw, 22px); color:var(--ink); margin-top:2vh; max-width:60ch; }
+.present-section-holder{ flex:1; min-height:0; overflow:hidden; cursor:default; }
+.present-section-holder .section{ margin-top:0 !important; border:none !important; padding:0 !important; }
+.present-section-holder table.report-table{ font-size:16px; }
+.present-section-holder table.report-table td{ padding:11px 14px; }
+.present-counter{ position:fixed; right:28px; bottom:18px; font-size:12.5px; color:var(--muted); font-variant-numeric:tabular-nums; z-index:801; }
+.present-hint{ position:fixed; left:28px; bottom:18px; font-size:11.5px; color:var(--muted); z-index:801; }
+@media print{ .present-root, .present-counter, .present-hint{ display:none !important; } }
+
+/* ============================================================
    TOAST
    ============================================================ */
 .toast-line{
@@ -628,6 +787,15 @@ svg.comp .comp-marker{ stroke:var(--ink); stroke-width:1; stroke-dasharray:3 3; 
           </div>
         </div>
       </div>
+      <div class="popover-wrap">
+        <button class="underline-btn" id="btn-edition">Edition ▾</button>
+        <div class="popover hidden" id="pop-edition">
+          <h4>Edition</h4>
+          <div id="edition-list"></div>
+        </div>
+      </div>
+      <button class="underline-btn" id="btn-present">Present</button>
+      <button class="underline-btn" id="btn-export-pptx">Export PowerPoint</button>
       <button class="underline-btn theme-toggle" id="btn-theme-toggle">Dark</button>
       <button class="underline-btn" id="btn-print">Export PDF</button>
     </nav>
@@ -762,12 +930,6 @@ svg.comp .comp-marker{ stroke:var(--ink); stroke-width:1; stroke-dasharray:3 3; 
       <div id="statement-table-wrap"></div>
     </section>
 
-    <!-- ========== TRENDS ========== -->
-    <section class="section" id="section-trends">
-      <div class="section-head"><span class="kicker">Trends</span></div>
-      <div class="trend-grid" id="trend-grid"></div>
-    </section>
-
     <!-- ========== SOURCES & PEOPLE ========== -->
     <section class="section" id="section-sources">
       <div class="section-head"><span class="kicker">Sources &amp; people</span></div>
@@ -800,6 +962,13 @@ svg.comp .comp-marker{ stroke:var(--ink); stroke-width:1; stroke-dasharray:3 3; 
 <div id="mapper-root"></div>
 <div class="toast-line" id="toast-line"></div>
 <div class="river-tooltip" id="river-tooltip"></div>
+<!-- shared SVG pattern defs for the Comic (halftone) and 1890s (hatch/stipple)
+     editions; referenced from CSS via fill:url(#id) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <pattern id="vp-hatch" width="4.5" height="4.5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4.5" stroke="#221A10" stroke-width="0.9" opacity="0.65"/></pattern>
+  <pattern id="vp-stipple" width="4" height="4" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="0.65" fill="#221A10" opacity="0.55"/><circle cx="3" cy="3" r="0.65" fill="#221A10" opacity="0.55"/></pattern>
+  <pattern id="cb-halftone" width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.4" fill="#111111" opacity="0.5"/><circle cx="5.5" cy="5.5" r="1.4" fill="#111111" opacity="0.5"/></pattern>
+</defs></svg>
 <input type="file" id="file-input-hidden" accept=".xlsx,.xls,.csv" multiple style="display:none" />
 <script>
 'use strict';
@@ -874,7 +1043,6 @@ const state = {
   ledger: { page: 0, pageSize: 100, sortCol: 'daysInStage', sortDir: 'desc', expanded: new Set() },
   sourcesSort: { col: 'hireRate', dir: 'desc' },
   recruitersSort: { col: 'activeCount', dir: 'desc' },
-  trendExpanded: null,
   theme: 'auto',
   renderQueued: false,
 };
@@ -2773,7 +2941,7 @@ function computeFinding(){
     return f ? f.medianDays : null;
   };
   const candidates = [];
-  // Significance gate (shared with the trend-fig callouts): a Δ-based headline
+  // Significance gate (kept after the Trends section's removal): a Δ-based headline
   // needs ≥5 underlying events on each side AND a ≥15% relative change —
   // anything weaker is noise and never reaches the headline.
   const sigDelta = (cur, prevV, nCur, nPrev) => {
@@ -4224,177 +4392,6 @@ function sparkPath(points, w, h, pad=4, padRight){
   const area = line + ` L${xs[xs.length-1]},${h-pad} L${xs[0]},${h-pad} Z`;
   return { line, area, xs, ys, min, max };
 }
-const TREND_DEFS = [
-  // `count` = the underlying event count behind each bin's value, used by the
-  // significance gate on the Δ callouts (≥5 events on both sides required)
-  { id:'apps', title:'Applications', metric: rows => rows.length, count: rows => rows.length, field:'applied_at', rate:true, goodDir:'up',
-    explain:'Candidates who applied, counted by application date.' },
-  { id:'hires', title:'Hires', metric: rows => rows.filter(r=>r.status==='hired').length, count: rows => rows.filter(r=>r.status==='hired').length, field:'hired_at', rate:true, goodDir:'up',
-    explain:'Candidates hired, counted by hire date.' },
-  { id:'offeraccept', title:'Offer accept %', metric: rows => { const h=rows.filter(r=>r.status==='hired').length,d=rows.filter(r=>r.status==='declined').length; return (h+d)?h/(h+d):0; }, count: rows => rows.filter(r=>r.status==='hired'||r.status==='declined').length, field:'applied_at', pct:true, goodDir:'up',
-    explain:'Accepted ÷ resolved offers, grouped by the cohort\'s application date.' },
-  { id:'tth', title:'Median time-to-hire', metric: rows => median(rows.filter(r=>r.hired_at&&r.applied_at).map(r=>(r.hired_at-r.applied_at)/86400000))||0, count: rows => rows.filter(r=>r.hired_at&&r.applied_at).length, field:'applied_at', days:true, goodDir:'down',
-    explain:'Median days from application to hire, by application cohort.' },
-  { id:'wait', title:'Screen→onsite wait', metric: rows => { const f = computeStageFlow(rows, state.canonicalStages, null, 'cohort').find(x=>x.stage==='Screen'); return f&&f.medianDays!=null?f.medianDays:0; }, count: rows => { const si = Math.max(1, state.canonicalStages.indexOf('Screen')); return rows.filter(r=>stageIndex(r.current_stage) >= si).length; }, field:'applied_at', days:true, goodDir:'down',
-    explain:'Median days spent in Screen before advancing, by application cohort.' },
-  { id:'pipeline', title:'Pipeline size (active)', metric: rows => rows.filter(r=>r.status==='active').length, count: rows => rows.filter(r=>r.status==='active').length, field:'applied_at', goodDir:'up',
-    explain:'Candidates from each application cohort who are still in process today.' },
-];
-const RES_ABBREV = { day:'d', week:'wk', month:'mo' };
-function trendValueLabel(def, v, res){
-  if (def.pct) return fmtPct(v,0);
-  if (def.days) return fmtDays(v);
-  if (def.rate) return fmtN(v)+'/'+RES_ABBREV[res];
-  return fmtN(v);
-}
-function trendPointLabel(def, v){
-  if (def.pct) return fmtPct(v,0);
-  if (def.days) return fmtDays(v);
-  return fmtN(v);
-}
-function binHoverLabel(key, res){
-  if (res === 'month') return dayjs(key+'-01').format('MMMM YYYY');
-  if (res === 'week') return 'Week of ' + dayjs(key).format('MMM D');
-  return dayjs(key).format('MMM D, YYYY');
-}
-function renderTrends(){
-  const grid = $('#trend-grid'); grid.innerHTML = '';
-  const range = state.periodRange || (() => {
-    const dates = state.rawRows.map(r=>r.applied_at).filter(Boolean);
-    return dates.length ? [new Date(Math.min(...dates)), new Date(Math.max(...dates))] : [new Date(),new Date()];
-  })();
-  const spanDays = Math.max(1, (range[1]-range[0])/86400000);
-  const res = pickResolution(spanDays);
-  TREND_DEFS.forEach((def,idx) => {
-    // group rows by bin key ONCE per def instead of filtering all rows per bin
-    // (was the report's slowest path: rows × bins × defs dayjs calls)
-    const groupByBin = rowsArr => {
-      const m = new Map();
-      for (const r of rowsArr) { const dt = r[def.field]; if (!dt) continue; const k = binKey(dt, res); const arr = m.get(k); if (arr) arr.push(r); else m.set(k, [r]); }
-      return m;
-    };
-    const curGroups = groupByBin(state.rows);
-    const EMPTY_BIN = [];
-    const bins = buildBins(state.rows, def.field, res, range).map(b => {
-      const rowsInBin = curGroups.get(b.key) || EMPTY_BIN;
-      return { ...b, value: def.metric(rowsInBin), n: def.count ? def.count(rowsInBin) : rowsInBin.length };
-    });
-    let prevBins = null;
-    if (state.prevRows && state.prevRange) {
-      const prevGroups = groupByBin(state.prevRows);
-      prevBins = buildBins(state.prevRows, def.field, res, state.prevRange).map(b => {
-        const rowsInBin = prevGroups.get(b.key) || EMPTY_BIN;
-        return { ...b, value: def.metric(rowsInBin), n: def.count ? def.count(rowsInBin) : rowsInBin.length };
-      });
-    }
-    const expanded = state.trendExpanded === def.id;
-    // right gutter reserves room for the latest-value + Δ labels
-    const w = expanded ? Math.max(600, grid.clientWidth||900) : 224, h = expanded ? 240 : 60;
-    const padL = expanded ? 40 : 6, padR = expanded ? 64 : 62;
-    const vals = bins.map(b=>b.value);
-    const sp = sparkPath(vals, w, h, padL, padR);
-    const svg = svgEl('svg', { width:w, height:h, viewBox:`0 0 ${w} ${h}` });
-    if (expanded && vals.length) {
-      // min/max gridlines with labels
-      const minIdx = vals.indexOf(Math.min(...vals)), maxIdx = vals.indexOf(Math.max(...vals));
-      for (const gi of [minIdx, maxIdx]) {
-        const gy = sp.ys[gi];
-        svg.appendChild(svgEl('line', { class:'trend-gridline', x1:padL, y1:gy, x2:w-padR, y2:gy }));
-        svg.appendChild(svgEl('text', { class:'trend-axis-label', x:padL-5, y:gy+3, 'text-anchor':'end' }, textNode(trendPointLabel(def, vals[gi]))));
-      }
-    }
-    if (sp.area) svg.appendChild(svgEl('path', { class:'trend-area', d:sp.area }));
-    if (prevBins && prevBins.length===bins.length) {
-      const pv = sparkPath(prevBins.map(b=>b.value), w, h, padL, padR);
-      if (pv.line) svg.appendChild(svgEl('path', { class:'trend-line-prev', d:pv.line }));
-    }
-    if (sp.line) svg.appendChild(svgEl('path', { class:'trend-line', d:sp.line }));
-    if (expanded && vals.length) {
-      bins.forEach((b,i) => {
-        if (i % Math.ceil(bins.length/10 || 1) === 0) svg.appendChild(svgEl('text', { class:'trend-axis-label', x:sp.xs[i], y:h-14, 'text-anchor':'middle' }, textNode(b.label)));
-      });
-      // point value labels: all points, or only first/last/min/max when >30 bins
-      const minIdx = vals.indexOf(Math.min(...vals)), maxIdx = vals.indexOf(Math.max(...vals));
-      const labelIdx = vals.length > 30 ? new Set([0, vals.length-1, minIdx, maxIdx]) : null;
-      vals.forEach((v,i) => {
-        if (labelIdx && !labelIdx.has(i)) return;
-        svg.appendChild(svgEl('circle', { class:'trend-dot', cx:sp.xs[i], cy:sp.ys[i], r:2 }));
-        svg.appendChild(svgEl('text', { class:'trend-point-label', x:sp.xs[i], y:sp.ys[i]-7, 'text-anchor':'middle' }, textNode(trendPointLabel(def, v))));
-      });
-    }
-    // latest value + Δ at the line's right end (both modes).
-    // The final bin is usually the current, incomplete period — read from the
-    // last COMPLETE bin so the headline number isn't a misleading partial count.
-    if (vals.length) {
-      const lastIsPartial = bins.length > 1 && binKey(new Date(), res) === bins[bins.length-1].key;
-      const li = lastIsPartial ? vals.length-2 : vals.length-1;
-      const latest = vals[li];
-      const lx = w - padR + 8;
-      const ly = Math.min(Math.max(sp.ys[li], 14), h-16);
-      svg.appendChild(svgEl('text', { class:'trend-latest', x:lx, y:ly, 'text-anchor':'start' }, textNode(trendValueLabel(def, latest, res))));
-      // Δ vs the COMPARISON period's MATCHING bin (or the trailing-8-bin mean
-      // when no comparison exists). Colored only when the change is significant:
-      // |Δ| ≥ 15% relative AND ≥5 underlying events on both sides — anything
-      // weaker renders muted so the callouts stop promoting noise. The partial
-      // current bin never drives the callout (li is the last COMPLETE bin).
-      let base = null, nBase = 0;
-      if (prevBins && prevBins[li] != null) { base = prevBins[li].value; nBase = prevBins[li].n; }
-      else if (li >= 1) {
-        const win = bins.slice(Math.max(0, li-8), li);
-        base = win.reduce((s,b) => s+b.value, 0) / win.length;
-        nBase = Math.round(win.reduce((s,b) => s+b.n, 0) / win.length);
-      }
-      let deltaTxt = null, deltaCls = 'flat';
-      if (base != null && isFinite(base)) {
-        const nCur = bins[li].n;
-        const rel = Math.abs(latest-base) / Math.max(Math.abs(base), def.pct ? 0.01 : 1e-9);
-        const significant = rel >= 0.15 && nCur >= 5 && nBase >= 5;
-        if (def.pct) {
-          const dPt = Math.round((latest-base)*100);
-          deltaTxt = (dPt>=0?'+':'')+dPt+'pt';
-          deltaCls = (!significant || dPt===0) ? 'flat' : ((dPt>0) === (def.goodDir==='up') ? 'good' : 'bad');
-        } else if (base !== 0) {
-          const dPct = Math.round((latest-base)/Math.abs(base)*100);
-          deltaTxt = (dPct>=0?'+':'')+dPct+'%';
-          deltaCls = (!significant || dPct===0) ? 'flat' : ((dPct>0) === (def.goodDir==='up') ? 'good' : 'bad');
-        }
-      }
-      if (deltaTxt) svg.appendChild(svgEl('text', { class:'trend-delta '+deltaCls, x:lx, y:ly+12, 'text-anchor':'start' }, textNode(deltaTxt)));
-    }
-    // hover: snap to nearest bin, vertical guide line + shared tooltip
-    if (vals.length) {
-      const guide = svgEl('line', { class:'trend-guide', x1:0, y1:expanded?14:4, x2:0, y2:h-(expanded?26:4), style:'display:none' });
-      svg.appendChild(guide);
-      svg.addEventListener('mousemove', (e) => {
-        const rect = svg.getBoundingClientRect();
-        const mx = (e.clientX - rect.left) * (w / rect.width); // svg may be CSS-scaled when expanded
-        let ni = 0, nd = Infinity;
-        sp.xs.forEach((xx,i) => { const d = Math.abs(xx-mx); if (d < nd) { nd = d; ni = i; } });
-        guide.setAttribute('x1', sp.xs[ni]); guide.setAttribute('x2', sp.xs[ni]);
-        guide.style.display = 'block';
-        let html = `<b>${binHoverLabel(bins[ni].key, res)}</b><br>${def.title}: ${trendPointLabel(def, vals[ni])}`;
-        if (prevBins && prevBins[ni]) {
-          const pv = prevBins[ni].value;
-          const d = def.pct ? Math.round((vals[ni]-pv)*100)+'pt' : trendPointLabel(def, vals[ni]-pv);
-          html += `<br><span class="tt-muted">vs comparison: ${trendPointLabel(def, pv)} (Δ ${(vals[ni]-pv>=0?'+':'')}${d})</span>`;
-        }
-        showRiverTooltip(e, html);
-      });
-      svg.addEventListener('mouseleave', () => { guide.style.display = 'none'; hideRiverTooltip(); });
-    }
-    const caption = el('figcaption', {}, `Fig ${idx+1}. ${def.title} per ${res}.`);
-    if (def.explain) attachTip(caption, tipHtml(def.explain, `binned per ${res}; dashed line = comparison period; click to expand`));
-    const fig = el('figure', { class:'trend-fig'+(expanded?' expanded':'') }, svg, caption);
-    if (expanded) {
-      const collapseBtn = el('button', { class:'trend-collapse' }, '✕ collapse');
-      collapseBtn.addEventListener('click', (e) => { e.stopPropagation(); state.trendExpanded = null; renderTrends(); });
-      fig.appendChild(collapseBtn);
-    }
-    fig.addEventListener('click', () => { state.trendExpanded = expanded ? null : def.id; hideRiverTooltip(); renderTrends(); });
-    grid.appendChild(fig);
-  });
-}
-
 /* ============================================================
    RENDER: SOURCES & PEOPLE
    ============================================================ */
@@ -4641,7 +4638,6 @@ function renderAll(){
   renderAging();
   renderComposition();
   renderStatement();
-  renderTrends();
   renderSourcesAndPeople();
   renderLedger();
   renderFootnote();
@@ -4780,6 +4776,297 @@ async function saveCurrentView(){
 }
 
 /* ============================================================
+   EDITIONS (promoted from lab) — four skins, chart colors via CSS vars,
+   fonts lazy-loaded on first activation, persisted under `edition`.
+   ============================================================ */
+const EDITIONS = [
+  ['broadsheet','Broadsheet','editorial serif — the default'],
+  ['comic','Comic','bold outlines, CMYK accents, speech-bubble tooltips · locks light'],
+  ['web1','90s','deliberate kitsch — beveled chrome, hit-counter stats, rainbow rules · locks light'],
+  ['vintage','1890s','aged paper, Playfair nameplate, engraved hatching · locks light'],
+];
+const EDITION_FONTS = {
+  comic:   ['font-comic', 'https://fonts.googleapis.com/css2?family=Bangers&family=Archivo:wght@500;600;700&display=swap'],
+  vintage: ['font-vintage', 'https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;0,800;0,900;1,500&display=swap'],
+  // web1 uses system Times New Roman — nothing to load
+};
+function getEdition(){ try { return localStorage.getItem('edition') || 'broadsheet'; } catch(e){ return 'broadsheet'; } }
+function ensureEditionFont(ed){
+  const f = EDITION_FONTS[ed];
+  if (f && !document.getElementById(f[0])) {
+    document.head.appendChild(el('link', { id:f[0], rel:'stylesheet', href:f[1] }));
+  }
+}
+function applyEdition(ed){
+  for (const [key] of EDITIONS) if (key !== 'broadsheet') document.documentElement.classList.remove('ed-' + key);
+  if (ed !== 'broadsheet' && EDITIONS.some(e => e[0] === ed)) document.documentElement.classList.add('ed-' + ed);
+  ensureEditionFont(ed);
+}
+function setEdition(ed){
+  try { localStorage.setItem('edition', ed); } catch(e){}
+  applyEdition(ed);
+  queueRender();
+}
+function renderEditionList(){
+  const list = $('#edition-list'); list.innerHTML = '';
+  const cur = getEdition();
+  for (const [key, name, desc] of EDITIONS) {
+    const row = el('div', { class:'prow', style:'cursor:pointer;' },
+      el('span', { class:'pname' }, (cur === key ? '● ' : '') + name),
+      el('span', { class:'pmeta' }, desc));
+    row.addEventListener('click', () => { setEdition(key); renderEditionList(); });
+    list.appendChild(row);
+  }
+}
+
+/* ============================================================
+   PRESENT MODE + POWERPOINT EXPORT (promoted from lab; the .pptx export
+   is new to stable and is the flagship)
+   Present: full-screen deck from the CURRENT report state — title card →
+   one scene per Attention flag → key sections (flow as currently selected,
+   aging, statement, reqs, composition), capped at 10 with flags first.
+   Section scenes MOVE the live section node into the scene and re-run its
+   render fn (genuine re-render at presentation width); the section returns
+   to its original slot on scene change/exit.
+   Export PowerPoint: the same scenes as a real 16:9 .pptx via pptxgenjs
+   (lazy-loaded). Title/flag slides are NATIVE text; statement + reqs are
+   NATIVE editable tables scraped from the on-screen DOM (severity cells
+   colored); chart scenes rasterize the section SVG at 2× with computed
+   styles inlined (so CSS-class styling and var colors survive standalone
+   serialization). The deck always rasterizes in BROADSHEET styling for a
+   consistent exec deliverable — the active edition is restored afterwards.
+   Webfont caveat: SVG-in-image rasterization cannot reach page webfonts,
+   so text falls back to each font stack's system fallback (Georgia/serif).
+   ============================================================ */
+let presentState = null;
+// stable has no section registry — the deck candidates are defined here
+const PRESENT_SECTIONS = [
+  { key:'flow', el:'section-river', title:'Flow', render: () => { renderFlow(); renderTimeMachine(); }, image:true },
+  { key:'aging', el:'section-aging', title:'Aging', render: () => renderAging(), image:true },
+  { key:'statement', el:'section-statement', title:'Statement of flow', render: () => renderStatement(), table:'#statement-table-wrap' },
+  { key:'reqs', el:'section-reqs', title:'Requisitions', render: () => renderReqs(), table:'#reqs-table-wrap' },
+  { key:'composition', el:'section-composition', title:'Composition', render: () => renderComposition(), image:true },
+];
+function buildPresentScenes(){
+  const scenes = [];
+  const meta = state.files.map(f => f.name).join(', ');
+  scenes.push({ kind:'title', build: c => {
+    c.appendChild(el('div', { class:'present-kicker' }, 'Pipeline review — ' + subLabel()));
+    c.appendChild(el('h1', { class:'present-title' }, $('#finding-headline').textContent));
+    c.appendChild(el('p', { class:'present-sub' }, `${meta} · ${fmtN(state.rows.length)} candidates in view`));
+  }});
+  for (const f of (state._flags || [])) {
+    scenes.push({ kind:'flag', f, build: c => {
+      const inv = investigateFlag(f);
+      c.appendChild(el('div', { class:'present-kicker' }, 'Attention'));
+      c.appendChild(el('h1', { class:'present-title ' + f.severity }, f.text));
+      if (inv.contributors && inv.contributors[0]) c.appendChild(el('p', { class:'present-sub' }, inv.contributors[0].text));
+      if (inv.suggested) c.appendChild(el('p', { class:'present-suggest' }, inv.suggested));
+    }});
+  }
+  for (const def of PRESENT_SECTIONS) {
+    if (scenes.length >= 10) break;
+    const sec = document.getElementById(def.el);
+    if (!sec || sec.classList.contains('hidden')) continue;
+    scenes.push({ kind:'section', def });
+  }
+  return scenes.slice(0, 10);
+}
+function showPresentScene(idx){
+  const ps = presentState;
+  if (!ps) return;
+  ps.idx = ((idx % ps.scenes.length) + ps.scenes.length) % ps.scenes.length;
+  const sc = ps.scenes[ps.idx];
+  restoreMovedSection();
+  ps.sceneEl.innerHTML = '';
+  if (sc.kind === 'section') {
+    ps.sceneEl.appendChild(el('div', { class:'present-kicker' }, sc.def.title));
+    const holder = el('div', { class:'present-section-holder' });
+    holder.addEventListener('click', e => e.stopPropagation()); // chart clicks shouldn't advance
+    ps.sceneEl.appendChild(holder);
+    const node = document.getElementById(sc.def.el);
+    ps.moved = { node, parent: node.parentElement, next: node.nextElementSibling };
+    holder.appendChild(node);
+    try { sc.def.render(); } catch (e) { /* a failed scene render must never strand the deck */ }
+  } else {
+    sc.build(ps.sceneEl);
+  }
+  const counter = document.getElementById('present-counter');
+  if (counter) counter.textContent = (ps.idx + 1) + ' / ' + ps.scenes.length;
+}
+function restoreMovedSection(){
+  const m = presentState && presentState.moved;
+  if (!m) return;
+  if (m.next && m.next.parentElement === m.parent) m.parent.insertBefore(m.node, m.next);
+  else m.parent.appendChild(m.node);
+  presentState.moved = null;
+}
+function openPresent(){
+  if (presentState) closePresent();
+  if (!state.rawRows.length) { toast('Load data first.'); return; }
+  state.renderQueued = false; renderAll(); // scenes reflect the freshest state
+  const root = el('div', { class:'present-root', id:'present-root' });
+  const sceneEl = el('div', { class:'present-scene' });
+  root.appendChild(sceneEl);
+  root.appendChild(el('div', { class:'present-counter', id:'present-counter' }));
+  root.appendChild(el('div', { class:'present-hint' }, '→ next · ← back · P / Esc exit'));
+  presentState = { scenes: buildPresentScenes(), idx: 0, sceneEl, root, moved: null };
+  sceneEl.addEventListener('click', () => showPresentScene(presentState.idx + 1));
+  document.body.appendChild(root);
+  document.documentElement.classList.add('presenting');
+  showPresentScene(0);
+}
+function closePresent(){
+  const ps = presentState;
+  if (!ps) return;
+  restoreMovedSection();
+  presentState = null;
+  ps.root.remove();
+  document.documentElement.classList.remove('presenting');
+  state.renderQueued = false; renderAll(); // moved sections re-render at report width
+}
+/* ---- .pptx export ---- */
+let _pptxLoading = null;
+function loadPptxGen(){
+  if (window.PptxGenJS) return Promise.resolve();
+  if (_pptxLoading) return _pptxLoading;
+  _pptxLoading = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js';
+    s.onload = () => resolve();
+    s.onerror = () => { _pptxLoading = null; reject(new Error('pptxgenjs failed to load')); };
+    document.head.appendChild(s);
+  });
+  return _pptxLoading;
+}
+// rasterize an on-page SVG to a 2× PNG data-URL. Computed styles are inlined
+// element-by-element so class-based styling and CSS-var colors survive the
+// standalone serialization (webfonts cannot; stacks fall back to system serif/sans).
+function svgToPngDataUrl(svgEl){
+  return new Promise((resolve, reject) => {
+    const clone = svgEl.cloneNode(true);
+    const PROPS = ['fill','fill-opacity','stroke','stroke-width','stroke-dasharray','stroke-linecap','stroke-linejoin',
+      'opacity','font-family','font-size','font-weight','letter-spacing','text-anchor','paint-order','text-transform'];
+    (function copyStyles(src, dst){
+      if (src.nodeType === 1) {
+        const cs = getComputedStyle(src);
+        let style = '';
+        for (const p of PROPS) { const v = cs.getPropertyValue(p); if (v) style += `${p}:${v};`; }
+        dst.setAttribute('style', style);
+      }
+      for (let i = 0; i < src.children.length; i++) copyStyles(src.children[i], dst.children[i]);
+    })(svgEl, clone);
+    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    const w = +svgEl.getAttribute('width') || svgEl.clientWidth || 900;
+    const h = +svgEl.getAttribute('height') || svgEl.clientHeight || 300;
+    const blob = new Blob([new XMLSerializer().serializeToString(clone)], { type:'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = w * 2; canvas.height = h * 2;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#FBFAF8'; // broadsheet paper behind transparent SVG
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve({ data: canvas.toDataURL('image/png'), w, h });
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('SVG rasterization failed')); };
+    img.src = url;
+  });
+}
+// scrape an on-screen report table into pptxgenjs table rows, keeping the
+// severity cell tints (alert/warn-cell) as colored text
+function scrapeTableForPptx(sel){
+  const table = document.querySelector(sel + ' table');
+  if (!table) return null;
+  const rows = [];
+  const heads = Array.from(table.querySelectorAll('thead th')).map(th => ({
+    text: th.textContent.replace(/[▲▼]/g, '').trim(),
+    options: { bold: true, color: '141412', fill: { color: 'EFEDE8' }, fontSize: 9 },
+  }));
+  rows.push(heads);
+  for (const tr of table.querySelectorAll('tbody tr')) {
+    const cells = Array.from(tr.children).map(td => {
+      const opts = { fontSize: 9, color: '141412' };
+      if (td.classList.contains('alert')) { opts.color = 'A32D2D'; opts.bold = true; }
+      else if (td.classList.contains('warn-cell')) { opts.color = 'BA7517'; opts.bold = true; }
+      else if (td.classList.contains('zero')) opts.color = '6B6A64';
+      return { text: td.textContent.trim(), options: opts };
+    });
+    if (cells.length === rows[0].length) rows.push(cells); // skip expanded-detail rows
+  }
+  return rows;
+}
+async function exportPptx(){
+  if (!state.rawRows.length) { toast('Load data first.'); return; }
+  try {
+    await loadPptxGen();
+  } catch (e) {
+    toast('PowerPoint library failed to load (offline?) — opening Present mode instead.');
+    openPresent();
+    return;
+  }
+  toast('Building PowerPoint…');
+  // capture in Broadsheet styling regardless of the active edition
+  const curEd = getEdition();
+  if (curEd !== 'broadsheet') { applyEdition('broadsheet'); }
+  state.renderQueued = false; renderAll();
+  // accent = broadsheet flow ink (noted: one consistent deliverable accent)
+  const ACCENT = '0F6E56', INK = '141412', MUTED = '6B6A64', NEGC = 'A32D2D', WARNC = 'BA7517';
+  try {
+    const pptx = new PptxGenJS();
+    pptx.defineLayout({ name:'WIDE', width: 13.33, height: 7.5 });
+    pptx.layout = 'WIDE';
+    const scenes = buildPresentScenes();
+    for (const sc of scenes) {
+      const slide = pptx.addSlide();
+      slide.background = { color: 'FBFAF8' };
+      if (sc.kind === 'title') {
+        slide.addText('PIPELINE REVIEW — ' + subLabel().toUpperCase(), { x:0.7, y:0.7, w:12, h:0.4, fontSize:12, color:MUTED, charSpacing:2 });
+        slide.addText($('#finding-headline').textContent, { x:0.7, y:2.2, w:11.9, h:2.4, fontSize:34, color:INK, fontFace:'Georgia' });
+        slide.addText(`${state.files.map(f=>f.name).join(', ')} · ${fmtN(state.rows.length)} candidates in view`, { x:0.7, y:5.2, w:11.9, h:0.5, fontSize:14, color:MUTED });
+        slide.addShape('line', { x:0.7, y:1.3, w:11.9, h:0, line:{ color:ACCENT, width:1.5 } });
+      } else if (sc.kind === 'flag') {
+        const inv = investigateFlag(sc.f);
+        slide.addText('ATTENTION', { x:0.7, y:0.7, w:12, h:0.4, fontSize:12, color:MUTED, charSpacing:2 });
+        slide.addText(sc.f.text, { x:0.7, y:1.7, w:11.9, h:2.2, fontSize:28, color: sc.f.severity === 'red' ? NEGC : WARNC, fontFace:'Georgia' });
+        const bullets = [];
+        if (inv.contributors && inv.contributors[0]) bullets.push(inv.contributors[0].text);
+        if (inv.suggested) bullets.push(inv.suggested);
+        if (sc.f.talkTo) bullets.push('Talk to: ' + sc.f.talkTo);
+        if (bullets.length) slide.addText(bullets.map(b => ({ text: b, options:{ bullet:true, breakLine:true } })), { x:0.9, y:4.2, w:11.5, h:2.4, fontSize:15, color:INK });
+      } else if (sc.def.table) {
+        slide.addText(sc.def.title.toUpperCase(), { x:0.7, y:0.5, w:12, h:0.4, fontSize:12, color:MUTED, charSpacing:2 });
+        const rows = scrapeTableForPptx(sc.def.table);
+        if (rows) slide.addTable(rows, { x:0.7, y:1.2, w:11.9, border:{ type:'solid', color:'DDD9D0', pt:0.5 }, autoPage:false, rowH:0.32, valign:'middle' });
+      } else {
+        slide.addText(sc.def.title.toUpperCase(), { x:0.7, y:0.5, w:12, h:0.4, fontSize:12, color:MUTED, charSpacing:2 });
+        const svg = document.querySelector('#' + sc.def.el + ' svg');
+        if (svg) {
+          const png = await svgToPngDataUrl(svg);
+          // fit into a 11.9in × 5.8in box preserving aspect
+          const maxW = 11.9, maxH = 5.8;
+          const scale = Math.min(maxW / png.w, maxH / png.h);
+          slide.addImage({ data: png.data, x:0.7, y:1.2, w: png.w * scale, h: png.h * scale });
+        }
+      }
+    }
+    const fileName = 'pipeline-review-' + dayjs(nowRef()).format('YYYY-MM-DD') + '.pptx';
+    await pptx.writeFile({ fileName });
+    toast(`Exported ${scenes.length}-slide deck — ${fileName}`);
+  } catch (e) {
+    console.warn('pptx export failed', e);
+    toast('PowerPoint export failed — opening Present mode instead.');
+    openPresent();
+  } finally {
+    if (curEd !== 'broadsheet') applyEdition(curEd);
+    state.renderQueued = false; renderAll();
+  }
+}
+
+/* ============================================================
    THEME
    ============================================================ */
 function applyTheme(){
@@ -4847,25 +5134,45 @@ function wireEvents(){
   });
   $('#btn-export-csv').addEventListener('click', exportLedgerCsv);
   $('#btn-copy-summary').addEventListener('click', copyExecSummary);
+  $('#btn-edition').addEventListener('click', (e) => { e.stopPropagation(); togglePopover('pop-edition', renderEditionList); });
+  $('#btn-present').addEventListener('click', () => openPresent());
+  attachTipOnce($('#btn-present'), tipHtml('Present — a full-screen deck built from the current report state.', 'shortcut: P · arrows navigate · Esc exits'));
+  $('#btn-export-pptx').addEventListener('click', exportPptx);
+  attachTipOnce($('#btn-export-pptx'), tipHtml('Export the same deck as a real .pptx — text and tables stay editable in PowerPoint; charts embed as 2× images.', 'always rendered in Broadsheet styling'));
+  // present-mode keys: arrows + space advance, P toggles
+  window.addEventListener('keydown', (e) => {
+    if (e.target && e.target.matches && e.target.matches('input, textarea, select')) return;
+    if (presentState) {
+      if (e.key === 'Escape') return; // the Escape chain below owns exit
+      if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showPresentScene(presentState.idx + 1); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); showPresentScene(presentState.idx - 1); }
+      else if (e.key === 'p' || e.key === 'P') { e.preventDefault(); closePresent(); }
+      return;
+    }
+    if ((e.key === 'p' || e.key === 'P') && !e.ctrlKey && !e.metaKey && !e.altKey && state.rawRows.length && !document.querySelector('.sheet-overlay')) {
+      e.preventDefault();
+      openPresent();
+    }
+  });
 
   // Ctrl+Z / Ctrl+Y (Cmd on mac): silent drill history navigation.
-  // Never intercepts typing targets or the mapper overlay (it owns its keys).
+  // Never intercepts typing targets or the mapper/present overlays (they own their keys).
   window.addEventListener('keydown', (e) => {
     if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
     const k = e.key.toLowerCase();
     if (k !== 'z' && k !== 'y') return;
     const t = e.target;
     if (t && t.matches && t.matches('input, textarea, select, [contenteditable="true"]')) return;
-    if (document.querySelector('.sheet-overlay')) return;
+    if (document.querySelector('.sheet-overlay') || presentState) return;
     if (k === 'z' && !e.shiftKey) { if (state.drill.length) { e.preventDefault(); popDrill(); } return; }
     if (k === 'y' || (k === 'z' && e.shiftKey)) { if (state.redo.length) { e.preventDefault(); redoDrill(); } }
   });
-  // Escape chain: open popovers/panels > expanded trend fig > expanded ledger row > drill pop
+  // Escape chain: present > open popovers/panels > expanded attn panel > expanded ledger row > drill pop
   window.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
+    if (presentState) { closePresent(); return; } // present exits before anything else
     const openPops = $$('.popover:not(.hidden), .fd-panel:not(.hidden)');
     if (openPops.length) { openPops.forEach(p=>p.classList.add('hidden')); return; }
-    if (state.trendExpanded) { state.trendExpanded = null; renderTrends(); return; }
     if (state.attnOpen) { state.attnOpen = null; renderAttention(); return; }
     if (state.ledger.expanded.size) {
       const keys = Array.from(state.ledger.expanded);
@@ -4882,6 +5189,7 @@ let pendingAppend = false;
    INIT
    ============================================================ */
 async function init(){
+  applyEdition(getEdition());
   applyTheme();
   wireEvents();
   try {
