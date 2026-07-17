@@ -155,7 +155,6 @@ html.ed-web1 .section-head{ display:block; text-align:center; }
 html.ed-web1 .section-head .section-note, html.ed-web1 .section-head .section-action{ margin-left:0; display:inline-block; margin-top:2px; }
 html.ed-web1 .kicker{ font-size:17px; font-weight:700; letter-spacing:0.02em; color:#000; }
 /* Times renders visually smaller than the broadsheet faces at equal px — compensate uniformly */
-html.ed-web1 body{ zoom:1.12; }
 html.ed-web1 .section-head::after{
   content:''; display:block; height:4px; margin-top:5px;
   background:linear-gradient(90deg, #FF0000, #FF8C00, #FFFF00, #00CC00, #0000EE, #4B0082, #8F00FF);
@@ -300,6 +299,7 @@ main{ display:block; }
 }
 .popover input[type=text]:focus{ outline:none; border-bottom-color:var(--ink); }
 .popover .prow-actions{ display:flex; gap:14px; margin-top:10px; }
+.popover .pcol{ display:flex; flex-direction:column; align-items:flex-start; gap:9px; margin-top:4px; }
 
 /* ============================================================
    FILTER DESK
@@ -671,6 +671,18 @@ html.dark .sheet-overlay{ background:rgba(0,0,0,0.6); }
 /* ============================================================
    FLOW VIEW TOGGLE + FUNNEL (promoted from lab; no Board)
    ============================================================ */
+/* BOARD flow view (promoted from lab) */
+.fb-row{ display:flex; align-items:center; gap:14px; padding:4px 2px; border-bottom:0.5px solid var(--hairline); font-size:12px; cursor:pointer; }
+.fb-row:hover{ background:var(--hairline); }
+.fb-name{ width:160px; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink); }
+.fb-req{ width:160px; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); }
+.fb-bar{ flex:1; display:flex; height:10px; align-items:stretch; min-width:120px; }
+.fb-seg{ flex-shrink:0; border-right:1px solid var(--paper); }
+.fb-days{ width:48px; flex-shrink:0; text-align:right; font-variant-numeric:tabular-nums; }
+.fb-days.amber{ color:var(--warn); font-weight:600; }
+.fb-days.red{ color:var(--neg); font-weight:600; }
+.fb-more{ margin-top:8px; font-size:12px; }
+.fb-head{ display:flex; gap:14px; padding:2px 2px 6px; font-size:10px; text-transform:uppercase; letter-spacing:0.07em; color:var(--muted); font-weight:600; border-bottom:1px solid var(--heavy); }
 .flow-view-toggle{ display:inline-flex; gap:12px; margin-left:16px; font-size:11.5px; }
 .flow-view-toggle button{ color:var(--muted); border-bottom:1px solid transparent; padding-bottom:1px; }
 .flow-view-toggle button:hover{ color:var(--ink); }
@@ -790,7 +802,37 @@ html.presenting{ overflow:hidden; }
     <div class="masthead-meta" id="masthead-meta">No data loaded</div>
     <nav class="masthead-actions">
       <div class="popover-wrap">
-        <button class="underline-btn" id="btn-load-data">Load data</button>
+        <button class="underline-btn" id="btn-edition">Edition ▾</button>
+        <div class="popover hidden" id="pop-edition">
+          <h4>Edition</h4>
+          <div id="edition-list"></div>
+        </div>
+      </div>
+      <div class="popover-wrap">
+        <button class="underline-btn" id="btn-textsize">Aa ▾</button>
+        <div class="popover hidden" id="pop-textsize">
+          <h4>Text size</h4>
+          <div id="textsize-list"></div>
+        </div>
+      </div>
+      <button class="underline-btn theme-toggle" id="btn-theme-toggle">Dark</button>
+      <button class="underline-btn" id="btn-present">Present</button>
+      <button class="underline-btn" id="btn-export-pptx">Export PowerPoint</button>
+      <div class="popover-wrap">
+        <button class="underline-btn" id="btn-settings">Settings ▾</button>
+        <div class="popover hidden" id="pop-settings">
+          <h4>Data</h4>
+          <div class="pcol">
+            <button class="underline-btn" id="btn-load-data">Load data</button>
+            <button class="underline-btn" id="btn-sample-data">Sample data</button>
+            <button class="underline-btn muted" id="btn-clear-data2">Clear data</button>
+          </div>
+          <h4 style="margin-top:16px;">Setup</h4>
+          <div class="pcol">
+            <button class="underline-btn" id="btn-mapping">Mapping</button>
+            <button class="underline-btn" id="btn-saved-views">Saved views</button>
+          </div>
+        </div>
         <div class="popover hidden" id="pop-load-data">
           <h4>Loaded files</h4>
           <div class="load-data-list" id="load-data-list"></div>
@@ -799,11 +841,6 @@ html.presenting{ overflow:hidden; }
             <button class="underline-btn muted" id="btn-clear-data">Clear data</button>
           </div>
         </div>
-      </div>
-      <button class="underline-btn" id="btn-sample-data">Sample data</button>
-      <button class="underline-btn" id="btn-mapping">Mapping</button>
-      <div class="popover-wrap">
-        <button class="underline-btn" id="btn-saved-views">Saved views</button>
         <div class="popover hidden" id="pop-saved-views">
           <h4>Saved views</h4>
           <div id="saved-views-list"></div>
@@ -813,17 +850,6 @@ html.presenting{ overflow:hidden; }
           </div>
         </div>
       </div>
-      <div class="popover-wrap">
-        <button class="underline-btn" id="btn-edition">Edition ▾</button>
-        <div class="popover hidden" id="pop-edition">
-          <h4>Edition</h4>
-          <div id="edition-list"></div>
-        </div>
-      </div>
-      <button class="underline-btn" id="btn-present">Present</button>
-      <button class="underline-btn" id="btn-export-pptx">Export PowerPoint</button>
-      <button class="underline-btn theme-toggle" id="btn-theme-toggle">Dark</button>
-      <button class="underline-btn" id="btn-print">Export PDF</button>
     </nav>
   </div>
   <hr class="heavy-rule" />
@@ -2964,7 +2990,7 @@ function buildDimFilterControls(){
   }
   if (!_panelCloserWired) {
     _panelCloserWired = true;
-    document.addEventListener('click', () => $$('.fd-panel').forEach(p=>p.classList.add('hidden')));
+    document.addEventListener('click', () => { $$('.fd-panel').forEach(p=>p.classList.add('hidden')); $$('.popover').forEach(p=>p.classList.add('hidden')); });
   }
 }
 function renderDimPanel(field, panel){
@@ -3789,7 +3815,7 @@ function topReasonFor(stage, statuses){
    flow data, header notes, escape hatch and time machine. (Promoted from
    lab; the Board view and editions stayed behind.)
    ============================================================ */
-const FLOW_VIEWS = [['funnel','Funnel'],['river','River']];
+const FLOW_VIEWS = [['funnel','Funnel'],['river','River'],['board','Board']];
 function getFlowView(){
   if (!state.flowView) { try { state.flowView = localStorage.getItem('flowView') || 'funnel'; } catch(e){ state.flowView = 'funnel'; } }
   return state.flowView;
@@ -3828,8 +3854,128 @@ function renderFlowHeader(){
 }
 function renderFlow(){
   renderFlowHeader();
-  if (getFlowView() === 'river') renderRiver();
+  const v = getFlowView();
+  if (v === 'river') renderRiver();
+  else if (v === 'board') renderFlowBoard();
   else renderFlowFunnel();
+}
+/* ---- BOARD view (promoted from lab): departure-board rows. Current mode =
+   one row per active candidate (stage progress segmented by actual days from
+   the time-machine interval reconstruction, current segment tinted by aging
+   tier, sorted by staleness, capped at 40 with "show all"). Cohort modes =
+   one row per req (segment width ∝ candidates reaching each stage). ---- */
+function renderFlowBoard(){
+  const wrap = $('#river-wrap'); wrap.innerHTML = '';
+  const isSnapshot = impliedMode() === 'snapshot';
+  const stages = state.canonicalStages;
+  const now = nowRef();
+  const board = el('div', { class:'flow-board' });
+  const CAP = 40;
+  if (isSnapshot) {
+    const iv = stageIntervals();
+    const rows = (state.snapshotRows || []).slice().sort((a,b) => (daysInCurrentStage(b, now)||0) - (daysInCurrentStage(a, now)||0));
+    $('#river-caption').textContent = `Fig. Departure board — ${fmtN(rows.length)} active candidates by staleness; segment length ∝ days in each stage.`;
+    if (!rows.length) { board.appendChild(el('div', { class:'attn-none' }, 'No active candidates.')); wrap.appendChild(board); return; }
+    const shown = state.flowBoardAll ? rows : rows.slice(0, CAP);
+    const maxAge = Math.max(1, ...shown.map(r => (now - (r.applied_at || now)) / 86400000));
+    board.appendChild(el('div', { class:'fb-head' },
+      el('span', { style:'width:160px;flex-shrink:0;' }, 'Candidate'),
+      el('span', { style:'width:160px;flex-shrink:0;' }, 'Req'),
+      el('span', { style:'flex:1;' }, 'Stage progress · days per stage'),
+      el('span', { style:'width:48px;flex-shrink:0;text-align:right;' }, 'In stage')));
+    for (const r of shown) {
+      const tier = agingTier(r, now);
+      const dcs = daysInCurrentStage(r, now) || 0;
+      // per-stage days from the interval entries (as-of aware for synthetic rows)
+      const base = iv.get(r) || iv.get(state.rawRows.find(x => rowKey(x) === rowKey(r)));
+      const K = stageIndex(r.current_stage);
+      const segs = [];
+      if (base) {
+        for (let i = 0; i <= K; i++) {
+          const from = base.entries[i];
+          const to = i < K ? base.entries[i + 1] : null;
+          if (!from) continue;
+          const end = i === K ? now : (to || now);
+          const days = Math.max(0.3, (Math.min(+end, +now) - +from) / 86400000);
+          segs.push({ stage: stages[i], days, current: i === K });
+        }
+      } else {
+        segs.push({ stage: r.current_stage, days: dcs || 0.5, current: true });
+      }
+      const bar = el('div', { class:'fb-bar' });
+      for (const s of segs) {
+        const pct = Math.max(1.2, (s.days / maxAge) * 100);
+        const fill = s.current
+          ? (tier === 'red' ? 'var(--neg)' : tier === 'amber' ? 'var(--warn)' : 'var(--flow-3)')
+          : 'var(--flow-1)';
+        const seg = el('div', { class:'fb-seg', style:`width:${pct}%; background:${fill};` });
+        attachTip(seg, tipHtml(`${s.stage} — ${Math.round(s.days)}d${s.current ? ' (current)' : ''}`));
+        bar.appendChild(seg);
+      }
+      const ns = nextStepState(r, now);
+      const row = el('div', { class:'fb-row' },
+        el('span', { class:'fb-name' }, r.candidate_name || '—'),
+        el('span', { class:'fb-req' }, r.job || '—'),
+        bar,
+        el('span', { class:'fb-days' + (tier ? ' ' + tier : '') }, fmtDays(dcs)));
+      row.addEventListener('mousemove', e => showRiverTooltip(e,
+        `<b>${escapeHtml(r.candidate_name || '—')}</b><br>${escapeHtml(neededAction(r, ns, now))}<br>${escapeHtml(r.job || '—')} · ${escapeHtml(r.recruiter || '—')} · ${Math.round(dcs)}d in ${escapeHtml(r.current_stage)} (median ${Math.round(stageNorm(r.current_stage))}d)`));
+      row.addEventListener('mouseleave', hideRiverTooltip);
+      row.addEventListener('click', () => {
+        const key = rowKey(r);
+        state.ledger.expanded.add(key);
+        hideRiverTooltip();
+        drillTo({ type:'row', key, name: r.candidate_name || 'Candidate' });
+      });
+      board.appendChild(row);
+    }
+    if (rows.length > CAP) {
+      const more = el('button', { class:'underline-btn muted fb-more', type:'button' },
+        state.flowBoardAll ? 'show first 40' : `show all ${fmtN(rows.length)}`);
+      more.addEventListener('click', () => { state.flowBoardAll = !state.flowBoardAll; renderFlow(); });
+      board.appendChild(more);
+    }
+  } else {
+    // cohort: one funnel bar per req
+    const byJob = new Map();
+    for (const r of state.rows) { const j = r.job || '—'; if (!byJob.has(j)) byJob.set(j, []); byJob.get(j).push(r); }
+    const reqs = Array.from(byJob.entries()).sort((a,b) => b[1].length - a[1].length);
+    $('#river-caption').textContent = `Fig. Departure board — per-req funnels; segment length ∝ candidates reaching each stage.`;
+    const shown = state.flowBoardAll ? reqs : reqs.slice(0, CAP);
+    const maxN = Math.max(1, ...shown.map(([,rs]) => rs.length));
+    board.appendChild(el('div', { class:'fb-head' },
+      el('span', { style:'width:160px;flex-shrink:0;' }, 'Req'),
+      el('span', { style:'width:160px;flex-shrink:0;' }, 'Dept'),
+      el('span', { style:'flex:1;' }, 'Reached each stage'),
+      el('span', { style:'width:48px;flex-shrink:0;text-align:right;' }, 'Applied')));
+    for (const [job, rs] of shown) {
+      const bar = el('div', { class:'fb-bar' });
+      for (let i = 0; i < stages.length; i++) {
+        const n = rs.filter(r => stageIndex(r.current_stage) >= i).length;
+        if (!n) continue;
+        const pct = Math.max(1.2, (n / maxN) * (100 / stages.length));
+        const shade = ['var(--flow-1)','var(--flow-2)','var(--flow-3)','var(--flow-4)','var(--flow-5)'][Math.min(i, 4)];
+        const seg = el('div', { class:'fb-seg', style:`width:${pct}%; background:${shade};` });
+        attachTip(seg, tipHtml(`${stages[i]} — ${fmtN(n)} reached (${fmtPctSafe(n, rs.length)})`));
+        bar.appendChild(seg);
+      }
+      const dept = (rs.find(r => r.department) || {}).department || '—';
+      const row = el('div', { class:'fb-row' },
+        el('span', { class:'fb-name' }, job),
+        el('span', { class:'fb-req' }, dept),
+        bar,
+        el('span', { class:'fb-days' }, fmtN(rs.length)));
+      row.addEventListener('click', () => drillToggleDim('job', job));
+      board.appendChild(row);
+    }
+    if (reqs.length > CAP) {
+      const more = el('button', { class:'underline-btn muted fb-more', type:'button' },
+        state.flowBoardAll ? 'show first 40' : `show all ${fmtN(reqs.length)}`);
+      more.addEventListener('click', () => { state.flowBoardAll = !state.flowBoardAll; renderFlow(); });
+      board.appendChild(more);
+    }
+  }
+  wrap.appendChild(board);
 }
 /* ---- FUNNEL view: classic horizontal funnel — the familiar exec format. ---- */
 function renderFlowFunnel(){
@@ -5024,6 +5170,32 @@ async function saveCurrentView(){
    EDITIONS (promoted from lab) — four skins, chart colors via CSS vars,
    fonts lazy-loaded on first activation, persisted under `edition`.
    ============================================================ */
+/* ---- text size (Aa) — a user zoom factor composed with a per-edition
+   zoom (the 90s edition renders slightly zoomed by design; its old CSS
+   zoom rule was replaced by this composition) ---- */
+const TEXT_SIZES = [['s','Small',0.9],['m','Normal',1],['l','Large',1.15],['xl','X-large',1.3]];
+const EDITION_ZOOM = { web1: 1.12 };
+function getTextSize(){ try { return localStorage.getItem('textsize') || 'm'; } catch(e){ return 'm'; } }
+function applyTextSize(){
+  const t = TEXT_SIZES.find(x => x[0] === getTextSize()) || TEXT_SIZES[1];
+  document.body.style.zoom = String((EDITION_ZOOM[getEdition()] || 1) * t[2]);
+}
+function setTextSize(k){
+  try { localStorage.setItem('textsize', k); } catch(e){}
+  applyTextSize();
+  queueRender(); // charts re-measure their containers under the new zoom
+}
+function renderTextSizeList(){
+  const list = $('#textsize-list'); list.innerHTML = '';
+  const cur = getTextSize();
+  for (const [key, name, f] of TEXT_SIZES) {
+    const row = el('div', { class:'prow', style:'cursor:pointer;' },
+      el('span', { class:'pname' }, (cur === key ? '\u25cf ' : '') + name),
+      el('span', { class:'pmeta' }, '\u00d7' + f));
+    row.addEventListener('click', () => { setTextSize(key); renderTextSizeList(); });
+    list.appendChild(row);
+  }
+}
 const EDITIONS = [
   ['broadsheet','Broadsheet','editorial serif — the default'],
   ['comic','Comic','bold outlines, CMYK accents, speech-bubble tooltips · locks light'],
@@ -5046,6 +5218,7 @@ function applyEdition(ed){
   for (const [key] of EDITIONS) if (key !== 'broadsheet') document.documentElement.classList.remove('ed-' + key);
   if (ed !== 'broadsheet' && EDITIONS.some(e => e[0] === ed)) document.documentElement.classList.add('ed-' + ed);
   ensureEditionFont(ed);
+  applyTextSize(); // zoom composes edition factor × user Aa choice
 }
 function setEdition(ed){
   try { localStorage.setItem('edition', ed); } catch(e){}
@@ -5347,7 +5520,11 @@ function wireEvents(){
   $('#btn-save-view').addEventListener('click', (e) => { e.stopPropagation(); saveCurrentView(); });
   $$('.popover').forEach(p => p.addEventListener('click', e => e.stopPropagation()));
   $('#btn-theme-toggle').addEventListener('click', toggleTheme);
-  $('#btn-print').addEventListener('click', () => window.print());
+  $('#btn-textsize').addEventListener('click', (e) => { e.stopPropagation(); togglePopover('pop-textsize', renderTextSizeList); });
+  $('#btn-settings').addEventListener('click', (e) => { e.stopPropagation(); togglePopover('pop-settings'); });
+  $('#btn-clear-data2').addEventListener('click', (e) => { e.stopPropagation(); clearDataset(); $$('.popover').forEach(p => p.classList.add('hidden')); });
+  // Settings rows without their own popover close the popover on activation
+  for (const id of ['btn-sample-data','btn-mapping']) { const b = $('#' + id); if (b) b.addEventListener('click', () => $$('.popover').forEach(p => p.classList.add('hidden'))); }
 
   $('#fd-period').addEventListener('change', (e) => { setPeriodPreset(e.target.value); });
   $('#fd-date-from').addEventListener('change', (e) => { clearRedo(); state.filters.customFrom = e.target.value ? new Date(e.target.value) : null; queueRender(); });

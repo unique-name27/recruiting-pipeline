@@ -384,7 +384,6 @@ html.ed-web1 .section-head{ display:block; text-align:center; }
 html.ed-web1 .section-head .section-note, html.ed-web1 .section-head .section-action{ margin-left:0; display:inline-block; margin-top:2px; }
 html.ed-web1 .kicker{ font-size:17px; font-weight:700; letter-spacing:0.02em; color:#000; }
 /* Times renders visually smaller than the broadsheet faces at equal px — compensate uniformly */
-html.ed-web1 body{ zoom:1.12; }
 html.ed-web1 .section-head::after{
   content:''; display:block; height:4px; margin-top:5px;
   background:linear-gradient(90deg, #FF0000, #FF8C00, #FFFF00, #00CC00, #0000EE, #4B0082, #8F00FF);
@@ -547,6 +546,7 @@ main{ display:block; }
 }
 .popover input[type=text]:focus{ outline:none; border-bottom-color:var(--ink); }
 .popover .prow-actions{ display:flex; gap:14px; margin-top:10px; }
+.popover .pcol{ display:flex; flex-direction:column; align-items:flex-start; gap:9px; margin-top:4px; }
 
 /* ============================================================
    FILTER DESK
@@ -1360,7 +1360,39 @@ html.presenting{ overflow:hidden; }
     <div class="masthead-meta" id="masthead-meta">No data loaded</div>
     <nav class="masthead-actions">
       <div class="popover-wrap">
-        <button class="underline-btn" id="btn-load-data">Load data</button>
+        <button class="underline-btn" id="btn-edition">Edition ▾</button>
+        <div class="popover hidden" id="pop-edition">
+          <h4>Edition</h4>
+          <div id="edition-list"></div>
+        </div>
+      </div>
+      <div class="popover-wrap">
+        <button class="underline-btn" id="btn-textsize">Aa ▾</button>
+        <div class="popover hidden" id="pop-textsize">
+          <h4>Text size</h4>
+          <div id="textsize-list"></div>
+        </div>
+      </div>
+      <button class="underline-btn kbd-hint" id="btn-palette" type="button">⌘ Ctrl K</button>
+      <button class="underline-btn theme-toggle" id="btn-theme-toggle">Dark</button>
+      <button class="underline-btn" id="btn-present">Present</button>
+      <div class="popover-wrap">
+        <button class="underline-btn" id="btn-settings">Settings ▾</button>
+        <div class="popover hidden" id="pop-settings">
+          <h4>Data</h4>
+          <div class="pcol">
+            <button class="underline-btn" id="btn-load-data">Load data</button>
+            <button class="underline-btn" id="btn-sample-data">Sample data</button>
+            <button class="underline-btn muted" id="btn-clear-data2">Clear data</button>
+          </div>
+          <h4 style="margin-top:16px;">Setup</h4>
+          <div class="pcol">
+            <button class="underline-btn" id="btn-mapping">Mapping</button>
+            <button class="underline-btn" id="btn-saved-views">Saved views</button>
+            <button class="underline-btn" id="btn-customize">Customize</button>
+            <button class="underline-btn" id="btn-wall">Wall mode</button>
+          </div>
+        </div>
         <div class="popover hidden" id="pop-load-data">
           <h4>Loaded files</h4>
           <div class="load-data-list" id="load-data-list"></div>
@@ -1369,11 +1401,6 @@ html.presenting{ overflow:hidden; }
             <button class="underline-btn muted" id="btn-clear-data">Clear data</button>
           </div>
         </div>
-      </div>
-      <button class="underline-btn" id="btn-sample-data">Sample data</button>
-      <button class="underline-btn" id="btn-mapping">Mapping</button>
-      <div class="popover-wrap">
-        <button class="underline-btn" id="btn-saved-views">Saved views</button>
         <div class="popover hidden" id="pop-saved-views">
           <h4>Saved views</h4>
           <div id="saved-views-list"></div>
@@ -1383,19 +1410,6 @@ html.presenting{ overflow:hidden; }
           </div>
         </div>
       </div>
-      <div class="popover-wrap">
-        <button class="underline-btn" id="btn-edition">Edition ▾</button>
-        <div class="popover hidden" id="pop-edition">
-          <h4>Edition</h4>
-          <div id="edition-list"></div>
-        </div>
-      </div>
-      <button class="underline-btn" id="btn-customize">Customize</button>
-      <button class="underline-btn" id="btn-present">Present</button>
-      <button class="underline-btn" id="btn-wall">Wall</button>
-      <button class="underline-btn kbd-hint" id="btn-palette" type="button">⌘ Ctrl K</button>
-      <button class="underline-btn theme-toggle" id="btn-theme-toggle">Dark</button>
-      <button class="underline-btn" id="btn-print">Export PDF</button>
     </nav>
   </div>
   <hr class="heavy-rule" />
@@ -3931,7 +3945,7 @@ function buildDimFilterControls(){
   }
   if (!_panelCloserWired) {
     _panelCloserWired = true;
-    document.addEventListener('click', () => $$('.fd-panel').forEach(p=>p.classList.add('hidden')));
+    document.addEventListener('click', () => { $$('.fd-panel').forEach(p=>p.classList.add('hidden')); $$('.popover').forEach(p=>p.classList.add('hidden')); });
   }
 }
 function renderDimPanel(field, panel){
@@ -5755,7 +5769,6 @@ function renderFlowBoard(){
         segs.push({ stage: r.current_stage, days: dcs || 0.5, current: true });
       }
       const bar = el('div', { class:'fb-bar' });
-      const totalDays = segs.reduce((s, x) => s + x.days, 0) || 1;
       for (const s of segs) {
         const pct = Math.max(1.2, (s.days / maxAge) * 100);
         const fill = s.current
@@ -5765,13 +5778,14 @@ function renderFlowBoard(){
         attachTip(seg, tipHtml(`${s.stage} — ${Math.round(s.days)}d${s.current ? ' (current)' : ''}`));
         bar.appendChild(seg);
       }
+      const ns = nextStepState(r, now);
       const row = el('div', { class:'fb-row' },
         el('span', { class:'fb-name' }, r.candidate_name || '—'),
         el('span', { class:'fb-req' }, r.job || '—'),
         bar,
         el('span', { class:'fb-days' + (tier ? ' ' + tier : '') }, fmtDays(dcs)));
       row.addEventListener('mousemove', e => showRiverTooltip(e,
-        `<b>${escapeHtml(r.candidate_name || '—')}</b><br>${escapeHtml(r.job || '—')} · ${escapeHtml(r.recruiter || '—')}<br>${Math.round(dcs)}d in ${escapeHtml(r.current_stage)} — median ${Math.round(stageNorm(r.current_stage))}d`));
+        `<b>${escapeHtml(r.candidate_name || '—')}</b><br>${escapeHtml(neededAction(r, ns, now))}<br>${escapeHtml(r.job || '—')} · ${escapeHtml(r.recruiter || '—')} · ${Math.round(dcs)}d in ${escapeHtml(r.current_stage)} (median ${Math.round(stageNorm(r.current_stage))}d)`));
       row.addEventListener('mouseleave', hideRiverTooltip);
       row.addEventListener('click', () => {
         const key = rowKey(r);
@@ -8262,6 +8276,32 @@ async function saveCurrentView(){
    CSS-variable-driven end to end (the THEME source of truth is the token
    block per edition), so SVGs restyle live; we re-render anyway on switch.
    ============================================================ */
+/* ---- text size (Aa) — a user zoom factor composed with a per-edition
+   zoom (the 90s edition renders slightly zoomed by design; its old CSS
+   zoom rule was replaced by this composition) ---- */
+const TEXT_SIZES = [['s','Small',0.9],['m','Normal',1],['l','Large',1.15],['xl','X-large',1.3]];
+const EDITION_ZOOM = { web1: 1.12 };
+function getTextSize(){ try { return localStorage.getItem('lab:textsize') || 'm'; } catch(e){ return 'm'; } }
+function applyTextSize(){
+  const t = TEXT_SIZES.find(x => x[0] === getTextSize()) || TEXT_SIZES[1];
+  document.body.style.zoom = String((EDITION_ZOOM[getEdition()] || 1) * t[2]);
+}
+function setTextSize(k){
+  try { localStorage.setItem('lab:textsize', k); } catch(e){}
+  applyTextSize();
+  queueRender(); // charts re-measure their containers under the new zoom
+}
+function renderTextSizeList(){
+  const list = $('#textsize-list'); list.innerHTML = '';
+  const cur = getTextSize();
+  for (const [key, name, f] of TEXT_SIZES) {
+    const row = el('div', { class:'prow', style:'cursor:pointer;' },
+      el('span', { class:'pname' }, (cur === key ? '\u25cf ' : '') + name),
+      el('span', { class:'pmeta' }, '\u00d7' + f));
+    row.addEventListener('click', () => { setTextSize(key); renderTextSizeList(); });
+    list.appendChild(row);
+  }
+}
 const EDITIONS = [
   ['broadsheet','Broadsheet','editorial serif — the default'],
   ['terminal','Terminal','ops console — mono, dense · locks dark'],
@@ -8297,6 +8337,7 @@ function applyEdition(ed){
   for (const [key] of EDITIONS) if (key !== 'broadsheet') document.documentElement.classList.remove('ed-' + key);
   if (ed !== 'broadsheet' && EDITIONS.some(e => e[0] === ed)) document.documentElement.classList.add('ed-' + ed);
   ensureEditionFont(ed);
+  applyTextSize(); // zoom composes edition factor × user Aa choice
 }
 function setEdition(ed){
   try { localStorage.setItem('lab:edition', ed); } catch(e){}
@@ -8650,9 +8691,13 @@ function wireEvents(){
   $('#btn-save-view').addEventListener('click', (e) => { e.stopPropagation(); saveCurrentView(); });
   $$('.popover').forEach(p => p.addEventListener('click', e => e.stopPropagation()));
   $('#btn-theme-toggle').addEventListener('click', toggleTheme);
+  $('#btn-textsize').addEventListener('click', (e) => { e.stopPropagation(); togglePopover('pop-textsize', renderTextSizeList); });
+  $('#btn-settings').addEventListener('click', (e) => { e.stopPropagation(); togglePopover('pop-settings'); });
+  $('#btn-clear-data2').addEventListener('click', (e) => { e.stopPropagation(); clearDataset(); $$('.popover').forEach(p => p.classList.add('hidden')); });
+  // Settings rows without their own popover close the popover on activation
+  for (const id of ['btn-sample-data','btn-mapping','btn-customize','btn-wall']) { const b = $('#' + id); if (b) b.addEventListener('click', () => $$('.popover').forEach(p => p.classList.add('hidden'))); }
   $('#btn-edition').addEventListener('click', (e) => { e.stopPropagation(); togglePopover('pop-edition', renderEditionList); });
   $('#btn-customize').addEventListener('click', openCustomize);
-  $('#btn-print').addEventListener('click', () => window.print());
 
   $('#fd-period').addEventListener('change', (e) => { setPeriodPreset(e.target.value); });
   $('#fd-date-from').addEventListener('change', (e) => { clearRedo(); state.filters.customFrom = e.target.value ? new Date(e.target.value) : null; queueRender(); });
