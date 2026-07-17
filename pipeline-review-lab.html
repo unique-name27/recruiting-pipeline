@@ -619,6 +619,10 @@ main{ display:block; }
 .attn-dot.amber{ background:var(--warn); }
 .attn-row .num, .attn-row{ font-variant-numeric:tabular-nums; }
 .attn-none{ font-size:12.5px; color:var(--muted); padding:6px 0; }
+/* story rows: headline + a single truncating muted facts line */
+.attn-text{ flex:1; min-width:0; }
+.attn-facts{ font-size:11px; color:var(--muted); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-variant-numeric:tabular-nums; font-weight:400; }
+.attn-also{ margin-top:10px; padding-top:6px; border-top:0.5px solid var(--hairline); }
 .attn-caret{ margin-left:auto; color:var(--muted); font-size:10.5px; flex-shrink:0; }
 .attn-row:focus-visible{ outline:none; background:var(--hairline); }
 .attn-row .has-tip{ cursor:pointer; } /* row opens the panel; the tip is informative only */
@@ -1269,6 +1273,7 @@ html.presenting{ overflow:hidden; }
 .present-title.amber{ color:var(--warn); }
 .present-sub{ font-size:clamp(15px, 1.5vw, 22px); color:var(--muted); margin-top:3vh; max-width:60ch; }
 .present-suggest{ font-family:var(--serif); font-style:italic; font-size:clamp(15px, 1.5vw, 22px); color:var(--ink); margin-top:2vh; max-width:60ch; }
+.present-sub.present-fact{ margin-top:1vh; }
 .present-section-holder{ flex:1; min-height:0; overflow:hidden; cursor:default; }
 .present-section-holder .section{ margin-top:0 !important; border:none !important; padding:0 !important; }
 .present-section-holder table.report-table{ font-size:16px; }
@@ -3188,6 +3193,10 @@ function computeFlags(){
     const waiting = isSnapshot ? (bn.activeNow||0) : (flow.find(f=>f.stage===bn.stage).active || 0);
     const bnOwner = topOwners((state.snapshotRows||[]).filter(r => r.current_stage === bn.stage), 1)[0];
     flags.push({ id:'bottleneck', data:{ stage: bn.stage, medianDays: bn.medianDays, waiting },
+      subject: { type:'stage', stage: bn.stage },
+      short: `${bn.stage} bottleneck`,
+      fact: `median wait ${Math.round(bn.medianDays)}d — ${ratio ? ratio.toFixed(1) : '?'}× other stages, ${fmtN(waiting)} waiting`,
+      action: `Unblock ${bn.stage}${bnOwner ? ` — start with ${bnOwner.name} (${bnOwner.role})` : ''}.`,
       talkTo: bnOwner ? `${bnOwner.name} (${bnOwner.role})` : null,
       ruleTip: tipHtml('Flags when a stage\'s median wait exceeds 2× the median of the other stages.', 'red when over 3×'),
       severity: ratio && ratio > 3 ? 'red' : 'amber', score: 100 + (ratio || 0),
@@ -3199,7 +3208,13 @@ function computeFlags(){
   if (od.length) {
     const parts = overdueBreakdownParts(od).join(', ');
     const odOwner = topOwners(od, 1)[0];
+    const odByStage = {};
+    od.forEach(r => { odByStage[r.current_stage] = (odByStage[r.current_stage]||0)+1; });
     flags.push({ id:'overdue', data:{ count: od.length },
+      subject: { type:'overdue', byStage: odByStage },
+      short: 'candidates lacking a next step',
+      fact: `${od.length} candidate${od.length===1?'':'s'} lack a next step (${parts})`,
+      action: `Work the action queue${odOwner ? ` — start with ${odOwner.name} (${odOwner.role})` : ''}.`,
       talkTo: odOwner ? `${odOwner.name} (${odOwner.role})` : null,
       ruleTip: overdueTipHtml('Flags active candidates who lack a timely next step. Scheduled candidates are in motion and not flagged (amber only when the event is far out).'),
       severity: od.length >= Math.max(8, (state.snapshotRows||[]).length*0.25) ? 'red' : 'amber', score: 60 + od.length,
@@ -3220,6 +3235,10 @@ function computeFlags(){
       for (const r of offersOut) { const o = stateOwnerFor(r, nextStepState(r, nowO)); if (o) ownCounts.set(`${o.name} (${o.role})`, (ownCounts.get(`${o.name} (${o.role})`)||0)+1); }
       const topOwn = Array.from(ownCounts.entries()).sort((a,b)=>b[1]-a[1])[0];
       flags.push({ id:'offersout', data:{ count: offersOut.length, oldest },
+        subject: { type:'stage', stage: stages[stages.length - 2] },
+        short: 'offers awaiting response',
+        fact: `${offersOut.length} offers out 5+ days (oldest ${Math.round(oldest)}d)`,
+        action: 'Call the candidates with offers out before they go cold.',
         talkTo: topOwn ? topOwn[0] : null,
         ruleTip: tipHtml('Flags when 2+ extended offers have waited 5+ days for a candidate response.', 'red when the oldest is past 10d — follow up before they go cold'),
         severity: oldest > 10 ? 'red' : 'amber', score: 85 + offersOut.length,
@@ -3234,6 +3253,10 @@ function computeFlags(){
       const a = oa(state.rows), b = oa(state.prevRows);
       if (a != null && b != null && (b - a) >= 0.05) {
         flags.push({ id:'offeraccept', data:{ accept: a, prevAccept: b },
+          subject: { type:'metric', metric:'offeraccept' },
+          short: 'offer acceptance falling',
+          fact: `offer accept ${fmtPct(a,0)}, down ${Math.round((b-a)*100)}pts vs comparison`,
+          action: 'Review offer positioning, comp and close timing.',
           ruleTip: tipHtml('Flags when offer acceptance falls 5+ points vs the comparison period.', 'red at 10+ points'),
           severity: (b-a) >= 0.10 ? 'red' : 'amber', score: 90 + (b-a)*100,
           text: `Offer accept ${fmtPct(a,0)}, down ${Math.round((b-a)*100)}pts vs ${formatRangeLabel(state.prevRange[0], state.prevRange[1])}.`,
@@ -3249,6 +3272,10 @@ function computeFlags(){
           const prev = state.prevRows.filter(r=>r.source===top[0]).length;
           if (prev >= 5 && cur <= prev*0.6) {
             flags.push({ id:'sourcedry', data:{ source: top[0], cur, prev },
+              subject: { type:'source', source: top[0] },
+              short: `${top[0]} drying up`,
+              fact: `${top[0]} applications fell ${Math.round((1-cur/prev)*100)}% vs comparison`,
+              action: `Re-engage ${top[0]} — it was the top historical source.`,
               ruleTip: tipHtml('Flags when the top historical source\'s applications fall 40%+ vs the comparison period.', 'needs 5+ comparison-period applications'),
               severity:'amber', score: 40 + (1-cur/prev)*50,
               text: `${top[0]} applications fell ${Math.round((1-cur/prev)*100)}% vs comparison (${fmtN(cur)} from ${fmtN(prev)}).`,
@@ -3269,7 +3296,14 @@ function computeFlags(){
         prevShare = pe.length >= 10 ? pw.length/pe.length : null;
       }
       if (share >= 0.15 || (prevShare != null && share - prevShare >= 0.05)) {
+        const wdByStage = {};
+        wd.forEach(r => { wdByStage[r.current_stage] = (wdByStage[r.current_stage]||0)+1; });
+        const wdTop = Object.entries(wdByStage).sort((x,y)=>y[1]-x[1])[0];
         flags.push({ id:'withdrawal', data:{ share, withdrawn: wd.length, exits: exits.length },
+          subject: { type:'metric', metric:'withdrawal', topStage: wdTop ? wdTop[0] : null, topShare: wdTop ? wdTop[1]/wd.length : 0 },
+          short: 'withdrawals rising',
+          fact: `${fmtPct(share,0)} of exits are withdrawals (${fmtN(wd.length)} of ${fmtN(exits.length)})`,
+          action: 'Tighten response times — candidates are giving up mid-process.',
           ruleTip: tipHtml('Flags when withdrawals reach 15% of period exits, or rise 5+ points vs comparison.', 'withdrawn ÷ (rejected + withdrawn)'),
           severity:'amber', score: 30 + share*100,
           text: `${fmtPct(share,0)} of period exits were withdrawals (${fmtN(wd.length)} of ${fmtN(exits.length)}) — candidates giving up on wait times.`,
@@ -3287,6 +3321,10 @@ function computeFlags(){
     if (empty.length) {
       const listTxt = empty.slice(0,3).join(', ') + (empty.length > 3 ? ` +${empty.length-3} more` : '');
       flags.push({ id:'emptyfunnel', data:{ empty, secondStage },
+        subject: { type:'emptyfunnel', reqs: empty, blockedAt: secondStage },
+        short: empty.length === 1 ? `${empty[0]} empty funnel` : `${empty.length} reqs with empty funnels`,
+        fact: empty.length === 1 ? `${listTxt}: nobody past ${secondStage}` : `${empty.length} reqs with nobody past ${secondStage} (${listTxt})`,
+        action: `Add sourcing for ${listTxt}.`,
         ruleTip: tipHtml('Flags reqs with no active candidates past the second pipeline stage.', 'hiring on these reqs is stalled at the top of the funnel'),
         severity:'red', score: 70 + empty.length,
         text: empty.length === 1 ? `${listTxt}: no candidates past ${secondStage}.` : `${empty.length} reqs with no candidates past ${secondStage}: ${listTxt}.`,
@@ -3299,6 +3337,10 @@ function computeFlags(){
       const g = reqGap(job);
       if (g && !g.ok) {
         flags.push({ id:'pacing:'+job, data:{ job, ...g },
+          subject: { type:'req', req: job },
+          short: `${job} pacing gap`,
+          fact: `${job} pacing ${g.proj.toFixed(1)} of ${g.t} hire${g.t===1?'':'s'}`,
+          action: `Add ~${fmtN(g.applicants)} applicants to ${job}'s top of funnel.`,
           ruleTip: tipHtml('Fires when a req\'s projected hires over the next 90 days fall short of its target.', 'projected = Σ hire probabilities of its active candidates; shortfall back-solved via historical conversion'),
           severity: g.proj < g.t * 0.5 ? 'red' : 'amber', score: 80 + (g.t - g.proj),
           text: `${job} pacing ${g.proj.toFixed(1)} of ${g.t} hire${g.t===1?'':'s'} — top-of-funnel short ~${fmtN(g.applicants)} applicants.`,
@@ -3308,6 +3350,87 @@ function computeFlags(){
   }
   flags.sort((a,b) => ((a.severity==='red'?0:1) - (b.severity==='red'?0:1)) || (b.score - a.score));
   return flags.slice(0, 6);
+}
+/* ---- story synthesis (feedback-logic rework) ----
+   Raw flags fire independently on facets of the SAME problem (a Screen
+   bottleneck also shows up as overdue candidates and empty funnels blocked
+   at Screen). This layer merges them into STORIES — one root-problem
+   headline, up to 3 supporting facts, one action — and stories are what
+   every user-facing surface shows (attention rows, finding line, exec
+   digest, deck slides). Raw flags survive underneath for investigations. */
+function storyHeadline(primary){
+  const s = primary.subject || {};
+  switch (primary.id.split(':')[0]) {
+    case 'bottleneck': return `${s.stage} is blocking the pipeline.`;
+    case 'overdue': return `${primary.data.count} candidate${primary.data.count===1?'':'s'} lack a next step.`;
+    case 'emptyfunnel': return s.reqs.length === 1 ? `${s.reqs[0]} has nobody past ${s.blockedAt}.` : `${s.reqs.length} reqs have nobody past ${s.blockedAt}.`;
+    case 'offersout': return `${primary.data.count} offers are waiting on candidates.`;
+    case 'offeraccept': return 'Offer acceptance is falling.';
+    case 'withdrawal': return 'Candidates are withdrawing mid-process.';
+    case 'sourcedry': return `${s.source} applications are drying up.`;
+    case 'pacing': return `${s.req} is pacing behind target.`;
+  }
+  return primary.text;
+}
+function buildStories(flags){
+  const SEVN = { red: 2, amber: 1 };
+  const used = new Set();
+  const stories = [];
+  const mk = f => {
+    used.add(f);
+    const st = { id: f.id, primary: f, members: [f], score: f.score,
+      stage: f.subject && f.subject.type === 'stage' ? f.subject.stage : null,
+      req: f.subject && f.subject.type === 'req' ? f.subject.req : null };
+    stories.push(st);
+    return st;
+  };
+  const attach = (st, f) => { used.add(f); st.members.push(f); st.score = Math.max(st.score, f.score); };
+  const by = id => flags.find(f => f.id === id);
+  // 1. a bottleneck anchors a stage story
+  const bn = by('bottleneck');
+  const bnStory = bn ? mk(bn) : null;
+  // 2. overdue: when ≥50% of the overdue sit in the bottleneck stage, it is
+  //    the same problem — merge as a supporting fact
+  const od = by('overdue');
+  if (od) {
+    const inBn = bnStory && od.subject.byStage ? (od.subject.byStage[bnStory.stage] || 0) : 0;
+    if (bnStory && inBn >= 0.5 * od.data.count) attach(bnStory, od);
+    else mk(od);
+  }
+  // 3. empty funnels blocked at stage S merge into an existing story about S;
+  //    multiple empty reqs already arrive merged in the one emptyfunnel flag
+  const ef = by('emptyfunnel');
+  if (ef) {
+    const host = stories.find(st => st.stage === ef.subject.blockedAt);
+    if (host) attach(host, ef); else mk(ef);
+  }
+  // 4. pacing gaps merge into a story already covering that req
+  for (const f of flags) {
+    if (used.has(f) || !f.id.startsWith('pacing:')) continue;
+    const host = stories.find(st => (st.req && st.req === f.subject.req) ||
+      st.members.some(m => m.id === 'emptyfunnel' && m.subject.reqs.includes(f.subject.req)));
+    if (host) attach(host, f); else mk(f);
+  }
+  // 5. withdrawals merge into the bottleneck story when its stage dominates them
+  const wd = by('withdrawal');
+  if (wd) {
+    if (bnStory && wd.subject.topStage === bnStory.stage && wd.subject.topShare >= 0.5) attach(bnStory, wd);
+    else mk(wd);
+  }
+  // 6. everything else stands alone
+  for (const f of flags) if (!used.has(f)) mk(f);
+  // finalize: severity = max of members, ≤3 facts, ONE action — the primary
+  // member's (it names the story's root problem), falling back to the
+  // highest-severity member's; severity-ordered, capped at 4 stories
+  for (const st of stories) {
+    st.severity = st.members.some(m => m.severity === 'red') ? 'red' : 'amber';
+    st.headline = storyHeadline(st.primary);
+    st.facts = st.members.map(m => m.fact || m.text).slice(0, 3);
+    const actor = st.members.slice().sort((a,b) => (SEVN[b.severity]-SEVN[a.severity]) || (b.score - a.score))[0];
+    st.action = st.primary.action || actor.action || null;
+  }
+  stories.sort((a,b) => (SEVN[b.severity]-SEVN[a.severity]) || (b.score - a.score));
+  return stories.slice(0, 4);
 }
 /* ---- root-cause decomposition engine ----
    Decomposes a flagged metric across every mapped dimension and ranks where it
@@ -3979,9 +4102,9 @@ function renderSinceVisit(){
    ============================================================ */
 function computeFinding(){
   const rows = state.rows, prev = state.prevRows;
-  // the headline mirrors the top Attention flag so the two never contradict
-  const flags = state._flags || [];
-  if (flags.length) return { headline: flags[0].text, sub: subLabel() };
+  // the headline mirrors the top Attention STORY so the two never contradict
+  const stories = state._stories || [];
+  if (stories.length) return { headline: stories[0].headline, sub: subLabel() };
   if (impliedMode() === 'snapshot') {
     // Current pipeline: report the bottleneck if there is one, else the largest pool.
     const flow = computeStageFlow(rows, state.canonicalStages, state.snapshotRows, 'snapshot');
@@ -4062,25 +4185,27 @@ function renderFinding(){
    ============================================================ */
 function renderAttention(){
   const list = $('#attention-list'); list.innerHTML = '';
-  const flags = state._flags || [];
-  if (!flags.length) {
+  const stories = state._stories || [];
+  if (!stories.length) {
     list.appendChild(el('div', { class:'attn-none' }, 'No flags — pipeline within normal ranges.'));
     state.attnOpen = null;
     return;
   }
-  if (state.attnOpen && !flags.some(f => f.id === state.attnOpen)) state.attnOpen = null;
-  for (const f of flags) {
-    const open = state.attnOpen === f.id;
-    const textSpan = el('span', {}, f.text);
-    if (f.ruleTip) attachTip(textSpan, f.ruleTip);
+  if (state.attnOpen && !stories.some(st => st.id === state.attnOpen)) state.attnOpen = null;
+  for (const st of stories) {
+    const open = state.attnOpen === st.id;
+    const textWrap = el('div', { class:'attn-text' },
+      el('div', {}, st.headline),
+      st.facts.length ? el('div', { class:'attn-facts' }, st.facts.join(' · ')) : null);
+    if (st.primary.ruleTip) attachTip(textWrap, st.primary.ruleTip);
     const row = el('div', { class:'attn-row'+(open?' open':''), tabindex:'0', role:'button', 'aria-expanded': open?'true':'false' },
-      el('span', { class:'attn-dot '+f.severity }), textSpan,
+      el('span', { class:'attn-dot '+st.severity }), textWrap,
       el('span', { class:'attn-caret' }, open ? '▴' : '▾ investigate'));
-    const toggle = () => { state.attnOpen = open ? null : f.id; renderAttention(); };
+    const toggle = () => { state.attnOpen = open ? null : st.id; state.attnMemberId = null; renderAttention(); };
     row.addEventListener('click', toggle);
     row.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
     list.appendChild(row);
-    if (open) list.appendChild(renderAttnPanel(f));
+    if (open) list.appendChild(renderAttnPanel(st));
   }
 }
 // mini evidence trend: the flagged metric over the last ~6 months, by application cohort
@@ -4102,8 +4227,11 @@ function investigationTrendFig(trend){
   }
   return el('figure', { class:'attn-trend' }, svg, el('figcaption', {}, trend.title + ' · last 6 months'));
 }
-function renderAttnPanel(flag){
-  const inv = investigateFlag(flag);
+function renderAttnPanel(story){
+  // the panel shows the PRIMARY member's investigation; merged members are
+  // reachable via the "also:" links below
+  const member = story.members.find(m => m.id === state.attnMemberId) || story.primary;
+  const inv = investigateFlag(member);
   const panel = el('div', { class:'attn-panel' });
   panel.addEventListener('click', e => e.stopPropagation());
   const closeBtn = el('button', { class:'attn-close', type:'button' }, '✕');
@@ -4152,6 +4280,17 @@ function renderAttnPanel(flag){
   }
   if (ev.children.length) panel.appendChild(ev);
   if (inv.suggested) panel.appendChild(el('div', { class:'attn-suggested' }, inv.suggested));
+  // merged story members: switch the panel to another member's investigation
+  if (story.members.length > 1) {
+    const also = el('div', { class:'attn-also' });
+    for (const m of story.members) {
+      if (m === member) continue;
+      const b = el('button', { class:'attn-contrib', type:'button' }, `also: ${m.short || m.id} →`);
+      b.addEventListener('click', (e) => { e.stopPropagation(); state.attnMemberId = m.id; renderAttention(); });
+      also.appendChild(b);
+    }
+    panel.appendChild(also);
+  }
   const viewAll = el('button', { class:'underline-btn attn-viewall', type:'button' }, `View all ${fmtN(inv.viewAllN)} in ledger →`);
   viewAll.addEventListener('click', () => { inv.viewAll(); scrollLedgerIntoView(); });
   panel.appendChild(viewAll);
@@ -4185,11 +4324,11 @@ function buildExecSummary(){
     lines.push('');
     lines.push(`Forecast: ~${Math.round(t.d30.mid)} hires in 30d · ~${Math.round(t.d60.mid)} in 60d · ~${Math.round(t.d90.mid)} in 90d (range ${Math.round(t.d90.lo)}–${Math.round(t.d90.hi)})${state._forecast.lowConfidence ? ' — low confidence' : ''}`);
   }
-  const flags = state._flags || [];
-  if (flags.length && isSectionOn('attention')) {
+  const stories = state._stories || [];
+  if (stories.length && isSectionOn('attention')) {
     lines.push('');
     lines.push('Attention:');
-    for (const f of flags) lines.push(`- ${f.severity==='red'?'[!!]':'[!]'} ${f.text}${f.talkTo ? ' — talk to ' + f.talkTo : ''}`);
+    for (const st of stories) lines.push(`- ${st.severity==='red'?'[!!]':'[!]'} ${st.headline}${st.facts[0] ? ' — ' + st.facts[0] : ''}`);
   }
   return lines.join('\n');
 }
@@ -7859,6 +7998,7 @@ function renderAll(){
   if (state._sinceVisitPending) { state._sinceVisitPending = false; initSinceVisit(); } // needs snapshotRows, just populated above
   state._forecast = computeForecast(); // null outside Current-pipeline mode; feeds flags/reqs/summary
   state._flags = computeFlags();
+  state._stories = buildStories(state._flags);
   renderMasthead();
   renderFilterDesk();
   renderFinding();
@@ -8099,19 +8239,17 @@ function toggleTheme(){
 let presentState = null;
 function buildPresentScenes(){
   const scenes = [];
-  const meta = state.files.map(f => f.name).join(', ');
   scenes.push({ kind:'title', build: c => {
     c.appendChild(el('div', { class:'present-kicker' }, 'Pipeline review — ' + subLabel()));
     c.appendChild(el('h1', { class:'present-title' }, $('#finding-headline').textContent));
-    c.appendChild(el('p', { class:'present-sub' }, `${meta} · ${fmtN(state.rows.length)} candidates in view`));
+    c.appendChild(el('p', { class:'present-sub' }, `${fmtN(state.rows.length)} candidates in view`));
   }});
-  for (const f of (state._flags || [])) {
-    scenes.push({ kind:'flag', build: c => {
-      const inv = investigateFlag(f);
+  for (const st of (state._stories || []).slice(0, 3)) {
+    scenes.push({ kind:'flag', st, build: c => {
       c.appendChild(el('div', { class:'present-kicker' }, 'Attention'));
-      c.appendChild(el('h1', { class:'present-title ' + f.severity }, f.text));
-      if (inv.contributors && inv.contributors[0]) c.appendChild(el('p', { class:'present-sub' }, inv.contributors[0].text));
-      if (inv.suggested) c.appendChild(el('p', { class:'present-suggest' }, inv.suggested));
+      c.appendChild(el('h1', { class:'present-title ' + st.severity }, st.headline));
+      for (const fact of st.facts) c.appendChild(el('p', { class:'present-sub present-fact' }, fact));
+      if (st.action) c.appendChild(el('p', { class:'present-suggest' }, st.action));
     }});
   }
   // key sections, priority order, only currently visible ones
