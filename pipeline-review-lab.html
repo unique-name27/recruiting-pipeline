@@ -115,7 +115,6 @@ html.ed-terminal .attn-dot.red::before, html.ed-terminal .flag-dot.red::before{ 
 html.ed-terminal .attn-dot.amber::before, html.ed-terminal .flag-dot.amber::before{ content:'●'; color:var(--warn); font-size:10px; }
 html.ed-terminal svg.river .corridor-label.on-flow,
 html.ed-terminal svg.river .corridor-label.secondary{ fill:#03120A; }
-html.ed-terminal .ledger-row-detail .tl-dot{ background:var(--flow-3); }
 /* --- STUDIO: mainstream product skin. Composes with the dark toggle. --- */
 html.ed-studio{
   --paper:#FFFFFF; --ink:#111827; --muted:#6B7280; --hairline:rgba(17,24,39,0.10); --heavy:#111827;
@@ -953,8 +952,6 @@ html.dark #velocity-heatmap td.vh-3{ background:rgba(230,138,126,0.30); color:va
 #velocity-heatmap td.vh-click{ cursor:pointer; }
 #velocity-heatmap td.vh-click:hover{ text-decoration:underline; text-underline-offset:2px; }
 .muted-pct{ color:var(--muted); font-size:11px; }
-.ledger-close{ color:var(--muted); font-size:12px; flex-shrink:0; }
-.ledger-close:hover{ color:var(--ink); }
 
 /* ============================================================
    FINDING LINE
@@ -1121,6 +1118,89 @@ svg.forecast .fc-line-s{ fill:none; stroke:var(--warn); stroke-width:1.6; stroke
 .scn-delta .scn-delta-part{ color:var(--ink); }
 @media print{ .scn-toggle, .scn-panel{ display:none !important; } }
 /* ============================================================
+   CANDIDATE WORKSPACE (overnight #3) — stars/tags/notes + side panel.
+   The panel is a fixed right-side sheet: hairline left rule on paper,
+   beneath the palette (600) and present (800) overlays.
+   ============================================================ */
+.lg-star-th{ width:26px; }
+.lg-star-td{ padding-right:0 !important; }
+.lg-star{ color:var(--muted); font-size:13px; line-height:1; padding:2px 4px; background:none; border:none; cursor:pointer; font-family:var(--sans); }
+.lg-star:hover{ color:var(--ink); }
+.lg-star.on{ color:var(--warn); }
+.lg-tag{
+  display:inline-block; margin-left:6px; padding:0.5px 5px; font-size:10.5px; color:var(--muted);
+  border:0.5px solid var(--hairline); font-family:var(--sans); vertical-align:1px; white-space:nowrap;
+}
+.lg-tag.more{ border-style:dotted; }
+.search-mark{ margin-left:6px; font-size:11px; color:var(--accent, var(--warn)); cursor:default; }
+.star-chip{
+  font-family:var(--sans); font-size:12px; color:var(--muted); background:none; border:none;
+  border-bottom:0.5px solid var(--hairline); padding:0 0 1px; cursor:pointer;
+}
+.star-chip:hover{ color:var(--ink); }
+.star-chip.on{ color:var(--warn); border-bottom-color:var(--warn); font-weight:600; }
+.cand-panel{
+  position:fixed; top:0; right:0; bottom:0; width:420px; max-width:92vw; z-index:500;
+  background:var(--paper); border-left:1px solid var(--heavy);
+  padding:18px 22px 26px; overflow-y:auto; font-family:var(--sans);
+}
+.cp-head{ display:flex; align-items:baseline; gap:8px; }
+.cp-star{ font-size:16px; padding:0; }
+.cp-name{ font-family:var(--serif); font-size:21px; font-weight:600; margin:0; flex:1; color:var(--ink); }
+.cp-close{ color:var(--muted); font-size:13px; background:none; border:none; cursor:pointer; padding:2px 4px; }
+.cp-close:hover{ color:var(--ink); }
+.cp-subline{ font-size:12.5px; color:var(--muted); margin:4px 0 2px; }
+.cp-substate{ color:var(--ink); }
+.cp-days{ font-variant-numeric:tabular-nums; }
+.cp-days.amber{ color:var(--warn); font-weight:600; }
+.cp-days.red{ color:var(--bad); font-weight:600; }
+.cp-section-title{
+  font-size:10.5px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted);
+  border-bottom:0.5px solid var(--hairline); padding-bottom:3px; margin:18px 0 8px;
+}
+.cp-timeline{ display:flex; flex-direction:column; gap:2px; }
+.cp-tl-row{ display:flex; gap:10px; align-items:flex-start; padding:4px 0; position:relative; }
+.cp-tl-row + .cp-tl-row::before{
+  content:''; position:absolute; left:3.5px; top:-8px; height:12px; width:0.5px; background:var(--hairline);
+}
+.cp-node{ width:8px; height:8px; background:var(--ink); flex-shrink:0; margin-top:4px; }
+.cp-node.cur{ background:var(--flow-1, var(--ink)); outline:1px solid var(--ink); outline-offset:1.5px; }
+.cp-node.hollow{ background:transparent; border:1px solid var(--muted); }
+.cp-node.terminal{ background:var(--muted); }
+.cp-tl-body{ flex:1; min-width:0; font-size:12px; color:var(--muted); }
+.cp-tl-head{ margin-bottom:3px; }
+.cp-tl-head b{ color:var(--ink); font-weight:600; }
+.cp-tl-row.future .cp-tl-body{ font-style:italic; padding-top:1px; }
+.cp-bar{ position:relative; height:5px; background:transparent; border-bottom:0.5px solid var(--hairline); max-width:280px; }
+.cp-bar-fill{ height:5px; background:var(--flow-2, var(--ink)); opacity:0.75; }
+.cp-bar-fill.amber{ background:var(--warn); opacity:0.9; }
+.cp-bar-fill.red{ background:var(--bad); opacity:0.9; }
+.cp-norm-tick{ position:absolute; top:-2px; width:0.5px; height:9px; background:var(--muted); }
+.cp-owners{ font-size:12.5px; color:var(--ink); }
+.cp-role{ color:var(--muted); font-size:11px; }
+.cp-details{ display:flex; flex-direction:column; gap:3px; }
+.cp-detail-row{ display:flex; gap:10px; font-size:12.5px; color:var(--ink); }
+.cp-detail-label{ width:74px; flex-shrink:0; color:var(--muted); font-size:11.5px; padding-top:1px; }
+.cp-tags{ display:flex; flex-wrap:wrap; gap:5px; align-items:center; }
+.cp-tag{ margin-left:0; font-size:11.5px; padding:1.5px 7px; color:var(--ink); }
+.cp-tag-x{ background:none; border:none; color:var(--muted); font-size:9.5px; cursor:pointer; padding:0 0 0 5px; }
+.cp-tag-x:hover{ color:var(--bad); }
+.cp-tag-input{
+  border:none; border-bottom:0.5px solid var(--hairline); background:transparent; color:var(--ink);
+  font-family:var(--sans); font-size:12px; padding:2px 2px; width:130px;
+}
+.cp-tag-input:focus{ outline:none; border-bottom-color:var(--ink); }
+.cp-note{
+  width:100%; min-height:88px; resize:vertical; border:0.5px solid var(--hairline); background:transparent;
+  color:var(--ink); font-family:var(--sans); font-size:12.5px; line-height:1.5; padding:8px 10px;
+}
+.cp-note:focus{ outline:none; border-color:var(--ink); }
+.cp-note-stamp{ font-size:10.5px; color:var(--muted); margin-top:3px; min-height:14px; font-style:italic; }
+.cp-actions{ display:flex; gap:16px; align-items:center; margin-top:18px; padding-top:10px; border-top:0.5px solid var(--hairline); }
+.cp-action{ font-size:12px; color:var(--ink); display:flex; align-items:center; gap:5px; cursor:pointer; }
+@media print{ .cand-panel{ display:none !important; } }
+
+/* ============================================================
    COMMAND PALETTE (lab round 9) — hairline sheet on paper, no radius
    ============================================================ */
 .palette-overlay{ position:fixed; inset:0; background:rgba(20,20,18,0.35); z-index:600; }
@@ -1218,12 +1298,6 @@ table.report-table td.zero{ color:var(--muted); }
    ============================================================ */
 .ledger-toolbar{ display:flex; align-items:center; gap:16px; margin-bottom:8px; font-size:12px; color:var(--muted); }
 .ledger-toolbar button.underline-btn{ font-size:12px; }
-.ledger-row-detail{ padding:10px 2px 14px; font-size:12px; color:var(--muted); border-bottom:0.5px solid var(--hairline); }
-.ledger-row-detail .timeline{ display:flex; gap:0; align-items:center; flex-wrap:wrap; margin-top:6px; }
-.ledger-row-detail .tl-step{ display:flex; align-items:center; gap:6px; }
-.ledger-row-detail .tl-dot{ width:6px; height:6px; background:var(--ink); flex-shrink:0; }
-.ledger-row-detail .tl-arrow{ color:var(--muted); margin:0 8px; }
-.ledger-row-detail .tl-label{ color:var(--ink); font-weight:500; }
 .ledger-pagination{ display:flex; align-items:center; gap:14px; margin-top:10px; font-size:12px; color:var(--muted); }
 .ledger-pagination button{ text-decoration:underline; text-underline-offset:2px; }
 .ledger-pagination button:disabled{ text-decoration:none; opacity:0.4; cursor:default; }
@@ -1675,6 +1749,8 @@ html.presenting{ overflow:hidden; }
   </div>
 </main>
 
+<!-- candidate workspace panel: chrome, not report — hidden in print/present -->
+<aside class="cand-panel hidden" id="cand-panel" aria-label="Candidate details"></aside>
 <div id="mapper-root"></div>
 <div id="palette-root"></div>
 <div class="toast-line" id="toast-line"></div>
@@ -1752,7 +1828,7 @@ const state = {
   headers: [], fingerprint: null, sampleRows: [],
   filters: {
     periodPreset: 'current', customFrom: null, customTo: null, dateField: 'applied_at',
-    search: '', dims: {}, // dims: { job:Set, department:Set, ... }
+    search: '', dims: {}, starredOnly: false, // dims: { job:Set, department:Set, ... }
   },
   selection: null,           // { kind:'stage'|'reject'|'withdraw'|'decline'|'active', stage, } — sankey/table cross-filter
   drill: [],                 // history stack of pre-drill snapshots for "← Back" (viz clicks only)
@@ -1761,13 +1837,15 @@ const state = {
   visibleDims: null,         // Set of dim keys shown in the filter desk (null = default set); persisted per fingerprint
   reqTargets: {},            // lab: per-req hire targets { jobName: n }, persisted per fingerprint
   asOfDate: null,            // lab time machine: Date the pipeline is reconstructed at (null = today/live); session-only
-  ledger: { page: 0, pageSize: 100, sortCol: 'daysInStage', sortDir: 'desc', expanded: new Set() },
+  ledger: { page: 0, pageSize: 100, sortCol: 'daysInStage', sortDir: 'desc' },
   sourcesSort: { col: 'hireRate', dir: 'desc' },
   recruitersSort: { col: 'activeCount', dir: 'desc' },
   trendExpanded: null,
   theme: 'auto',
   renderQueued: false,
   actionsState: {},          // lab round 8: action-queue worklist { [rowKey]: { handled, snoozeUntil } }, persisted per fingerprint
+  notes: {},                 // candidate workspace: { [rowKey]: { star, tags:[], note, noteEdited } }, persisted per fingerprint — NEVER touches source data
+  panelKey: null,            // rowKey of the open candidate panel (session-only)
   slas: {},                  // lab round 8: per-stage target days { [stage]: days }, persisted per fingerprint — overrides the historical median
   sinceVisit: null,          // lab round 8: { diff, sinceTs, dismissed } computed once per dataset load; null = first visit or no changes
   _sinceVisitPending: false, // set on dataset load, consumed by the first renderAll (needs state.snapshotRows populated)
@@ -2407,17 +2485,23 @@ function openMapper(headers, rows, filesMeta, reopen){
 const DIM_FIELDS = [
   ['job','Job'], ['department','Department'], ['office','Office'], ['recruiter','Recruiter'],
   ['coordinator','Coordinator'], ['hiring_manager','Hiring manager'],
-  ['source','Source'], ['source_type','Source type'], ['current_stage','Stage'], ['status','Status'],
+  ['source','Source'], ['source_type','Source type'], ['tags','Tags'], ['current_stage','Stage'], ['status','Status'],
 ];
 // dims that exist as filters but stay out of the desk by default (enable via "+ Filters")
 const DEFAULT_HIDDEN_DIMS = new Set(['coordinator']);
 function mappedDimFields(){
-  return DIM_FIELDS.filter(([f]) => f==='current_stage' || f==='status' || state.mapping[f]);
+  return DIM_FIELDS.filter(([f]) => f==='current_stage' || f==='status' || (f === 'tags' ? anyTags() : state.mapping[f]));
 }
 // dimension value accessor: canonical fields live on the row; extra source
 // columns (keys prefixed "x:") live under row._extra keyed by raw header name
 function dimValue(r, dim){
+  if (dim === 'tags') return tagsOf(r); // multi-valued: consumers are array-aware
   return dim.startsWith('x:') ? (r._extra ? r._extra[dim.slice(2)] : null) : r[dim];
+}
+// true when the row carries dimension value v (handles multi-valued dims)
+function dimHas(r, dim, set){
+  const v = dimValue(r, dim);
+  return Array.isArray(v) ? v.some(x => set.has(String(x))) : set.has(String(v ?? '—'));
 }
 function dimLabel(dim){
   if (dim.startsWith('x:')) return dim.slice(2);
@@ -2470,6 +2554,8 @@ function applyDimPrefs(){
   loadReqTargets(); // lab: per-req hire targets travel with the dataset prefs
   loadActionsState(); // lab round 8: action-queue worklist travels with the dataset
   loadSlas();          // lab round 8: stage SLAs travel with the dataset
+  loadNotes();         // candidate workspace annotations travel with the dataset
+  state.panelKey = null;
   state.sinceVisit = null;
   state._sinceVisitPending = true; // consumed by the first renderAll once snapshotRows exist
   state.scenario = null; state.scenarioOpen = false; // scenario knobs are per-dataset and session-only
@@ -2483,10 +2569,14 @@ function applyDimPrefs(){
   }).catch(()=>{});
 }
 function matchesSearch(r,q){
-  return (r.candidate_name && r.candidate_name.toLowerCase().includes(q))
+  if ((r.candidate_name && r.candidate_name.toLowerCase().includes(q))
     || (r.email && r.email.toLowerCase().includes(q))
     || (r.application_id!=null && String(r.application_id).toLowerCase().includes(q))
-    || (r.candidate_id!=null && String(r.candidate_id).toLowerCase().includes(q));
+    || (r.candidate_id!=null && String(r.candidate_id).toLowerCase().includes(q))) return true;
+  // workspace annotations are searchable too (✎ note / # tag markers scope the hits)
+  const n = state.notes && state.notes[rowKey(r)];
+  if (!n) return false;
+  return !!((n.note && n.note.toLowerCase().includes(q)) || (n.tags || []).some(t => t.toLowerCase().includes(q)));
 }
 function stageIndex(stage){ return state.canonicalStages.indexOf(stage); }
 function rowMatchesSelection(r){
@@ -2516,8 +2606,9 @@ function baseFilteredRows(excludeDim){
     // In Current-pipeline mode the status filter is inert: everything is active by definition.
     if (dim === 'status' && f.periodPreset === 'current') continue;
     const set = f.dims[dim];
-    if (set && set.size) rows = rows.filter(r => set.has(String(dimValue(r, dim) ?? '—')));
+    if (set && set.size) rows = rows.filter(r => dimHas(r, dim, set));
   }
+  if (f.starredOnly) rows = rows.filter(r => !!noteFor(rowKey(r)).star);
   if (f.search) { const q = f.search.toLowerCase(); rows = rows.filter(r => matchesSearch(r,q)); }
   if (state.selection) rows = rows.filter(rowMatchesSelection);
   return rows;
@@ -2584,7 +2675,10 @@ function facetedCounts(dimField){
     if (from && to) rows = rows.filter(r => { const d=r[f.dateField]; return d && d>=from && d<=to; });
   }
   const counts = new Map();
-  for (const r of rows) { const v = String(dimValue(r, dimField) ?? '—'); counts.set(v, (counts.get(v)||0)+1); }
+  for (const r of rows) {
+    const v = dimValue(r, dimField);
+    for (const x of (Array.isArray(v) ? v : [v ?? '—'])) counts.set(String(x), (counts.get(String(x))||0)+1);
+  }
   return counts;
 }
 function toggleDimValue(dim, value){
@@ -2597,6 +2691,7 @@ function toggleDimValue(dim, value){
 }
 function clearAllFilters(){
   state.filters.dims = {}; state.filters.search = ''; state.selection = null;
+  state.filters.starredOnly = false;
   state.drill.length = 0;
   clearRedo();
   $('#fd-search').value = '';
@@ -3222,6 +3317,43 @@ function loadSlas(){
     if (s && state.fingerprint === fp) { state.slas = s; queueRender(); }
   }).catch(()=>{});
 }
+/* candidate workspace annotations (stars / tags / notes): local-only layer
+   keyed by rowKey, persisted per fingerprint — source data is never touched */
+function persistNotes(){
+  if (state.fingerprint) idbKeyval.set('lab:notes:'+state.fingerprint, state.notes).catch(()=>{});
+}
+function loadNotes(){
+  const fp = state.fingerprint;
+  state.notes = {};
+  idbKeyval.get('lab:notes:'+fp).then(n => {
+    if (n && state.fingerprint === fp) { state.notes = n; queueRender(); }
+  }).catch(()=>{});
+}
+function noteFor(key){ return (state.notes && state.notes[key]) || {}; }
+function updateNote(key, patch){
+  state.notes = state.notes || {};
+  const next = { ...(state.notes[key] || {}), ...patch };
+  if (!next.star && !(next.tags && next.tags.length) && !next.note) delete state.notes[key]; // prune empty records
+  else state.notes[key] = next;
+  persistNotes();
+}
+function tagsOf(r){ const n = state.notes && state.notes[rowKey(r)]; return (n && n.tags) || []; }
+function allTags(){
+  const s = new Set();
+  for (const k in (state.notes || {})) for (const t of (state.notes[k].tags || [])) s.add(t);
+  return Array.from(s).sort();
+}
+function anyTags(){ for (const k in (state.notes || {})) if ((state.notes[k].tags || []).length) return true; return false; }
+function starredCount(){ let n = 0; for (const k in (state.notes || {})) if (state.notes[k].star) n++; return n; }
+// ✎/# markers when a search hit came via a note or tag (clear scoping)
+function searchAnnotationKind(r, q){
+  const n = state.notes && state.notes[rowKey(r)];
+  if (!n || !q) return '';
+  let mk = '';
+  if (n.note && n.note.toLowerCase().includes(q)) mk += '✎';
+  if ((n.tags || []).some(t => t.toLowerCase().includes(q))) mk += '#';
+  return mk;
+}
 // gap analysis: projected 90d hires vs target; back-solve top-of-funnel need
 // from the req's historical end-to-end conversion (hires ÷ resolved)
 function reqGap(job){
@@ -3497,22 +3629,24 @@ function buildStories(flags){
    'rate' compares a segment's affected-rate to the complement's rate;
    'median' compares the segment's median of value(r) to the complement's median. */
 function decompositionDims(){
-  return DIM_FIELDS.filter(([f]) => f !== 'current_stage' && f !== 'status' && state.mapping[f]);
+  return DIM_FIELDS.filter(([f]) => f !== 'current_stage' && f !== 'status' && (f === 'tags' ? anyTags() : state.mapping[f]));
 }
 function decompose(population, affected, opts){
   const findings = [];
   const totalAff = affected.length;
   if (!totalAff) return findings;
   for (const [dim, dimLabel] of decompositionDims()) {
-    const values = new Set(population.map(r => r[dim] ?? '—'));
+    // multi-valued dims (tags) contribute every value they carry
+    const valsOf = r => { const v = dimValue(r, dim); return Array.isArray(v) ? v : [v ?? '—']; };
+    const values = new Set(population.flatMap(valsOf));
     if (values.size < 2) continue; // a single distinct value explains nothing
     for (const v of values) {
-      const segAff = affected.filter(r => (r[dim] ?? '—') === v);
+      const segAff = affected.filter(r => valsOf(r).includes(v));
       if (!segAff.length) continue;
       const small = segAff.length < 3;
       let impact = 0, text = null;
       if (opts.type === 'rate') {
-        const segPop = population.filter(r => (r[dim] ?? '—') === v);
+        const segPop = population.filter(r => valsOf(r).includes(v));
         const compPopN = population.length - segPop.length;
         const compAffN = totalAff - segAff.length;
         if (!segPop.length || compPopN <= 0) continue;
@@ -3524,7 +3658,7 @@ function decompose(population, affected, opts){
         text = opts.rateText(String(v), dimLabel, segAff.length, totalAff, segRate, compRate);
       } else { // 'median'
         const segVals = segAff.map(opts.value).filter(x => x != null);
-        const compVals = affected.filter(r => (r[dim] ?? '—') !== v).map(opts.value).filter(x => x != null);
+        const compVals = affected.filter(r => !valsOf(r).includes(v)).map(opts.value).filter(x => x != null);
         if (!segVals.length) continue;
         const segMed = median(segVals);
         const compMed = compVals.length ? median(compVals) : null;
@@ -3608,7 +3742,7 @@ function investigateFlag(flag){
       onClick: () => drillCombo({ [o.field]: o.name }, { type:'rows', keys, label:'Offers awaiting response' }) }));
     inv.contributors = offers.slice().sort((a,b)=>daysOut(b)-daysOut(a)).slice(0,5).map(r => ({
       text: `${r.candidate_name||'—'}: offer out ${Math.round(daysOut(r))}d (${r.job||'—'})`, n: 1,
-      onClick: () => { const key = rowKey(r); state.ledger.expanded.add(key); drillTo({ type:'row', key, name: r.candidate_name || 'Candidate' }); } }));
+      onClick: () => { const key = rowKey(r); openCandidatePanel(key); drillTo({ type:'row', key, name: r.candidate_name || 'Candidate' }); } }));
     inv.evidence = [];
     inv.trend = null;
     inv.suggested = `Suggested: call the ${offers.length} candidates with offers out 5+ days — silence past a week usually means a competing offer.`;
@@ -3914,7 +4048,7 @@ const PERIOD_HISTORICAL = [
   ['h1','H1'], ['h2','H2'], ['ytd','YTD'], ['t12m','Trailing 12m'], ['custom','Custom…'],
 ];
 function initFilterDefaults(){
-  state.filters = { periodPreset:'current', customFrom:null, customTo:null, dateField:'applied_at', search:'', dims:{} };
+  state.filters = { periodPreset:'current', customFrom:null, customTo:null, dateField:'applied_at', search:'', dims:{}, starredOnly:false };
   state.selection = null;
   state.drill.length = 0;
   const sel = $('#fd-period');
@@ -3951,7 +4085,10 @@ function buildDimFilterControls(){
 function renderDimPanel(field, panel){
   panel.innerHTML = '';
   const counts = facetedCounts(field);
-  const allVals = Array.from(new Set(state.rawRows.map(r => String(dimValue(r, field) ?? '—')))).sort();
+  const allVals = Array.from(new Set(state.rawRows.flatMap(r => {
+    const v = dimValue(r, field);
+    return (Array.isArray(v) ? v : [v ?? '—']).map(String);
+  }))).sort();
   const search = el('input', { class:'fd-search', type:'text', placeholder:'Search…' });
   const list = el('div', { class:'fd-list' });
   const selSet = state.filters.dims[field] || new Set();
@@ -4028,10 +4165,18 @@ function renderFilterDesk(){
 
   const line = $('#fd-activeline');
   const terms = activeFilterTerms();
-  // always visible while a drill selection or drill history exists
-  if (!terms.length && !state.drill.length && !state.selection) { line.classList.add('hidden'); line.innerHTML=''; return; }
+  const nStar = starredCount();
+  // always visible while a drill selection, drill history or stars exist
+  if (!terms.length && !state.drill.length && !state.selection && !nStar) { line.classList.add('hidden'); line.innerHTML=''; return; }
   line.classList.remove('hidden');
   line.innerHTML = '';
+  if (nStar) {
+    const chip = el('button', { class:'star-chip' + (f.starredOnly ? ' on' : ''), type:'button' }, `★ Starred ${fmtN(nStar)}`);
+    attachTip(chip, tipHtml(f.starredOnly ? 'Showing starred candidates only — click to show everyone.' : 'Filter to your starred candidates.', 'stars are local to this browser'));
+    chip.addEventListener('click', () => { f.starredOnly = !f.starredOnly; clearRedo(); queueRender(); });
+    line.appendChild(chip);
+    line.appendChild(document.createTextNode(' · '));
+  }
   if (state.drill.length) {
     const backBtn = el('button', { class:'drill-back' }, '← Back');
     backBtn.addEventListener('click', popDrill);
@@ -4332,7 +4477,7 @@ function renderAttnPanel(story){
     for (const r of inv.evidence) {
       const key = rowKey(r);
       const b = el('button', { class:'attn-contrib', type:'button' }, inv.evidenceText(r));
-      b.addEventListener('click', () => { state.ledger.expanded.add(key); drillTo({ type:'row', key, name: r.candidate_name || 'Candidate' }); });
+      b.addEventListener('click', () => { openCandidatePanel(key); drillTo({ type:'row', key, name: r.candidate_name || 'Candidate' }); });
       people.appendChild(b);
     }
     ev.appendChild(people);
@@ -4553,7 +4698,7 @@ function renderActionQueue(){
       cb.addEventListener('click', e => e.stopPropagation());
       cb.addEventListener('change', () => setActionHandled(key, cb.checked));
       const nameBtn = el('button', { class:'aq-name numlink', type:'button' }, r.candidate_name || 'Candidate');
-      nameBtn.addEventListener('click', () => { state.ledger.expanded.add(key); drillTo({ type:'row', key, name: r.candidate_name || 'Candidate' }); });
+      nameBtn.addEventListener('click', () => { openCandidatePanel(key); drillTo({ type:'row', key, name: r.candidate_name || 'Candidate' }); });
       const days = daysInCurrentStage(r, now);
       const ns = nextStepState(r, now);
       attachTip(nameBtn, overdueTipHtml(`${neededAction(r, ns, now)} — ${r.job || '—'}, ${days!=null?Math.round(days):'—'}d in ${r.current_stage}. Click to open in the ledger.`));
@@ -5008,11 +5153,13 @@ function dimsSnapshot(){
 function currentDrillSnapshot(){
   const f = state.filters;
   return { selection: state.selection ? { ...state.selection } : null, dims: dimsSnapshot(),
+    starredOnly: !!f.starredOnly, // the ★ chip is a filter — it rides the Back/Forward history
     period: { preset: f.periodPreset, customFrom: f.customFrom, customTo: f.customTo } };
 }
 function applyDrillSnapshot(snap){
   state.selection = snap.selection;
   state.filters.dims = snap.dims;
+  state.filters.starredOnly = !!snap.starredOnly;
   if (snap.period) { // drills may change the period (e.g. velocity-heatmap cohort cells) — restore it
     state.filters.periodPreset = snap.period.preset;
     state.filters.customFrom = snap.period.customFrom;
@@ -5789,7 +5936,7 @@ function renderFlowBoard(){
       row.addEventListener('mouseleave', hideRiverTooltip);
       row.addEventListener('click', () => {
         const key = rowKey(r);
-        state.ledger.expanded.add(key);
+        openCandidatePanel(key);
         hideRiverTooltip();
         drillTo({ type:'row', key, name: r.candidate_name || 'Candidate' });
       });
@@ -6034,7 +6181,7 @@ function renderAging(){
         dot.addEventListener('mouseleave', hideRiverTooltip);
         dot.addEventListener('click', () => {
           const key = rowKey(r);
-          state.ledger.expanded.add(key);
+          openCandidatePanel(key);
           hideRiverTooltip();
           drillTo({ type:'row', key, name: r.candidate_name || 'Candidate' });
         });
@@ -7025,10 +7172,16 @@ function ledgerSortedRows(){
     return (r[sortCol] ?? '');
   };
   rows.sort((a,b) => { const va=val(a), vb=val(b); if (va<vb) return sortDir==='asc'?-1:1; if (va>vb) return sortDir==='asc'?1:-1; return 0; });
+  // starred candidates float to the top WITHIN the current sort
+  if (starredCount()) {
+    const starred = [], rest = [];
+    for (const r of rows) (noteFor(rowKey(r)).star ? starred : rest).push(r);
+    return starred.concat(rest);
+  }
   return rows;
 }
 const LEDGER_COLS = [
-  ['candidate_name','Name'], ['job','Job'], ['current_stage','Stage'], ['status','Status'],
+  ['star','★'], ['candidate_name','Name'], ['job','Job'], ['current_stage','Stage'], ['status','Status'],
   ['daysInStage','Days in stage'], ['source','Source'], ['recruiter','Recruiter'], ['applied_at','Applied'],
 ];
 function renderLedger(){
@@ -7043,6 +7196,7 @@ function renderLedger(){
   const wrap = $('#ledger-table-wrap'); wrap.innerHTML = '';
   const table = el('table', { class:'report-table' });
   const thead = el('thead', {}, el('tr', {}, ...LEDGER_COLS.map(([k,l]) => {
+    if (k === 'star') return el('th', { class:'lg-star-th' }, l); // not sortable — stars already float
     const th = el('th', { class:'sortable'+(state.ledger.sortCol===k?' sorted':'') }, l+(state.ledger.sortCol===k?(state.ledger.sortDir==='asc'?' ▲':' ▼'):''));
     th.addEventListener('click', () => {
       if (state.ledger.sortCol===k) state.ledger.sortDir = state.ledger.sortDir==='asc'?'desc':'asc';
@@ -7053,9 +7207,11 @@ function renderLedger(){
   })));
   table.appendChild(thead);
   const tbody = el('tbody');
+  const q = (state.filters.search || '').toLowerCase();
   pageRows.forEach(r => {
     const key = rowKey(r); // string key — matches the aging board / palette / attention expanders
-    const tr = el('tr', { class:'clickable' });
+    const note = noteFor(key);
+    const tr = el('tr', { class:'clickable', tabindex:'0' });
     const days = ledgerDaysInStage(r);
     // aging tint on days-in-stage for actives — the tooltip leads with the
     // candidate's next-step state, not raw tenure
@@ -7070,41 +7226,30 @@ function renderLedger(){
       const lede = neededAction(r, ns);
       attachTip(daysTd, overdueTipHtml(`${lede.charAt(0).toUpperCase()+lede.slice(1)} — ${Math.round(days)}d in ${r.current_stage} (norm ${Math.round(stageNorm(r.current_stage))}d).${who ? ' Talk to: ' + who + '.' : ''}`));
     }
+    // star toggle (annotation layer — never touches source data)
+    const starBtn = el('button', { class:'lg-star' + (note.star ? ' on' : ''), type:'button', 'aria-label': note.star ? 'unstar candidate' : 'star candidate' }, note.star ? '★' : '☆');
+    starBtn.addEventListener('click', (e) => { e.stopPropagation(); updateNote(key, { star: !note.star }); renderLedger(); renderFilterDesk(); });
+    // name cell carries tag chips + the note/tag search marker
+    const nameTd = el('td', {}, r.candidate_name || '—');
+    const tgs = note.tags || [];
+    tgs.slice(0, 3).forEach(t => nameTd.appendChild(el('span', { class:'lg-tag' }, t)));
+    if (tgs.length > 3) nameTd.appendChild(el('span', { class:'lg-tag more' }, '+' + (tgs.length - 3)));
+    if (q) {
+      const mark = searchAnnotationKind(r, q);
+      if (mark) {
+        const mk = el('span', { class:'search-mark' }, mark);
+        attachTip(mk, tipHtml('Search matched via ' + (mark.includes('✎') ? 'this candidate\'s note' : '') + (mark === '✎#' ? ' and ' : '') + (mark.includes('#') ? 'a tag' : '') + '.'));
+        nameTd.appendChild(mk);
+      }
+    }
     tr.append(
-      el('td', {}, r.candidate_name||'—'), el('td', {}, r.job||'—'), el('td', {}, r.current_stage||'—'),
+      el('td', { class:'lg-star-td' }, starBtn),
+      nameTd, el('td', {}, r.job||'—'), el('td', {}, r.current_stage||'—'),
       el('td', {}, r.status||'—'), daysTd,
       el('td', {}, r.source||'—'), el('td', {}, r.recruiter||'—'), el('td', {}, fmtDate(r.applied_at)));
-    tr.addEventListener('click', () => {
-      if (state.ledger.expanded.has(key)) state.ledger.expanded.delete(key); else state.ledger.expanded.add(key);
-      renderLedger();
-    });
+    tr.addEventListener('click', () => openCandidatePanel(key));
+    tr.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); openCandidatePanel(key); } });
     tbody.appendChild(tr);
-    if (state.ledger.expanded.has(key)) {
-      const steps = [];
-      steps.push(['Applied', r.applied_at]);
-      if (r.stageDates) {
-        if (r.stageDates.screen) steps.push(['Screen', r.stageDates.screen]);
-        if (r.stageDates.onsite) steps.push(['Onsite', r.stageDates.onsite]);
-        if (r.stageDates.offer) steps.push(['Offer', r.stageDates.offer]);
-      }
-      if (r.hired_at) steps.push(['Hired', r.hired_at]);
-      if (r.rejected_at) steps.push([r.status==='withdrawn'?'Withdrew':(r.status==='declined'?'Declined':'Rejected'), r.rejected_at]);
-      steps.sort((a,b)=>+a[1]-+b[1]);
-      const closeBtn = el('button', { class:'ledger-close' }, '✕');
-      closeBtn.addEventListener('click', (e) => { e.stopPropagation(); state.ledger.expanded.delete(key); renderLedger(); });
-      const metaUrl = r.job_url || reqJobUrl(r.job || '—');
-      const detail = el('div', { class:'ledger-row-detail' },
-        el('div', { style:'display:flex; justify-content:space-between; gap:12px; align-items:baseline;' },
-          el('span', {}, `${r.email||'—'} · ${r.candidate_id||r.application_id||'—'}${r.hiring_manager?' · HM: '+r.hiring_manager:''}${r.coordinator?' · Coord: '+r.coordinator:''}${r.rejection_reason?' · '+r.rejection_reason:''}`,
-            metaUrl ? jobLinkEl(metaUrl) : null),
-          closeBtn),
-        el('div', { class:'timeline' }, ...steps.flatMap(([label,date],i) => {
-          const step = el('span', { class:'tl-step' }, el('span', { class:'tl-dot' }), el('span', {}, el('span', { class:'tl-label' }, label), ' '+fmtDate(date)));
-          return i < steps.length-1 ? [step, el('span', { class:'tl-arrow' }, '→')] : [step];
-        })));
-      const tdWrap = el('tr', {}, el('td', { colspan: LEDGER_COLS.length, style:'padding:0;' }, detail));
-      tbody.appendChild(tdWrap);
-    }
   });
   table.appendChild(tbody);
   wrap.appendChild(table);
@@ -7709,7 +7854,7 @@ function renderBeeswarm(){
       dot.addEventListener('click', () => {
         hideRiverTooltip();
         const key = rowKey(r);
-        state.ledger.expanded.add(key);
+        openCandidatePanel(key);
         drillTo({ type:'row', key, name: r.candidate_name || 'Candidate' });
       });
       svg.appendChild(dot);
@@ -8134,6 +8279,7 @@ function renderAll(){
     def.render();
   }
   setupRiverResize();
+  renderCandidatePanel(); // live-updates (or closes if the candidate vanished from the dataset)
   renderFootnote();
 }
 function queueRender(){
@@ -8210,7 +8356,7 @@ function clearDataset(){
 function serializeFilters(f){
   return {
     periodPreset: f.periodPreset, customFrom: f.customFrom?+f.customFrom:null, customTo: f.customTo?+f.customTo:null,
-    dateField: f.dateField, search: f.search,
+    dateField: f.dateField, search: f.search, starredOnly: !!f.starredOnly,
     dims: Object.fromEntries(Object.entries(f.dims).map(([k,v]) => [k, Array.from(v)])),
   };
 }
@@ -8224,7 +8370,7 @@ function deserializeFilters(o){
   else if (preset === 'all' || !preset) preset = 'total';
   return {
     periodPreset: preset, customFrom: o.customFrom?new Date(o.customFrom):null, customTo: o.customTo?new Date(o.customTo):null,
-    dateField: o.dateField || 'applied_at', search: o.search||'',
+    dateField: o.dateField || 'applied_at', search: o.search||'', starredOnly: !!o.starredOnly,
     dims: Object.fromEntries(Object.entries(o.dims||{}).map(([k,v]) => [k, new Set(v)])),
   };
 }
@@ -8374,6 +8520,185 @@ function toggleTheme(){
 }
 
 /* ============================================================
+   CANDIDATE PANEL (overnight #3) — a proper right-side workspace panel
+   replacing the old inline expanded ledger row. Opens from ledger rows and
+   every single-candidate drill; Escape closes it (above drills, beneath the
+   true overlays); it never touches the drill stack. Looks up its candidate
+   in rawRows, so it stays open and updates live when filters change
+   underneath (chosen over auto-close — noted).
+   ============================================================ */
+function openCandidatePanel(key){
+  state.panelKey = key;
+  renderCandidatePanel();
+}
+function closeCandidatePanel(){
+  state.panelKey = null;
+  const p = document.getElementById('cand-panel');
+  p.classList.add('hidden');
+  p.innerHTML = '';
+}
+function renderCandidatePanel(){
+  const p = document.getElementById('cand-panel');
+  if (!state.panelKey) { p.classList.add('hidden'); p.innerHTML = ''; return; }
+  const r = state.rawRows.find(x => rowKey(x) === state.panelKey);
+  if (!r) { closeCandidatePanel(); return; }
+  const key = state.panelKey;
+  const note = noteFor(key);
+  const now = nowRef();
+  const ns = r.status === 'active' ? nextStepState(r, now) : null;
+  const tier = agingTier(r, now);
+  p.classList.remove('hidden');
+  p.innerHTML = '';
+  // header: star + name + close
+  const star = el('button', { class:'lg-star cp-star' + (note.star ? ' on' : ''), type:'button', 'aria-label':'star' }, note.star ? '★' : '☆');
+  star.addEventListener('click', () => { updateNote(key, { star: !note.star }); renderCandidatePanel(); renderLedger(); renderFilterDesk(); });
+  const close = el('button', { class:'cp-close', type:'button', 'aria-label':'close panel' }, '✕');
+  close.addEventListener('click', closeCandidatePanel);
+  p.appendChild(el('div', { class:'cp-head' }, star, el('h3', { class:'cp-name' }, r.candidate_name || '—'), close));
+  const days = ledgerDaysInStage(r);
+  p.appendChild(el('div', { class:'cp-subline' },
+    `${r.job || '—'} · ${r.current_stage || '—'}`,
+    ns ? el('span', { class:'cp-substate' }, ' · ' + subStateLabel(r.current_stage, ns.state)) : document.createTextNode(r.status !== 'active' ? ' · ' + r.status : ''),
+    el('span', { class:'cp-days' + (tier ? ' ' + tier : '') }, days != null ? ` · ${Math.round(days)}d` : '')));
+  // TIMELINE — vertical stage nodes with duration bars vs norms
+  p.appendChild(el('div', { class:'cp-section-title' }, 'Timeline'));
+  p.appendChild(panelTimeline(r, now));
+  // OWNERS
+  const owners = ownersFor(r);
+  if (owners.length) {
+    p.appendChild(el('div', { class:'cp-section-title' }, 'Owners'));
+    const ow = el('div', { class:'cp-owners' });
+    owners.forEach((o, i) => {
+      if (i) ow.appendChild(document.createTextNode(' · '));
+      ow.appendChild(el('span', {}, `${o.name} `, el('span', { class:'cp-role' }, o.role)));
+    });
+    attachTip(ow, tipHtml('Who to talk to, by stage position: scheduling → coordinator, decisions → hiring manager, recruiter always.', 'the stage-owner heuristic'));
+    p.appendChild(ow);
+  }
+  // DETAILS
+  p.appendChild(el('div', { class:'cp-section-title' }, 'Details'));
+  const metaUrl = r.job_url || reqJobUrl(r.job || '—');
+  const det = el('div', { class:'cp-details' });
+  const dRow = (label, val, extra) => { if (val) det.appendChild(el('div', { class:'cp-detail-row' }, el('span', { class:'cp-detail-label' }, label), el('span', {}, String(val), extra || null))); };
+  dRow('Email', r.email);
+  dRow('Source', r.source);
+  dRow('Office', r.office);
+  dRow('Applied', fmtDate(r.applied_at));
+  dRow('Req', r.job, metaUrl ? jobLinkEl(metaUrl) : null);
+  if (r.rejection_reason) dRow('Exit reason', r.rejection_reason);
+  p.appendChild(det);
+  // TAGS editor (type-ahead over existing tags)
+  p.appendChild(el('div', { class:'cp-section-title' }, 'Tags'));
+  const tagWrap = el('div', { class:'cp-tags' });
+  (note.tags || []).forEach(t => {
+    const chip = el('span', { class:'lg-tag cp-tag' }, t);
+    const x = el('button', { class:'cp-tag-x', type:'button', 'aria-label':'remove tag' }, '✕');
+    x.addEventListener('click', () => {
+      updateNote(key, { tags: (noteFor(key).tags || []).filter(v => v !== t) });
+      renderCandidatePanel(); renderLedger(); buildDimFilterControls();
+    });
+    chip.appendChild(x);
+    tagWrap.appendChild(chip);
+  });
+  const dl = el('datalist', { id:'cp-tag-dl' });
+  allTags().forEach(t => dl.appendChild(el('option', { value:t })));
+  const tagInp = el('input', { class:'cp-tag-input', list:'cp-tag-dl', placeholder:'add tag… (Enter)' });
+  tagInp.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const t = tagInp.value.trim();
+    if (!t) return;
+    const cur = noteFor(key).tags || [];
+    if (!cur.includes(t)) {
+      updateNote(key, { tags: cur.concat([t]) });
+      // the Tags dimension surfaces in the desk the moment the first tag exists
+      if (state.visibleDims && !state.visibleDims.has('tags')) { state.visibleDims.add('tags'); persistDimPrefs(); }
+      buildDimFilterControls();
+    }
+    renderCandidatePanel(); renderLedger();
+  });
+  tagWrap.appendChild(tagInp);
+  tagWrap.appendChild(dl);
+  p.appendChild(tagWrap);
+  // NOTES editor — autosaved (debounce + blur), timestamped
+  p.appendChild(el('div', { class:'cp-section-title' }, 'Notes'));
+  const ta = el('textarea', { class:'cp-note', placeholder:'private note — stays in this browser' });
+  ta.value = note.note || '';
+  const stamp = el('div', { class:'cp-note-stamp' }, note.noteEdited ? 'edited ' + dayjs(note.noteEdited).format('MMM D') : '');
+  const saveNote = () => {
+    const txt = ta.value.trim();
+    if (txt === (noteFor(key).note || '')) return;
+    updateNote(key, { note: txt, noteEdited: txt ? Date.now() : null });
+    stamp.textContent = txt ? 'edited ' + dayjs().format('MMM D') : '';
+  };
+  ta.addEventListener('input', debounce(saveNote, 700));
+  ta.addEventListener('blur', saveNote);
+  p.appendChild(ta);
+  p.appendChild(stamp);
+  // ACTIONS — worklist state + ledger jump
+  const act = el('div', { class:'cp-actions' });
+  if (r.status === 'active') {
+    const ws = actionRowState(key);
+    const cb = el('input', { type:'checkbox', class:'aq-check', id:'cp-handled' });
+    cb.checked = !!ws.handled;
+    cb.addEventListener('change', () => { setActionHandled(key, cb.checked); });
+    act.appendChild(el('label', { class:'cp-action', for:'cp-handled' }, cb, ' handled'));
+    const sn = el('button', { class:'underline-btn muted cp-action', type:'button' }, 'Snooze 7d');
+    sn.addEventListener('click', () => snoozeAction(key));
+    act.appendChild(sn);
+  }
+  const view = el('button', { class:'underline-btn cp-action', type:'button' }, 'View in ledger');
+  view.addEventListener('click', () => { drillTo({ type:'row', key, name: r.candidate_name || 'Candidate' }); scrollLedgerIntoView(); });
+  act.appendChild(view);
+  p.appendChild(act);
+}
+// vertical stage timeline: entry date + duration bar vs a muted norm tick;
+// current stage open-ended; future scheduled event / extended offer as
+// hollow nodes; terminal outcome as the last node
+function panelTimeline(r, now){
+  const wrap = el('div', { class:'cp-timeline' });
+  const iv = stageIntervals().get(r) || stageIntervals().get(state.rawRows.find(x => rowKey(x) === rowKey(r)));
+  const stages = state.canonicalStages;
+  if (!iv) { wrap.appendChild(el('div', { class:'attn-none' }, 'No stage history available.')); return wrap; }
+  const items = [];
+  for (let i = 0; i <= iv.K; i++) {
+    if (!iv.entries[i]) continue;
+    const start = iv.entries[i];
+    const isCur = i === iv.K;
+    const end = !isCur ? (iv.entries[i + 1] || now) : (r.status === 'active' ? now : (iv.terminalAt || now));
+    const daysIn = Math.max(0, (end - start) / 86400000);
+    items.push({ stage: stages[i], date: start, days: daysIn, norm: stageNorm(stages[i]), current: isCur && r.status === 'active' });
+  }
+  const maxD = Math.max(1, ...items.map(t => Math.max(t.days, t.norm * 1.5)));
+  for (const t of items) {
+    const over = t.days > t.norm * 2.5 ? 'red' : t.days > t.norm * 1.5 ? 'amber' : '';
+    const bar = el('div', { class:'cp-bar' },
+      el('div', { class:'cp-bar-fill' + (over ? ' ' + over : '') + (t.current ? ' current' : ''), style:`width:${Math.max(2, Math.min(100, t.days / maxD * 100))}%;` }),
+      el('div', { class:'cp-norm-tick', style:`left:${Math.min(99, t.norm / maxD * 100)}%;` }));
+    attachTip(bar, tipHtml(`${Math.round(t.days)}d in ${t.stage}${t.current ? ' so far' : ''} — norm ${Math.round(t.norm)}d.`, over ? 'over the norm' : 'within the norm'));
+    wrap.appendChild(el('div', { class:'cp-tl-row' },
+      el('span', { class:'cp-node' + (t.current ? ' cur' : '') }),
+      el('div', { class:'cp-tl-body' },
+        el('div', { class:'cp-tl-head' }, el('b', {}, t.stage), ` · ${fmtDate(t.date)} · ${Math.round(t.days)}d${t.current ? ' so far' : ''}`),
+        bar)));
+  }
+  if (r.status === 'active' && r.next_event_at && r.next_event_at > now) {
+    wrap.appendChild(el('div', { class:'cp-tl-row future' }, el('span', { class:'cp-node hollow' }),
+      el('div', { class:'cp-tl-body' }, `${subStateLabel(r.current_stage, 'scheduled')} ${fmtDate(r.next_event_at)}`)));
+  }
+  if (r.status === 'active' && r.offer_extended_at && r.offer_extended_at <= now && stageIndex(r.current_stage) >= stages.length - 2) {
+    wrap.appendChild(el('div', { class:'cp-tl-row future' }, el('span', { class:'cp-node hollow' }),
+      el('div', { class:'cp-tl-body' }, `Offer extended ${fmtDate(r.offer_extended_at)} — waiting ${Math.round((now - r.offer_extended_at) / 86400000)}d`)));
+  }
+  if (r.status !== 'active') {
+    const word = r.status === 'hired' ? 'Hired' : r.status === 'declined' ? 'Offer declined' : r.status === 'withdrawn' ? 'Withdrew' : 'Rejected';
+    wrap.appendChild(el('div', { class:'cp-tl-row' }, el('span', { class:'cp-node terminal' }),
+      el('div', { class:'cp-tl-body' }, `${word} ${fmtDate(r.rejected_at || r.hired_at)}`)));
+  }
+  return wrap;
+}
+
+/* ============================================================
    PRESENT + WALL MODE (wild round D)
    Present: a full-screen deck auto-built from the CURRENT report state —
    title card → one scene per Attention flag → key sections (flow, aging,
@@ -8457,6 +8782,7 @@ function updateWallTicker(){
 function openPresent(wall){
   if (presentState) closePresent();
   if (!state.rawRows.length) { toast('Load data first.'); return; }
+  closeCandidatePanel(); // the panel is chrome — never part of a deck
   state.renderQueued = false; renderAll(); // scenes reflect the freshest state
   const root = el('div', { class:'present-root', id:'present-root' });
   const sceneEl = el('div', { class:'present-scene' });
@@ -8570,10 +8896,15 @@ function buildPaletteIndex(){
     for (const r of state.rawRows) {
       const nm = r.candidate_name;
       if (!nm) continue;
-      items.push({ type:'Candidates', label: nm, search: nm + ' ' + (r.email || ''), ctx: `${r.job || '—'} · ${r.current_stage || '—'}`,
+      const ann = state.notes ? state.notes[rowKey(r)] : null;
+      items.push({ type:'Candidates', label: nm,
+        search: nm + ' ' + (r.email || '') + (ann && ann.tags ? ' ' + ann.tags.join(' ') : '') + (ann && ann.note ? ' ' + ann.note : ''),
+        noteLc: ann && ann.note ? ann.note.toLowerCase() : '',
+        tagsLc: ann && ann.tags ? ann.tags.map(t => t.toLowerCase()) : [],
+        ctx: `${r.job || '—'} · ${r.current_stage || '—'}`,
         run: () => {
           const key = rowKey(r);
-          state.ledger.expanded.add(key);
+          openCandidatePanel(key);
           // Current-pipeline mode only shows actives — jump to Total pipeline
           // so a terminal candidate's row can actually appear in the ledger
           if (state.filters.periodPreset === 'current' && r.status !== 'active') setPeriodPreset('total');
@@ -8620,9 +8951,15 @@ function renderPaletteResults(q, container){
   let lastType = null;
   ps.results.forEach((it, idx) => {
     if (it.type !== lastType) { container.appendChild(el('div', { class:'palette-group' }, it.type)); lastType = it.type; }
+    // ✎/# marker when the hit came via a note or tag
+    let mark = '';
+    if (q && it.type === 'Candidates') {
+      if (it.noteLc && it.noteLc.includes(q)) mark += '✎';
+      if (it.tagsLc && it.tagsLc.some(t => t.includes(q))) mark += '#';
+    }
     const row = el('div', { class:'palette-item' + (idx === ps.sel ? ' sel' : ''), 'data-idx': String(idx) },
       el('span', {}, it.label),
-      it.ctx ? el('span', { class:'p-ctx' }, it.ctx) : null);
+      (it.ctx || mark) ? el('span', { class:'p-ctx' }, (mark ? mark + ' ' : '') + (it.ctx || '')) : null);
     row.addEventListener('mousemove', () => { if (ps.sel !== idx) { ps.sel = idx; paintPaletteSelection(container); } });
     row.addEventListener('click', () => runPaletteItem(it));
     container.appendChild(row);
@@ -8817,12 +9154,7 @@ function wireEvents(){
     if (openPops.length) { openPops.forEach(p=>p.classList.add('hidden')); return; }
     if (state.trendExpanded) { state.trendExpanded = null; renderTrends(); return; }
     if (state.attnOpen) { state.attnOpen = null; renderAttention(); return; }
-    if (state.ledger.expanded.size) {
-      const keys = Array.from(state.ledger.expanded);
-      state.ledger.expanded.delete(keys[keys.length-1]); // close the most recently opened row
-      renderLedger();
-      return;
-    }
+    if (state.panelKey) { closeCandidatePanel(); return; } // candidate panel closes before drills pop
     if (state.drill.length) popDrill();
   });
 }
