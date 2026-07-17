@@ -1118,6 +1118,46 @@ svg.forecast .fc-line-s{ fill:none; stroke:var(--warn); stroke-width:1.6; stroke
 .scn-delta .scn-delta-part{ color:var(--ink); }
 @media print{ .scn-toggle, .scn-panel{ display:none !important; } }
 /* ============================================================
+   INSIGHT FEED "Noticed" + DATA QUALITY AUDIT (overnight #3 round 3)
+   ============================================================ */
+.ins-row{
+  display:flex; gap:18px; align-items:center; justify-content:space-between;
+  padding:9px 2px; border-bottom:0.5px solid var(--hairline); cursor:default;
+}
+.ins-row.drillable{ cursor:pointer; }
+.ins-row.drillable:hover{ background:color-mix(in srgb, var(--ink) 3%, transparent); }
+.ins-text{ font-size:13.5px; color:var(--ink); max-width:62ch; }
+.ins-text .ins-kind{ color:var(--muted); font-size:10.5px; letter-spacing:0.12em; text-transform:uppercase; margin-right:8px; }
+.ins-fig{ flex-shrink:0; width:190px; }
+.ins-fig-row{ display:flex; align-items:center; gap:7px; font-size:10.5px; color:var(--muted); font-variant-numeric:tabular-nums; }
+.ins-fig-bar{ height:6px; background:var(--flow-3); opacity:0.85; min-width:1px; }
+.ins-fig-row.cmp .ins-fig-bar{ background:var(--muted); opacity:0.5; }
+.ins-fig-label{ width:52px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right; flex-shrink:0; }
+.ins-none{ font-size:12.5px; color:var(--muted); font-style:italic; padding:6px 0; }
+.dq-grade{ font-family:var(--serif); font-size:19px; font-weight:600; margin:4px 0 2px; }
+.dq-grade .dq-letter{ font-size:30px; margin-right:10px; }
+.dq-grade.g-red .dq-letter{ color:var(--neg); }
+.dq-grade.g-amber .dq-letter{ color:var(--warn); }
+.dq-fix{ font-size:12.5px; color:var(--muted); font-style:italic; margin-bottom:12px; }
+.dq-block-title{
+  font-size:10.5px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted);
+  border-bottom:0.5px solid var(--hairline); padding-bottom:3px; margin:16px 0 6px;
+}
+.dq-cov-row{ display:flex; align-items:center; gap:10px; padding:2.5px 0; font-size:12px; }
+.dq-cov-label{ width:150px; flex-shrink:0; color:var(--ink); }
+.dq-cov-track{ flex:1; max-width:320px; height:7px; background:transparent; border-bottom:0.5px solid var(--hairline); position:relative; }
+.dq-cov-bar{ height:7px; background:var(--flow-3); opacity:0.85; }
+.dq-cov-bar.amber{ background:var(--warn); }
+.dq-cov-bar.red{ background:var(--neg); }
+.dq-cov-pct{ width:44px; text-align:right; font-variant-numeric:tabular-nums; color:var(--muted); flex-shrink:0; }
+.dq-issue-row{ display:flex; gap:10px; align-items:baseline; padding:4px 0; font-size:13px; border-bottom:0.5px solid var(--hairline); }
+.dq-issue-n{ font-family:var(--serif); font-weight:600; min-width:3ch; text-align:right; font-variant-numeric:tabular-nums; }
+.dq-issue-row.bad .dq-issue-n{ color:var(--neg); }
+.dq-issue-row.ok{ color:var(--muted); }
+.dq-issue-row.ok .dq-issue-n{ color:var(--muted); }
+.dq-unmapped{ font-size:12px; color:var(--warn); padding:2px 0; }
+
+/* ============================================================
    WEEKLY REVIEW MEETING MODE (overnight #3 round 2) — a guided,
    interactive flow over the attention stories + overdue candidates.
    Reuses the Present chrome vocabulary (paper overlay, kicker/title)
@@ -1634,6 +1674,16 @@ html.presenting{ overflow:hidden; }
       <p class="river-caption">Worklist state is local to this browser.</p>
     </section>
 
+    <!-- ========== INSIGHT FEED — "Noticed" (overnight #3 round 3) ========== -->
+    <section class="section" id="section-insights">
+      <div class="section-head">
+        <span class="kicker" id="insights-kicker">Noticed</span>
+        <span class="section-note" id="insights-note"></span>
+      </div>
+      <div id="insights-list"></div>
+      <div><button class="underline-btn muted hidden" id="btn-insights-more" type="button">Show more</button></div>
+    </section>
+
     <!-- ========== FORECAST (Current pipeline only) ========== -->
     <section class="section hidden" id="section-forecast">
       <div class="section-head">
@@ -1811,6 +1861,14 @@ html.presenting{ overflow:hidden; }
       <p class="river-caption" id="slope-caption"></p>
     </section>
 
+    <!-- ========== DATA QUALITY AUDIT (overnight #3 round 3, gallery) ========== -->
+    <section class="section hidden" id="section-quality">
+      <div class="section-head"><span class="kicker" id="quality-kicker">Data quality</span><span class="section-note" id="quality-note"></span></div>
+      <div id="quality-grade"></div>
+      <div id="quality-body"></div>
+      <p class="river-caption" id="quality-caption"></p>
+    </section>
+
     <!-- ========== FOOTNOTE ========== -->
     <footer class="footnote" id="footnote">
       <hr class="hairline" style="margin-bottom:10px;" />
@@ -1916,6 +1974,7 @@ const state = {
   renderQueued: false,
   actionsState: {},          // lab round 8: action-queue worklist { [rowKey]: { handled, snoozeUntil } }, persisted per fingerprint
   notes: {},                 // candidate workspace: { [rowKey]: { star, tags:[], note, noteEdited } }, persisted per fingerprint — NEVER touches source data
+  insightsExpanded: false,   // "Noticed" feed show-more toggle (session-only)
   panelKey: null,            // rowKey of the open candidate panel (session-only)
   slas: {},                  // lab round 8: per-stage target days { [stage]: days }, persisted per fingerprint — overrides the historical median
   sinceVisit: null,          // lab round 8: { diff, sinceTs, dismissed } computed once per dataset load; null = first visit or no changes
@@ -8106,6 +8165,7 @@ function renderSlope(){
 const SECTION_REGISTRY = [
   { key:'attention',  title:'Attention',          el:'section-attention',  render: () => renderAttention() },
   { key:'actions',    title:'This week (action queue)', el:'section-actions', render: () => renderActionQueue(), modeNote:'Current only' },
+  { key:'insights',   title:'Noticed (insight feed)', el:'section-insights', render: () => renderInsights() },
   { key:'forecast',   title:'Forecast',           el:'section-forecast',   render: () => renderForecast(),  modeNote:'Current only' },
   { key:'stats',      title:'By the numbers',     el:'section-stats',      render: () => renderStats() },
   { key:'reqs',       title:'Requisitions',       el:'section-reqs',       render: () => renderReqs() },
@@ -8143,6 +8203,8 @@ const SECTION_REGISTRY = [
     desc:'One square = one candidate — the pipeline as countable headcount.' },
   { key:'slope',      title:'Pass-rate slope chart', el:'section-slope',    render: () => renderSlope(), gallery:true, modeNote:'historical only',
     desc:'Per-stage pass rates, comparison vs now — the at-a-glance "did we get better".' },
+  { key:'quality',    title:'Data quality audit', el:'section-quality',    render: () => renderQuality(), gallery:true,
+    desc:'Report card for the loaded export — field coverage, date sanity, staleness, duplicate suspects, and an A–F grade.' },
 ];
 let _layout = null;
 function getLayout(){
@@ -8155,7 +8217,17 @@ function getLayout(){
     }
   } catch(e){}
   if (!_layout) _layout = { order: SECTION_REGISTRY.map(d => d.key), hidden: new Set(), enabled: new Set() };
-  for (const d of SECTION_REGISTRY) if (!_layout.order.includes(d.key)) _layout.order.push(d.key); // merge new keys
+  // merge new registry keys into saved orders AT their registry position
+  // (after the nearest earlier registry neighbour), not dumped at the end
+  SECTION_REGISTRY.forEach((d, ri) => {
+    if (_layout.order.includes(d.key)) return;
+    let at = _layout.order.length;
+    for (let i = ri - 1; i >= 0; i--) {
+      const p = _layout.order.indexOf(SECTION_REGISTRY[i].key);
+      if (p >= 0) { at = p + 1; break; }
+    }
+    _layout.order.splice(at, 0, d.key);
+  });
   return _layout;
 }
 function persistLayout(){
@@ -8231,6 +8303,9 @@ function galleryThumb(key){
   } else if (key === 'waffle') {
     for (let r = 0; r < 4; r++) for (let c = 0; c < 12; c++)
       add('rect', { x:2+c*6.5, y:2+r*7, width:5, height:5, fill: c < 5 ? 'var(--flow-3)' : c < 9 ? 'var(--flow-2)' : 'var(--rej)', opacity:0.85 });
+  } else if (key === 'quality') {
+    [78,64,30,50].forEach((w,i) => add('rect', { x:2, y:2+i*7, width:w*0.8, height:5,
+      fill: w < 60 ? 'var(--neg)' : w < 90 ? 'var(--warn)' : 'var(--flow-3)', opacity:0.8 }));
   } else if (key === 'slope') {
     add('line', { x1:14, y1:2, x2:14, y2:28, stroke:'var(--hairline)' });
     add('line', { x1:68, y1:2, x2:68, y2:28, stroke:'var(--hairline)' });
@@ -8591,6 +8666,489 @@ function toggleTheme(){
   const isDarkNow = cur==='dark' || (cur==='auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   localStorage.setItem('pr-theme', isDarkNow ? 'light' : 'dark');
   applyTheme();
+}
+
+/* ============================================================
+   INSIGHT FEED — "Noticed" (overnight #3 round 3)
+   Interesting-but-unflagged facts, ranked by interestingness =
+   magnitude (|log2 ratio|) x sample-size confidence (sqrt(minN/30), capped).
+   Significance bar everywhere: n >= 8 per side, ratio >= 1.5x or <= 0.6x
+   (>= 5 combined events for rate metrics) — silence over noise. Insights
+   whose subject collides with an active Attention story are suppressed;
+   problems belong to Attention, "Noticed" is for everything else.
+   ============================================================ */
+const INS_MIN_N = 8, INS_HI = 1.5, INS_LO = 0.6;
+function insConf(n1, n2){ return Math.min(1, Math.sqrt(Math.min(n1, n2) / 30)); }
+function insRatioWord(x){ return (x >= 9.95 ? x.toFixed(0) : x.toFixed(1)) + '×'; }
+// subjects already owned by an Attention story — those insights are suppressed
+function storySubjectKeys(){
+  const s = new Set();
+  for (const st of (state._stories || [])) for (const m of st.members) {
+    const root = m.id.split(':')[0];
+    const sub = m.subject || {};
+    if (sub.stage) s.add('stage:' + sub.stage);
+    if (sub.reqs) for (const r of sub.reqs) s.add('seg:job:' + r);
+    if (sub.req) s.add('seg:job:' + sub.req);
+    if (sub.source) s.add('seg:source:' + sub.source);
+    if (root === 'withdrawal') s.add('metric:withdrawal');
+    if (root === 'offeraccept') s.add('metric:decline');
+    if (root === 'sourcedry' && m.data && m.data.source) s.add('seg:source:' + m.data.source);
+    if (root === 'bottleneck' && sub.stage) s.add('stage:' + sub.stage);
+  }
+  return s;
+}
+function insightFig(segLabel, segVal, compVal, fmt){
+  const max = Math.max(segVal, compVal, 1e-9);
+  const fig = el('div', { class:'ins-fig' });
+  const row = (label, val, cmp) => el('div', { class:'ins-fig-row' + (cmp ? ' cmp' : '') },
+    el('span', { class:'ins-fig-label' }, label),
+    el('span', { class:'ins-fig-bar', style:`width:${Math.max(1, val / max * 118)}px;` }),
+    el('span', {}, fmt(val)));
+  fig.append(row(segLabel, segVal, false), row('rest', compVal, true));
+  return fig;
+}
+/* rate-metric definitions for segment outliers (cohort mode).
+   den: eligible rows; evt: affected rows within den. */
+const INS_RATE_METRICS = [
+  { id:'hire', den: r => true, evt: r => r.status === 'hired',
+    text: (v, ratio, e, n, sr, cr) => `${v} candidates are hired at ${insRatioWord(ratio)} the rate of everyone else — ${fmtN(e)} of ${fmtN(n)} (${fmtPct(sr,1)}) vs ${fmtPct(cr,1)}.`,
+    tip: (v) => tipHtml(`Hire rate of ${v} vs the complement, this period. Fires at ≥1.5× or ≤0.6× with n≥8 per side and ≥5 hires combined.`, 'hired ÷ candidates in period'),
+    drill: (dim, v) => drillCombo({ [dim]: v }, { type:'status', status:'hired' }) },
+  { id:'withdrawal', metricKey:'metric:withdrawal', den: r => r.status === 'rejected' || r.status === 'withdrawn', evt: r => r.status === 'withdrawn',
+    text: (v, ratio, e, n, sr, cr) => `${v} candidates withdraw at ${insRatioWord(ratio)} the rate of everyone else — ${fmtN(e)} of ${fmtN(n)} exits (${fmtPct(sr,0)}) vs ${fmtPct(cr,0)}.`,
+    tip: (v) => tipHtml(`Withdrawal share of ${v}'s exits vs everyone else's. Fires at ≥1.5× or ≤0.6× with n≥8 exits per side.`, 'withdrawn ÷ (rejected + withdrawn)'),
+    drill: (dim, v) => drillCombo({ [dim]: v }, { type:'status', status:'withdrawn' }) },
+  { id:'decline', metricKey:'metric:decline', den: r => r.status === 'hired' || r.status === 'declined', evt: r => r.status === 'declined',
+    text: (v, ratio, e, n, sr, cr) => `${v} offers are declined at ${insRatioWord(ratio)} the overall rate — ${fmtN(e)} of ${fmtN(n)} resolved offers (${fmtPct(sr,0)}) vs ${fmtPct(cr,0)}.`,
+    tip: (v) => tipHtml(`Offer-decline share among ${v}'s resolved offers vs everyone else's. Fires at ≥1.5× or ≤0.6× with n≥8 resolved offers per side.`, 'declined ÷ (hired + declined)'),
+    drill: (dim, v) => drillCombo({ [dim]: v }, { type:'decline' }) },
+];
+function insSegmentOutliers(rows, out, suppress){
+  const stages = state.canonicalStages;
+  for (const [dim, dimLabel] of decompositionDims()) {
+    const valsOf = r => { const v = dimValue(r, dim); return Array.isArray(v) ? v : [v ?? '—']; };
+    const values = Array.from(new Set(rows.flatMap(valsOf))).filter(v => v !== '—');
+    if (values.length < 2) continue;
+    for (const v of values) {
+      const segKey = 'seg:' + dim + ':' + v;
+      if (suppress.has(segKey)) continue;
+      const seg = rows.filter(r => valsOf(r).includes(v));
+      const comp = rows.filter(r => !valsOf(r).includes(v));
+      // rate metrics
+      for (const M of INS_RATE_METRICS) {
+        if (M.metricKey && suppress.has(M.metricKey)) continue;
+        const sd = seg.filter(M.den), cd = comp.filter(M.den);
+        if (sd.length < INS_MIN_N || cd.length < INS_MIN_N) continue;
+        const se = sd.filter(M.evt).length, ce = cd.filter(M.evt).length;
+        if (se + ce < 5) continue;
+        const sr = se / sd.length, cr = ce / cd.length;
+        if (cr <= 0) continue; // no baseline to compare against
+        const ratio = sr / cr;
+        if (ratio < INS_HI && ratio > INS_LO) continue;
+        if (ratio < 1 && sr === 0 && cr * sd.length < 3) continue; // a zero needs ≥3 expected events to mean anything
+        out.push({ id:`seg:${M.id}:${dim}:${v}`, subjects:[segKey].concat(M.metricKey ? [M.metricKey] : []),
+          kind:'outlier', n: Math.min(sd.length, cd.length),
+          score: Math.abs(Math.log2(Math.max(ratio, 0.05))) * insConf(sd.length, cd.length) * 10,
+          text: M.text(v, ratio, se, sd.length, sr, cr),
+          tip: M.tip(v),
+          fig: () => insightFig(v, sr, cr, x => fmtPct(x, sr < 0.1 && cr < 0.1 ? 1 : 0)),
+          drill: () => M.drill(dim, v) });
+      }
+      // per-stage pass rates
+      for (let i = 0; i < stages.length - 1; i++) {
+        if (suppress.has('stage:' + stages[i])) continue;
+        const sEnt = seg.filter(r => stageIndex(r.current_stage) >= i), cEnt = comp.filter(r => stageIndex(r.current_stage) >= i);
+        if (sEnt.length < INS_MIN_N || cEnt.length < INS_MIN_N) continue;
+        const sAdv = sEnt.filter(r => stageIndex(r.current_stage) >= i + 1).length;
+        const cAdv = cEnt.filter(r => stageIndex(r.current_stage) >= i + 1).length;
+        if (sAdv + cAdv < 5) continue;
+        const sr = sAdv / sEnt.length, cr = cAdv / cEnt.length;
+        if (cr <= 0) continue;
+        const ratio = sr / cr;
+        if (ratio < INS_HI && ratio > INS_LO) continue;
+        out.push({ id:`seg:pass:${stages[i]}:${dim}:${v}`, subjects:[segKey, 'stage:' + stages[i]],
+          kind:'outlier', n: Math.min(sEnt.length, cEnt.length),
+          score: Math.abs(Math.log2(Math.max(ratio, 0.05))) * insConf(sEnt.length, cEnt.length) * 9,
+          text: `${v} candidates pass ${stages[i]} at ${insRatioWord(ratio)} the rate of everyone else — ${fmtPct(sr,0)} (${fmtN(sAdv)} of ${fmtN(sEnt.length)}) vs ${fmtPct(cr,0)}.`,
+          tip: tipHtml(`Share of ${v} candidates who reached ${stages[i]} and went on past it, vs everyone else. Fires at ≥1.5× or ≤0.6× with n≥8 per side.`, `reached ${stages[i+1]} ÷ reached ${stages[i]}`),
+          fig: () => insightFig(v, sr, cr, x => fmtPct(x, 0)),
+          drill: () => drillCombo({ [dim]: v }, { type:'reached', stage: stages[i] }) });
+      }
+      // median time-to-hire
+      const tth = r => (r.status === 'hired' && r.hired_at && r.applied_at) ? (r.hired_at - r.applied_at) / 86400000 : null;
+      const sT = seg.map(tth).filter(x => x != null), cT = comp.map(tth).filter(x => x != null);
+      if (sT.length >= INS_MIN_N && cT.length >= INS_MIN_N) {
+        const sm = median(sT), cm = median(cT);
+        if (cm > 0) {
+          const ratio = sm / cm;
+          if (ratio >= INS_HI || ratio <= INS_LO) {
+            const faster = ratio < 1;
+            out.push({ id:`seg:tth:${dim}:${v}`, subjects:[segKey],
+              kind:'outlier', n: Math.min(sT.length, cT.length),
+              score: Math.abs(Math.log2(ratio)) * insConf(sT.length, cT.length) * 9,
+              text: `${v} hires close in ${Math.round(sm)}d median vs ${Math.round(cm)}d for everyone else — ${insRatioWord(faster ? cm / sm : ratio)} ${faster ? 'faster' : 'slower'} (${fmtN(sT.length)} hires).`,
+              tip: tipHtml(`Median applied→hired days for ${v}'s hires vs all other hires this period. Fires at ≥1.5× or ≤0.6× with n≥8 hires per side.`, 'median time-to-hire'),
+              fig: () => insightFig(v, sm, cm, x => Math.round(x) + 'd'),
+              drill: () => drillCombo({ [dim]: v }, { type:'status', status:'hired' }) });
+          }
+        }
+      }
+    }
+  }
+}
+// records & streaks over the all-time (dim-filtered) history; complete months only
+function insMonthlySeries(rows, dateField, pred){
+  const by = new Map();
+  const cur = dayjs().format('YYYY-MM');
+  for (const r of rows) {
+    if (pred && !pred(r)) continue;
+    const d = r[dateField];
+    if (!d) continue;
+    const k = dayjs(d).format('YYYY-MM');
+    if (k >= cur) continue; // the running month is not comparable
+    by.set(k, (by.get(k) || 0) + 1);
+  }
+  const keys = Array.from(by.keys()).sort();
+  if (!keys.length) return [];
+  // fill gaps with zeros so streaks/records read the true calendar
+  const series = [];
+  let m = dayjs(keys[0] + '-01');
+  const last = dayjs(keys[keys.length - 1] + '-01');
+  while (m <= last) { const k = m.format('YYYY-MM'); series.push({ k, v: by.get(k) || 0 }); m = m.add(1, 'month'); }
+  return series;
+}
+function insRecordsAndStreaks(out){
+  const all = baseFilteredRows(null); // all-time, respecting dim filters — "on record"
+  const defs = [
+    { id:'apps', label:'applications', series: insMonthlySeries(all, 'applied_at'),
+      drill: null, dateField:'applied_at' },
+    { id:'hires', label:'hires', series: insMonthlySeries(all, 'hired_at', r => r.status === 'hired'),
+      drill: null, dateField:'hired_at' },
+  ];
+  for (const d of defs) {
+    const s = d.series;
+    if (s.length < 6) continue;
+    const lastPt = s[s.length - 1];
+    const best = Math.max(...s.map(p => p.v)), worst = Math.min(...s.map(p => p.v));
+    const monthName = dayjs(lastPt.k + '-01').format('MMMM');
+    const drillMonth = () => { // records drill to that month via a custom-period drill
+      pushDrill();
+      const from = dayjs(lastPt.k + '-01');
+      state.filters.periodPreset = 'custom';
+      state.filters.customFrom = from.toDate();
+      state.filters.customTo = from.endOf('month').toDate();
+      state.filters.dateField = d.dateField;
+      queueRender();
+    };
+    if (lastPt.v >= 8 && lastPt.v === best && s.filter(p => p.v === best).length === 1) {
+      out.push({ id:`record:best:${d.id}`, subjects:[], kind:'record', n: lastPt.v,
+        score: 6 + Math.min(4, lastPt.v / 20),
+        text: `${monthName} was the best month on record for ${d.label} — ${fmtN(lastPt.v)}, over ${s.length} months of history.`,
+        tip: tipHtml(`Highest complete-month ${d.label} count in the loaded history (${s.length} months). The running month is excluded — it isn't comparable.`, 'complete months only'),
+        fig: null, drill: drillMonth });
+    } else if (s.length >= 8 && lastPt.v === worst && best >= 8 && s.filter(p => p.v === worst).length === 1) {
+      out.push({ id:`record:worst:${d.id}`, subjects:[], kind:'record', n: best,
+        score: 5.5,
+        text: `${monthName} was the slowest month on record for ${d.label} — ${fmtN(lastPt.v)} vs a best of ${fmtN(best)}.`,
+        tip: tipHtml(`Lowest complete-month ${d.label} count in the loaded history (${s.length} months).`, 'complete months only'),
+        fig: null, drill: drillMonth });
+    }
+    // streaks: >= 3 strictly rising/falling month-over-month steps
+    let k = 1;
+    while (k < s.length && s[s.length - k - 1].v !== s[s.length - k].v &&
+           (s[s.length - k - 1].v < s[s.length - k].v) === (s[s.length - 2].v < s[s.length - 1].v)) k++;
+    const runs = k - 1; // number of consecutive month-over-month moves
+    const rising = s[s.length - 1].v > s[s.length - 2].v;
+    if (runs >= 3 && (rising ? s[s.length - 1].v >= 8 : s[s.length - 1 - runs].v >= 8)) {
+      out.push({ id:`streak:${d.id}`, subjects:[], kind:'streak', n: s[s.length - 1].v,
+        score: 4 + runs,
+        text: `${d.label.charAt(0).toUpperCase() + d.label.slice(1)} have ${rising ? 'risen' : 'fallen'} ${runs} consecutive months (${fmtN(s[s.length - 1 - runs].v)} → ${fmtN(s[s.length - 1].v)}).`,
+        tip: tipHtml(`${runs} strictly ${rising ? 'rising' : 'falling'} month-over-month steps in ${d.label}, ending ${dayjs(s[s.length-1].k + '-01').format('MMM YYYY')}.`, 'complete months only'),
+        fig: null, drill: null });
+    }
+  }
+}
+// interviews-per-hire notables, by req vs the complement
+function insRatioNotables(rows, out, suppress){
+  const stages = state.canonicalStages;
+  if (stages.length < 4 || !state.mapping.job) return;
+  const ivIdx = stages.length - 3; // the on-site style interview stage (e.g. Onsite)
+  const ivName = stages[ivIdx];
+  const reached = rows.filter(r => stageIndex(r.current_stage) >= ivIdx);
+  const jobs = Array.from(new Set(rows.map(r => r.job).filter(Boolean)));
+  for (const j of jobs) {
+    if (suppress.has('seg:job:' + j)) continue;
+    const segR = reached.filter(r => r.job === j), compR = reached.filter(r => r.job !== j);
+    const segH = segR.filter(r => r.status === 'hired').length, compH = compR.filter(r => r.status === 'hired').length;
+    if (segR.length < INS_MIN_N || compR.length < INS_MIN_N || segH < 2 || compH < 2) continue;
+    const segRatio = segR.length / segH, compRatio = compR.length / compH;
+    const ratio = segRatio / compRatio;
+    if (ratio < INS_HI && ratio > INS_LO) continue;
+    out.push({ id:`ratio:iph:${j}`, subjects:['seg:job:' + j],
+      kind:'ratio', n: Math.min(segR.length, compR.length),
+      score: Math.abs(Math.log2(ratio)) * insConf(segR.length, compR.length) * 8,
+      text: `It takes ${segRatio.toFixed(0)} ${ivName.toLowerCase()}s per hire for ${j} vs ${compRatio.toFixed(0)} everywhere else.`,
+      tip: tipHtml(`Candidates who reached ${ivName} divided by hires, for ${j} vs all other reqs. Fires at ≥1.5× or ≤0.6× with n≥8 ${ivName} candidates and ≥2 hires per side.`, `${ivName} candidates ÷ hires`),
+      fig: () => insightFig(j, segRatio, compRatio, x => x.toFixed(0)),
+      drill: () => drillCombo({ job: j }, { type:'reached', stage: ivName }) });
+  }
+}
+// current-pipeline notables: the standouts of RIGHT NOW (incl. positive recognition)
+function insCurrentNotables(out, suppress){
+  const now = nowRef();
+  const snap = state.snapshotRows || [];
+  if (!snap.length) return;
+  // oldest candidate in the pipeline
+  const age = r => r.applied_at ? (now - r.applied_at) / 86400000 : 0;
+  const oldest = snap.slice().sort((a, b) => age(b) - age(a))[0];
+  if (oldest && age(oldest) >= 30) {
+    out.push({ id:'now:oldest', subjects:[], kind:'notable', n: 1,
+      score: 3 + Math.min(4, age(oldest) / 40),
+      text: `${oldest.candidate_name || '—'} has been in the pipeline ${Math.round(age(oldest))} days — the longest right now (${oldest.job || '—'}, ${subStateLabel(oldest.current_stage, nextStepState(oldest, now).state).toLowerCase()}).`,
+      tip: tipHtml('The active candidate with the earliest application date. Shown once the oldest tenure passes 30 days.', 'days since applied'),
+      fig: null,
+      drill: () => { const key = rowKey(oldest); openCandidatePanel(key); drillTo({ type:'row', key, name: oldest.candidate_name || 'Candidate' }); } });
+  }
+  // req with the healthiest sub-state mix (most of its actives in motion)
+  if (state.mapping.job) {
+    const inMotion = r => { const s = nextStepState(r, now).state; return s === 'scheduled' || s === 'offer-out'; };
+    let bestJob = null;
+    for (const j of new Set(snap.map(r => r.job).filter(Boolean))) {
+      if (suppress.has('seg:job:' + j)) continue;
+      const seg = snap.filter(r => r.job === j), comp = snap.filter(r => r.job !== j);
+      if (seg.length < INS_MIN_N || comp.length < INS_MIN_N) continue;
+      const sr = seg.filter(inMotion).length / seg.length, cr = comp.filter(inMotion).length / comp.length;
+      if (cr <= 0) continue;
+      const ratio = sr / cr;
+      if (ratio >= INS_HI && (!bestJob || ratio > bestJob.ratio)) bestJob = { j, seg, sr, cr, ratio };
+    }
+    if (bestJob) out.push({ id:'now:healthy:' + bestJob.j, subjects:['seg:job:' + bestJob.j], kind:'notable', n: bestJob.seg.length,
+      score: Math.log2(bestJob.ratio) * insConf(bestJob.seg.length, 30) * 8,
+      text: `${bestJob.j} has the healthiest pipeline — ${fmtPct(bestJob.sr,0)} of its ${fmtN(bestJob.seg.length)} actives have a next step booked vs ${fmtPct(bestJob.cr,0)} elsewhere.`,
+      tip: tipHtml(`Share of actives in a scheduled or offer-out state, per req vs the rest. Fires at ≥1.5× with n≥8 actives per side.`, 'scheduled + offer-out ÷ actives'),
+      fig: () => insightFig(bestJob.j, bestJob.sr, bestJob.cr, x => fmtPct(x, 0)),
+      drill: () => drillCombo({ job: bestJob.j }, { type:'status', status:'active' }) });
+  }
+  // positive recognition: an owner with a full desk and ZERO overdue
+  const od = new Set(overdueActives().map(rowKey));
+  for (const field of ['coordinator', 'recruiter']) {
+    if (!state.mapping[field]) continue;
+    const best = [];
+    for (const name of new Set(snap.map(r => r[field]).filter(Boolean))) {
+      const mine = snap.filter(r => r[field] === name);
+      if (mine.length < INS_MIN_N) continue;
+      if (mine.some(r => od.has(rowKey(r)))) continue;
+      best.push({ name, mine });
+    }
+    best.sort((a, b) => b.mine.length - a.mine.length);
+    if (best.length) {
+      const b = best[0];
+      out.push({ id:`now:clean:${field}:${b.name}`, subjects:[], kind:'notable', n: b.mine.length,
+        score: 4 + Math.min(3, b.mine.length / 8),
+        text: `All ${fmtN(b.mine.length)} of ${b.name}'s candidates have a next step booked or are on pace — ${best.length > 1 ? `one of ${best.length} ${field} desks` : `the only ${field.replace('_', ' ')} desk`} with zero overdue.`,
+        tip: tipHtml(`${b.name}'s active candidates, none overdue by the state-aware aging rules. Recognition, not a flag — shown for desks of 8+.`, 'zero overdue on the desk'),
+        fig: null,
+        drill: () => drillCombo({ [field]: b.name }, { type:'status', status:'active' }) });
+      break; // one recognition line is enough
+    }
+  }
+}
+function computeInsights(){
+  const out = [];
+  const suppress = storySubjectKeys();
+  const isSnapshot = impliedMode() === 'snapshot';
+  if (isSnapshot) {
+    insCurrentNotables(out, suppress);
+  } else {
+    insSegmentOutliers(state.rows, out, suppress);
+    insRecordsAndStreaks(out);
+    insRatioNotables(state.rows, out, suppress);
+  }
+  const clean = out.filter(i => !i.subjects.some(s => suppress.has(s)));
+  clean.sort((a, b) => b.score - a.score);
+  return clean.slice(0, 10);
+}
+const INS_KIND_WORD = { outlier:'outlier', record:'record', streak:'streak', ratio:'ratio', notable:'right now' };
+function renderInsights(){
+  const section = $('#section-insights');
+  if (!state.rows.length && !(state.snapshotRows || []).length) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+  attachTipOnce($('#insights-kicker'), tipHtml(
+    'Interesting-but-unflagged facts: segment outliers, records, streaks and notables that clear a significance bar (n≥8 per side, ≥1.5× deviation). Problems live in Attention; this is everything else worth knowing.',
+    'interestingness = magnitude × sample-size confidence'));
+  const list = $('#insights-list'); list.innerHTML = '';
+  const insights = computeInsights();
+  $('#insights-note').textContent = impliedMode() === 'snapshot' ? 'right now' : 'this period';
+  const moreBtn = $('#btn-insights-more');
+  if (!insights.length) {
+    list.appendChild(el('div', { class:'ins-none' }, 'Nothing notable beyond the flags.'));
+    moreBtn.classList.add('hidden');
+    return;
+  }
+  const shown = state.insightsExpanded ? insights : insights.slice(0, 5);
+  for (const ins of shown) {
+    const row = el('div', { class:'ins-row' + (ins.drill ? ' drillable' : '') },
+      el('div', { class:'ins-text' }, el('span', { class:'ins-kind' }, INS_KIND_WORD[ins.kind] || ins.kind), ins.text),
+      ins.fig ? ins.fig() : null);
+    if (ins.tip) attachTip(row, ins.tip);
+    if (ins.drill) row.addEventListener('click', ins.drill);
+    list.appendChild(row);
+  }
+  if (insights.length > 5) {
+    moreBtn.classList.remove('hidden');
+    moreBtn.textContent = state.insightsExpanded ? 'Show fewer' : `Show ${insights.length - 5} more`;
+  } else moreBtn.classList.add('hidden');
+}
+
+/* ============================================================
+   DATA QUALITY AUDIT (overnight #3 round 3, gallery) — a report card
+   for real exports. Computed on state.rawRows: quality is a property of
+   the DATA, not of the current filter (the caption says so).
+   ============================================================ */
+const DQ_IMPORTANT_UNMAPPED = [
+  ['next_event_at', 'scheduled interviews not mapped — sub-states degrade to "needs step" only'],
+  ['offer_extended_at', 'offer dates not mapped — the offer-out state is unavailable'],
+  ['last_activity_at', 'last activity not mapped — staleness cannot be checked'],
+  ['stage_entered_at', 'stage entry dates not mapped — time-in-stage relies on approximation'],
+  ['email', 'email not mapped — duplicate detection falls back to name + req'],
+];
+function computeQuality(){
+  const rows = state.rawRows;
+  const now = new Date();
+  const q = { n: rows.length, coverage: [], unmapped: [], issues: [], penalties: [] };
+  if (!rows.length) return q;
+  // field coverage, every mapped canonical field — measured against the rows
+  // where the field APPLIES (hired_at only exists for hires, etc); point-in-time
+  // event fields (next_event_at, offer_extended_at) are expected sparse and are
+  // excluded from coverage — their absence is judged by the mapping callouts
+  const DQ_APPLICABLE = {
+    hired_at: { pred: r => r.status === 'hired', note: 'of hired rows' },
+    rejected_at: { pred: r => r.status === 'rejected' || r.status === 'withdrawn' || r.status === 'declined', note: 'of exited rows' },
+    rejection_reason: { pred: r => r.status === 'rejected', note: 'of rejected rows' },
+  };
+  const DQ_SKIP_COVERAGE = new Set(['next_event_at', 'offer_extended_at']);
+  for (const [field, label] of CANONICAL) {
+    if (!state.mapping[field] || DQ_SKIP_COVERAGE.has(field)) continue;
+    const app = DQ_APPLICABLE[field];
+    const den = app ? rows.filter(app.pred) : rows;
+    if (!den.length) continue;
+    let filled = 0;
+    for (const r of den) { const v = r[field]; if (v != null && v !== '') filled++; }
+    const pct = filled / den.length;
+    q.coverage.push({ field, label, pct, den: den.length, note: app ? app.note : 'of all rows' });
+    if (pct < 0.9) q.penalties.push({ pts: Math.min(12, (0.9 - pct) * 40), fix: `improve ${label} coverage (${fmtPct(pct,0)} filled)` });
+  }
+  for (const [field, msg] of DQ_IMPORTANT_UNMAPPED) {
+    if (state.mapping[field]) continue;
+    q.unmapped.push(msg);
+    q.penalties.push({ pts: 4, fix: `map ${CANONICAL.find(c => c[0] === field)[1]}` });
+  }
+  // date sanity
+  const future = rows.filter(r => r.applied_at && r.applied_at > now);
+  const termBefore = rows.filter(r => r.applied_at && ((r.rejected_at && r.rejected_at < r.applied_at) || (r.hired_at && r.hired_at < r.applied_at)));
+  const KW_ORDER = ['screen', 'onsite', 'offer'];
+  const outOfOrder = rows.filter(r => {
+    if (!r.stageDates) return false;
+    let prev = r.applied_at || null;
+    for (const kw of KW_ORDER) {
+      const d = r.stageDates[kw];
+      if (!d) continue;
+      if (prev && d < prev) return true;
+      prev = d;
+    }
+    return false;
+  });
+  const issue = (id, label, set, tip, always) => {
+    if (!set.length && !always) { q.issues.push({ id, label, n: 0, tip }); return; }
+    q.issues.push({ id, label, n: set.length, rows: set, tip });
+  };
+  issue('future', 'applications dated in the future', future,
+    tipHtml('Rows whose applied date is after today — usually a timezone or import artifact.', 'applied_at > today'));
+  issue('termbefore', 'terminal dates before the application', termBefore,
+    tipHtml('Hired or rejected dates earlier than the applied date — the record contradicts itself.', 'hired_at / rejected_at < applied_at'));
+  issue('order', 'stage timestamps out of order', outOfOrder,
+    tipHtml('Stage dates that run backwards (e.g. an onsite dated before its screen, or any stage before the application).', 'screen → onsite → offer must not decrease'));
+  if (future.length) q.penalties.push({ pts: Math.min(15, future.length / rows.length * 300), fix: 'fix future-dated applications' });
+  if (termBefore.length) q.penalties.push({ pts: Math.min(15, termBefore.length / rows.length * 300), fix: 'fix terminal dates that precede the application' });
+  if (outOfOrder.length) q.penalties.push({ pts: Math.min(10, outOfOrder.length / rows.length * 200), fix: 'fix out-of-order stage timestamps' });
+  // staleness (only when the field exists to check)
+  if (state.mapping.last_activity_at) {
+    const cut = new Date(now - 30 * 86400000);
+    const stale = rows.filter(r => r.status === 'active' && r.last_activity_at && r.last_activity_at < cut);
+    issue('stale', 'active candidates untouched for 30+ days — possibly abandoned records', stale,
+      tipHtml('Active applications with no recorded activity in 30 days. Often records nobody closed out.', 'status = active · last_activity_at < today − 30d'));
+    if (stale.length) q.penalties.push({ pts: Math.min(10, stale.length / Math.max(1, rows.filter(r => r.status === 'active').length) * 40), fix: 'close out abandoned active records' });
+  }
+  // duplicate suspects among ACTIVE applications
+  const actives = rows.filter(r => r.status === 'active');
+  const dupeRows = new Set();
+  const byEmail = new Map();
+  if (state.mapping.email) for (const r of actives) { if (!r.email) continue; const k = String(r.email).toLowerCase(); if (!byEmail.has(k)) byEmail.set(k, []); byEmail.get(k).push(r); }
+  const byNameJob = new Map();
+  for (const r of actives) { if (!r.candidate_name) continue; const k = String(r.candidate_name).toLowerCase() + '|' + (r.job || ''); if (!byNameJob.has(k)) byNameJob.set(k, []); byNameJob.get(k).push(r); }
+  for (const m of [byEmail, byNameJob]) for (const arr of m.values()) if (arr.length > 1) arr.forEach(r => dupeRows.add(r));
+  const dupes = Array.from(dupeRows);
+  issue('dupes', 'duplicate suspects — same email or name+req, multiple active applications', dupes,
+    tipHtml('Active applications sharing an email address, or a candidate name + req pair. Same person counted twice inflates every pipeline number.', state.mapping.email ? 'matched on email, and on name + req' : 'matched on name + req (email unmapped)'));
+  if (dupes.length) q.penalties.push({ pts: Math.min(15, dupes.length / Math.max(1, actives.length) * 100), fix: 'de-duplicate active applications' });
+  // grade
+  const score = Math.max(0, 100 - q.penalties.reduce((s, p) => s + p.pts, 0));
+  q.score = score;
+  q.grade = score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 65 ? 'C' : score >= 50 ? 'D' : 'F';
+  const top = q.penalties.slice().sort((a, b) => b.pts - a.pts)[0];
+  q.topFix = top ? top.fix : null;
+  return q;
+}
+function renderQuality(){
+  const section = $('#section-quality');
+  if (!state.rawRows.length) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+  attachTipOnce($('#quality-kicker'), tipHtml(
+    'A report card for the loaded export: field coverage, date sanity, staleness and duplicate suspects, graded A–F from weighted issues.',
+    'computed on the raw rows — quality is about the data, not the filter'));
+  const q = computeQuality();
+  $('#quality-note').textContent = `${fmtN(q.n)} rows audited`;
+  const gradeEl = $('#quality-grade'); gradeEl.innerHTML = '';
+  const gradeCls = q.grade === 'A' || q.grade === 'B' ? '' : (q.grade === 'C' ? ' g-amber' : ' g-red');
+  const gline = el('div', { class:'dq-grade' + gradeCls }, el('span', { class:'dq-letter' }, q.grade), `${Math.round(q.score)} / 100`);
+  attachTip(gline, tipHtml('100 minus weighted penalties: coverage gaps, unmapped key fields, date contradictions, staleness and duplicates. A ≥90 · B ≥80 · C ≥65 · D ≥50.', 'the grade formula'));
+  gradeEl.appendChild(gline);
+  if (q.topFix) gradeEl.appendChild(el('div', { class:'dq-fix' }, 'Top fix: ' + q.topFix + '.'));
+  const body = $('#quality-body'); body.innerHTML = '';
+  // coverage bars
+  body.appendChild(el('div', { class:'dq-block-title' }, 'Field coverage'));
+  for (const c of q.coverage) {
+    const cls = c.pct < 0.6 ? 'red' : c.pct < 0.9 ? 'amber' : '';
+    const row = el('div', { class:'dq-cov-row' },
+      el('span', { class:'dq-cov-label' }, c.label),
+      el('div', { class:'dq-cov-track' }, el('div', { class:'dq-cov-bar ' + cls, style:`width:${Math.max(1, c.pct * 100)}%;` })),
+      el('span', { class:'dq-cov-pct' }, fmtPct(c.pct, c.pct > 0.99 && c.pct < 1 ? 1 : 0)));
+    attachTip(row, tipHtml(`${fmtPct(c.pct, 1)} of ${fmtN(c.den)} applicable rows (${c.note}) carry a ${c.label}. Red below 60%, amber below 90%.`, 'non-empty share where the field applies'));
+    body.appendChild(row);
+  }
+  for (const u of q.unmapped) body.appendChild(el('div', { class:'dq-unmapped' }, '⚠ ' + u));
+  // issues
+  body.appendChild(el('div', { class:'dq-block-title' }, 'Issues'));
+  for (const iss of q.issues) {
+    const row = el('div', { class:'dq-issue-row ' + (iss.n ? 'bad' : 'ok') },
+      el('span', { class:'dq-issue-n' }, fmtN(iss.n)),
+      el('span', {}, iss.label + (iss.n ? '' : ' — none found')));
+    if (iss.tip) attachTip(row, iss.tip);
+    if (iss.n && iss.rows) {
+      const b = el('button', { class:'underline-btn', type:'button' }, 'view →');
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const keys = new Set(iss.rows.map(rowKey));
+        // the issue set may include terminal rows Current mode can't show
+        if (state.filters.periodPreset === 'current' && iss.rows.some(r => r.status !== 'active')) setPeriodPreset('total');
+        drillTo({ type:'rows', keys, label: iss.label });
+        scrollLedgerIntoView();
+      });
+      row.appendChild(b);
+    }
+    body.appendChild(row);
+  }
+  $('#quality-caption').textContent = `Audited on all ${fmtN(q.n)} loaded rows — data quality is a property of the export, not of the current filter.`;
 }
 
 /* ============================================================
@@ -9552,6 +10110,7 @@ function wireEvents(){
   // review meeting mode keyboard
   window.addEventListener('keydown', reviewKeydown);
   $('#btn-run-review').addEventListener('click', openReview);
+  $('#btn-insights-more').addEventListener('click', () => { state.insightsExpanded = !state.insightsExpanded; renderInsights(); });
   attachTipOnce($('#btn-run-review'), tipHtml('Run the weekly review — a guided walk through the stories and overdue candidates, capturing decisions as you go.', 'Current pipeline only'));
   $('#btn-run-review2').addEventListener('click', openReview);
   // present/wall keyboard: arrows + space advance, P toggles, any key exits the wall
