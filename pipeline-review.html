@@ -154,6 +154,8 @@ html.ed-web1 .stat-value .numlink{ color:#00FF00; font-family:'Courier New',mono
 html.ed-web1 .section-head{ display:block; text-align:center; }
 html.ed-web1 .section-head .section-note, html.ed-web1 .section-head .section-action{ margin-left:0; display:inline-block; margin-top:2px; }
 html.ed-web1 .kicker{ font-size:17px; font-weight:700; letter-spacing:0.02em; color:#000; }
+/* Times renders visually smaller than the broadsheet faces at equal px — compensate uniformly */
+html.ed-web1 body{ zoom:1.12; }
 html.ed-web1 .section-head::after{
   content:''; display:block; height:4px; margin-top:5px;
   background:linear-gradient(90deg, #FF0000, #FF8C00, #FFFF00, #00CC00, #0000EE, #4B0082, #8F00FF);
