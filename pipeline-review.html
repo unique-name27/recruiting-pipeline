@@ -865,6 +865,7 @@ const state = {
   },
   selection: null,           // { kind:'stage'|'reject'|'withdraw'|'decline'|'active', stage, } — sankey/table cross-filter
   drill: [],                 // history stack of pre-drill snapshots for "← Back" (viz clicks only)
+  redo: [],                  // forward stack: popped drill snapshots, re-applied by Ctrl+Y / "→ Forward"
   attnOpen: null,            // id of the Attention flag whose investigation panel is expanded
   visibleDims: null,         // Set of dim keys shown in the filter desk (null = default set); persisted per fingerprint
   actionsState: {},          // action-queue worklist { [rowKey]: { handled, snoozeUntil } }, persisted per fingerprint
@@ -1682,6 +1683,7 @@ function facetedCounts(dimField){
   return counts;
 }
 function toggleDimValue(dim, value){
+  clearRedo(); // a manual filter change invalidates the forward path
   const f = state.filters;
   if (!f.dims[dim]) f.dims[dim] = new Set();
   if (f.dims[dim].has(value)) f.dims[dim].delete(value); else f.dims[dim].add(value);
@@ -1691,6 +1693,7 @@ function toggleDimValue(dim, value){
 function clearAllFilters(){
   state.filters.dims = {}; state.filters.search = ''; state.selection = null;
   state.drill.length = 0;
+  clearRedo();
   $('#fd-search').value = '';
   queueRender();
 }
@@ -1729,6 +1732,7 @@ function periodPresetLabel(p){
   return map[p] || p;
 }
 function setPeriodPreset(p){
+  clearRedo(); // manual period change invalidates the forward path
   // crossing the snapshot/cohort boundary invalidates sankey selections + drill history + time machine
   if ((state.filters.periodPreset === 'current') !== (p === 'current')) { state.selection = null; state.drill.length = 0; state.asOfDate = null; }
   state.filters.periodPreset = p;
@@ -2721,6 +2725,12 @@ function renderFilterDesk(){
     line.appendChild(backBtn);
     line.appendChild(document.createTextNode(' · '));
   }
+  if (state.redo && state.redo.length) {
+    const fwdBtn = el('button', { class:'drill-back' }, '→ Forward');
+    fwdBtn.addEventListener('click', redoDrill);
+    line.appendChild(fwdBtn);
+    line.appendChild(document.createTextNode(' · '));
+  }
   line.appendChild(document.createTextNode(`${fmtN(state.rows.length)} of ${fmtN(state.rawRows.length)} candidates`));
   for (const t of terms) {
     const span = el('span', { class:'term' }, ' · ', t.text, ' ');
@@ -3307,20 +3317,38 @@ function selectionsEqual(a,b){
 function dimsSnapshot(){
   return Object.fromEntries(Object.entries(state.filters.dims).map(([k,v]) => [k, new Set(v)]));
 }
+function currentDrillSnapshot(){
+  return { selection: state.selection ? { ...state.selection } : null, dims: dimsSnapshot() };
+}
+function applyDrillSnapshot(snap){
+  state.selection = snap.selection;
+  state.filters.dims = snap.dims;
+}
+// forward (redo) stack: Back/Escape/Ctrl+Z push the state they leave here;
+// any NEW drill or manual filter change invalidates the forward path
+function clearRedo(){ state.redo.length = 0; }
 function pushDrill(){
-  state.drill.push({ selection: state.selection ? { ...state.selection } : null, dims: dimsSnapshot() });
+  clearRedo();
+  state.drill.push(currentDrillSnapshot());
 }
 function popDrill(){
   const snap = state.drill.pop();
   if (!snap) return;
-  state.selection = snap.selection;
-  state.filters.dims = snap.dims;
+  state.redo.push(currentDrillSnapshot());
+  applyDrillSnapshot(snap);
+  queueRender();
+}
+function redoDrill(){
+  const snap = state.redo.pop();
+  if (!snap) return;
+  state.drill.push(currentDrillSnapshot());
+  applyDrillSnapshot(snap);
   queueRender();
 }
 function drillToggleDim(dim, value){
   const set = state.filters.dims[dim];
   const removing = set && set.has(value);
-  if (removing) state.drill.pop(); // clicking the same row again undoes the drill
+  if (removing) { state.drill.pop(); clearRedo(); } // clicking the same row again undoes the drill (a new action, not history nav)
   else pushDrill();
   toggleDimValue(dim, value);
 }
@@ -4238,14 +4266,24 @@ function renderTrends(){
   const spanDays = Math.max(1, (range[1]-range[0])/86400000);
   const res = pickResolution(spanDays);
   TREND_DEFS.forEach((def,idx) => {
+    // group rows by bin key ONCE per def instead of filtering all rows per bin
+    // (was the report's slowest path: rows × bins × defs dayjs calls)
+    const groupByBin = rowsArr => {
+      const m = new Map();
+      for (const r of rowsArr) { const dt = r[def.field]; if (!dt) continue; const k = binKey(dt, res); const arr = m.get(k); if (arr) arr.push(r); else m.set(k, [r]); }
+      return m;
+    };
+    const curGroups = groupByBin(state.rows);
+    const EMPTY_BIN = [];
     const bins = buildBins(state.rows, def.field, res, range).map(b => {
-      const rowsInBin = state.rows.filter(r => r[def.field] && binKey(r[def.field],res)===b.key);
+      const rowsInBin = curGroups.get(b.key) || EMPTY_BIN;
       return { ...b, value: def.metric(rowsInBin), n: def.count ? def.count(rowsInBin) : rowsInBin.length };
     });
     let prevBins = null;
     if (state.prevRows && state.prevRange) {
+      const prevGroups = groupByBin(state.prevRows);
       prevBins = buildBins(state.prevRows, def.field, res, state.prevRange).map(b => {
-        const rowsInBin = state.prevRows.filter(r => r[def.field] && binKey(r[def.field],res)===b.key);
+        const rowsInBin = prevGroups.get(b.key) || EMPTY_BIN;
         return { ...b, value: def.metric(rowsInBin), n: def.count ? def.count(rowsInBin) : rowsInBin.length };
       });
     }
@@ -4778,10 +4816,10 @@ function wireEvents(){
   $('#btn-print').addEventListener('click', () => window.print());
 
   $('#fd-period').addEventListener('change', (e) => { setPeriodPreset(e.target.value); });
-  $('#fd-date-from').addEventListener('change', (e) => { state.filters.customFrom = e.target.value ? new Date(e.target.value) : null; queueRender(); });
-  $('#fd-date-to').addEventListener('change', (e) => { state.filters.customTo = e.target.value ? new Date(e.target.value+'T23:59:59') : null; queueRender(); });
+  $('#fd-date-from').addEventListener('change', (e) => { clearRedo(); state.filters.customFrom = e.target.value ? new Date(e.target.value) : null; queueRender(); });
+  $('#fd-date-to').addEventListener('change', (e) => { clearRedo(); state.filters.customTo = e.target.value ? new Date(e.target.value+'T23:59:59') : null; queueRender(); });
   $$('.fd-datefield button').forEach(b => b.addEventListener('click', () => { state.filters.dateField = b.dataset.datefield; queueRender(); }));
-  $('#fd-search').addEventListener('input', debounce((e) => { state.filters.search = e.target.value; queueRender(); }, 150));
+  $('#fd-search').addEventListener('input', debounce((e) => { clearRedo(); state.filters.search = e.target.value; queueRender(); }, 150));
   // time machine: scrubber, week steps, resets
   $('#tm-range').addEventListener('input', (e) => {
     const start = datasetSpanStart();
@@ -4810,6 +4848,18 @@ function wireEvents(){
   $('#btn-export-csv').addEventListener('click', exportLedgerCsv);
   $('#btn-copy-summary').addEventListener('click', copyExecSummary);
 
+  // Ctrl+Z / Ctrl+Y (Cmd on mac): silent drill history navigation.
+  // Never intercepts typing targets or the mapper overlay (it owns its keys).
+  window.addEventListener('keydown', (e) => {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+    const k = e.key.toLowerCase();
+    if (k !== 'z' && k !== 'y') return;
+    const t = e.target;
+    if (t && t.matches && t.matches('input, textarea, select, [contenteditable="true"]')) return;
+    if (document.querySelector('.sheet-overlay')) return;
+    if (k === 'z' && !e.shiftKey) { if (state.drill.length) { e.preventDefault(); popDrill(); } return; }
+    if (k === 'y' || (k === 'z' && e.shiftKey)) { if (state.redo.length) { e.preventDefault(); redoDrill(); } }
+  });
   // Escape chain: open popovers/panels > expanded trend fig > expanded ledger row > drill pop
   window.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;

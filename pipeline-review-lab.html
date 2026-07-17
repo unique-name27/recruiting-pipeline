@@ -273,10 +273,169 @@ html.ed-midnight .trend-line{ stroke-width:1.2; }
 html.ed-midnight .trend-area{ opacity:0.18; }
 html.ed-midnight table.report-table td{ padding:9px 12px; }
 html.ed-midnight .attn-panel{ border-left-color:#D4A951; }
+/* --- SHŌWA RETRO (feedback round): risograph duotone. Warm paper locks;
+       hanko red + indigo replace the flow ramp; halftone chart fills;
+       vertical seal-stamp kickers. --- */
+html.ed-showa.ed-showa, html.ed-showa.dark, html.ed-showa.light{
+  --paper:#F6F1E6; --ink:#26262B; --muted:#7A7468; --hairline:rgba(38,38,43,0.22); --heavy:#26466D;
+  --flow-1:#F0B9AC; --flow-2:#E58A75; --flow-3:#D7402B; --flow-4:#26466D; --flow-5:#182E4A;
+  --rej:#C8BFAE;
+  --neg:#B01E0F; --warn:#C87A16;
+  --pos-ink:#26466D;
+  --serif:'Shippori Mincho', Georgia, serif;
+  --sans:'Zen Kaku Gothic New','IBM Plex Sans',sans-serif;
+  color-scheme: light;
+}
+/* decorative katakana subtitle — ornament only, data labels stay English */
+html.ed-showa .masthead-title::after{
+  content:'パイプライン・レビュー'; display:block; font-family:var(--sans);
+  font-size:11.5px; letter-spacing:0.4em; color:#D7402B; margin-top:3px; font-weight:500;
+}
+/* vertical seal-stamp kickers in a thin red frame */
+html.ed-showa .section-head{ align-items:flex-start; }
+html.ed-showa .section-head .kicker{
+  writing-mode:vertical-rl; text-orientation:mixed; border:1px solid #D7402B; color:#D7402B;
+  padding:8px 3px; letter-spacing:0.25em; font-size:10.5px; max-height:150px; overflow:hidden;
+}
+html.ed-showa .section{ border-top:2px solid #26466D; padding-top:12px; margin-top:34px; }
+html.ed-showa .stat-value{ font-family:var(--serif); font-size:29px; font-weight:700; }
+html.ed-showa .stat-value .numlink{ font-family:var(--serif); font-size:29px; font-weight:700; }
+html.ed-showa .finding-headline{ font-weight:600; }
+html.ed-showa svg.river .corridor{ fill:url(#sr-halftone-red); stroke:#D7402B; stroke-width:0.75; }
+html.ed-showa svg.river .drain{ fill:url(#sr-halftone); stroke:none; }
+html.ed-showa svg.river .corridor-label.on-flow, html.ed-showa svg.river .corridor-label.secondary{ fill:#26262B; paint-order:stroke; stroke:#F6F1E6; stroke-width:2.5px; }
+html.ed-showa svg.funnel .fn-bar{ fill:url(#sr-halftone-red); stroke:#D7402B; stroke-width:0.75; }
+html.ed-showa svg.funnel .fn-rest{ fill:url(#sr-halftone); opacity:1; }
+html.ed-showa .trend-area{ fill:url(#sr-halftone); opacity:1; }
+html.ed-showa svg.forecast .fc-band{ fill:url(#sr-halftone); opacity:1; }
+/* --- COMIC BOOK (feedback round): 2px black outlines, CMYK accents,
+       Bangers display, speech-bubble tooltips, POW severity badges.
+       Data numerals stay Archivo for legibility. --- */
+html.ed-comic.ed-comic, html.ed-comic.dark, html.ed-comic.light{
+  --paper:#FFFFFF; --ink:#111111; --muted:#575757; --hairline:rgba(17,17,17,0.35); --heavy:#111111;
+  --flow-1:#FFF171; --flow-2:#FFD100; --flow-3:#00A6E0; --flow-4:#0077B6; --flow-5:#E5007E;
+  --rej:#C9C9C9;
+  --neg:#E02020; --warn:#FF9E00;
+  --pos-ink:#0077B6;
+  --serif:'Bangers','Archivo',sans-serif;
+  --sans:'Archivo','IBM Plex Sans',sans-serif;
+  color-scheme: light;
+}
+html.ed-comic .section{ border:2px solid #111; padding:14px 18px; margin-top:26px; }
+html.ed-comic .section-head{ transform:rotate(-1deg); } /* heads only — tables stay straight */
+html.ed-comic .kicker{ font-family:'Bangers',cursive; font-size:17px; letter-spacing:0.05em; color:#111; text-transform:none; -webkit-text-stroke:0; }
+html.ed-comic .finding-headline{ font-family:'Bangers',cursive; font-weight:400; font-size:30px; letter-spacing:0.02em; }
+html.ed-comic .masthead-title{ font-family:'Bangers',cursive; font-weight:400; font-size:32px; letter-spacing:0.03em; }
+html.ed-comic .stat-value{ font-family:var(--sans); font-weight:700; }
+html.ed-comic .stat-value .numlink{ font-family:var(--sans); font-weight:700; }
+html.ed-comic .river-caption, html.ed-comic .trend-fig figcaption, html.ed-comic .attn-suggested,
+html.ed-comic .fd-comparison, html.ed-comic .tm-readout, html.ed-comic .proc-explainer{ font-family:var(--sans); font-style:normal; }
+html.ed-comic .masthead-actions button, html.ed-comic .underline-btn{ border:2px solid #111; padding:1px 7px; background:#fff; }
+html.ed-comic .underline-btn:hover{ background:#FFF171; border-bottom-color:#111; }
+html.ed-comic .masthead .heavy-rule{ border-top-width:3px; }
+/* speech-bubble tooltip with a CSS-triangle tail */
+html.ed-comic .river-tooltip{ border:2px solid #111; border-radius:8px; overflow:visible; }
+html.ed-comic .river-tooltip::after{
+  content:''; position:absolute; left:14px; bottom:-9px; width:0; height:0;
+  border-style:solid; border-width:9px 9px 0 0; border-color:#111 transparent transparent transparent;
+}
+/* POW! starburst severity badges */
+html.ed-comic .attn-dot, html.ed-comic .flag-dot{
+  width:15px; height:15px; border-radius:0;
+  clip-path:polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+html.ed-comic svg.river .corridor{ stroke:#111; stroke-width:2; }
+html.ed-comic svg.river .drain{ fill:url(#cb-halftone); stroke:#111; stroke-width:1; }
+html.ed-comic svg.funnel .fn-bar{ stroke:#111; stroke-width:2; }
+html.ed-comic svg.funnel .fn-rest{ fill:url(#cb-halftone); opacity:1; stroke:#111; stroke-width:1; }
+html.ed-comic .trend-area{ fill:url(#cb-halftone); opacity:0.5; }
+html.ed-comic svg.aging .aging-dot{ stroke:#111; stroke-width:1; }
+/* --- WEB 1.0 (feedback round): deliberate 90s kitsch. Times everywhere,
+       beveled chrome, hit-counter stats, rainbow rules (the ONE granted
+       gradient exception), marquee since-visit line. --- */
+html.ed-web1.ed-web1, html.ed-web1.dark, html.ed-web1.light{
+  --paper:#FFFFFF; --ink:#000000; --muted:#444444; --hairline:#9A9A9A; --heavy:#000000;
+  --flow-1:#FFFF00; --flow-2:#00CC00; --flow-3:#0000EE; --flow-4:#FF0000; --flow-5:#008000;
+  --rej:#C0C0C0;
+  --neg:#FF0000; --warn:#FF8C00;
+  --pos-ink:#008000;
+  --serif:'Times New Roman', Times, serif;
+  --sans:'Times New Roman', Times, serif;
+  color-scheme: light;
+}
+html.ed-web1 body{ background-image:repeating-linear-gradient(45deg, #F2F2F2 0 2px, #FFFFFF 2px 8px); }
+html.ed-web1 .masthead, html.ed-web1 .filterdesk, html.ed-web1 .popover, html.ed-web1 .sheet, html.ed-web1 .fd-panel, html.ed-web1 .palette{ background:#FFFFFF; }
+html.ed-web1 .masthead-actions button, html.ed-web1 .underline-btn, html.ed-web1 .fd-select,
+html.ed-web1 .ledger-pagination button, html.ed-web1 .fd-dim > button{
+  background:#C0C0C0; border:2px outset #FFFFFF; padding:1px 8px; color:#000; text-decoration:none;
+}
+html.ed-web1 .masthead-actions button:active, html.ed-web1 .underline-btn:active{ border-style:inset; }
+html.ed-web1 .numlink, html.ed-web1 a{ color:#0000EE; text-decoration:underline; }
+html.ed-web1 a:visited{ color:#551A8B; }
+html.ed-web1 table.report-table td, html.ed-web1 table.report-table thead th{ border:1px solid #808080; }
+html.ed-web1 table.report-table thead th{ background:#E0E0E0; color:#000; }
+/* hit-counter stats */
+html.ed-web1 .stat-value{
+  background:#000; color:#00FF00; font-family:'Courier New',monospace; font-weight:700;
+  display:inline-block; padding:2px 8px; letter-spacing:3px; font-size:20px;
+}
+html.ed-web1 .stat-value .numlink{ color:#00FF00; font-family:'Courier New',monospace; font-size:20px; text-decoration:none; }
+/* centered kickers over rainbow rules — the granted gradient exception */
+html.ed-web1 .section-head{ display:block; text-align:center; }
+html.ed-web1 .section-head .section-note, html.ed-web1 .section-head .section-action{ margin-left:0; display:inline-block; margin-top:2px; }
+html.ed-web1 .kicker{ font-size:17px; font-weight:700; letter-spacing:0.02em; color:#000; }
+html.ed-web1 .section-head::after{
+  content:''; display:block; height:4px; margin-top:5px;
+  background:linear-gradient(90deg, #FF0000, #FF8C00, #FFFF00, #00CC00, #0000EE, #4B0082, #8F00FF);
+}
+/* marquee since-visit line (disabled under prefers-reduced-motion) */
+html.ed-web1 #section-finding{ overflow:hidden; }
+html.ed-web1 .sincevisit{ white-space:nowrap; animation:web1-marquee 14s linear infinite; }
+@keyframes web1-marquee{ from{ transform:translateX(100%); } to{ transform:translateX(-100%); } }
+@media (prefers-reduced-motion: reduce){ html.ed-web1 .sincevisit{ animation:none; } }
+/* primitive chart rendering */
+html.ed-web1 svg rect, html.ed-web1 svg line{ shape-rendering:crispEdges; }
+html.ed-web1 svg.river .corridor-label.on-flow, html.ed-web1 svg.river .corridor-label.secondary{ fill:#FFFFFF; }
+/* --- HYPERDRIVE (feedback round): generic space-opera console. Starfield
+       black paper (pattern exception: it IS the paper), luminous yellow
+       display, holo-cyan charts, mono data labels. No franchise anything. --- */
+html.ed-hyper.ed-hyper, html.ed-hyper.dark, html.ed-hyper.light{
+  --paper:#050508; --ink:#EDEDF2; --muted:#8B8FA3; --hairline:rgba(75,213,238,0.25); --heavy:#FFE81F;
+  --flow-1:#153A45; --flow-2:#1F5E70; --flow-3:#4BD5EE; --flow-4:#8FE7F7; --flow-5:#FFE81F;
+  --rej:#3A3D4D;
+  --neg:#FF5C4D; --warn:#E8B04B;
+  --pos-ink:#4BD5EE;
+  --serif:'Orbitron','IBM Plex Sans',sans-serif;
+  --sans:ui-monospace,'Consolas','IBM Plex Mono',monospace;
+  color-scheme: dark;
+}
+html.ed-hyper body{
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,0.45) 0.6px, transparent 1.1px),
+    radial-gradient(circle, rgba(255,255,255,0.22) 1px, transparent 1.6px);
+  background-size:130px 130px, 230px 230px;
+  background-position:0 0, 60px 90px;
+}
+html.ed-hyper .masthead, html.ed-hyper .filterdesk{ background:transparent; }
+html.ed-hyper .masthead-title{
+  font-family:'Orbitron',sans-serif; text-transform:uppercase; letter-spacing:0.12em; color:#FFE81F;
+  display:inline-block; transform:perspective(320px) rotateX(14deg); transform-origin:50% 100%;
+  font-size:24px; font-weight:700;
+}
+html.ed-hyper .kicker{ font-family:'Orbitron',sans-serif; color:#4BD5EE; letter-spacing:0.2em; font-size:10px; }
+html.ed-hyper .finding-headline{ font-family:'Orbitron',sans-serif; font-size:19px; font-weight:500; color:#FFE81F; line-height:1.5; }
+html.ed-hyper .stat-value{ color:#FFE81F; font-family:'Orbitron',sans-serif; font-weight:500; font-size:21px; }
+html.ed-hyper .stat-value .numlink{ color:#FFE81F; font-family:'Orbitron',sans-serif; font-weight:500; font-size:21px; }
+html.ed-hyper .heavy-rule{ border-top-color:#FFE81F; }
+html.ed-hyper .river-tooltip{ background:#0A0A12; border-color:rgba(75,213,238,0.4); border-top-color:#FFE81F; }
+html.ed-hyper svg.river .corridor-label.on-flow, html.ed-hyper svg.river .corridor-label.secondary{ fill:#03181E; }
+html.ed-hyper .trend-line{ stroke-width:1.2; }
+html.ed-hyper .trend-area{ opacity:0.2; }
 /* print always reads as Broadsheet */
 @media print{
   html, html.ed-terminal, html.ed-studio, html.ed-terminal.dark, html.ed-studio.dark,
-  html.ed-blueprint, html.ed-vintage, html.ed-midnight{
+  html.ed-blueprint, html.ed-vintage, html.ed-midnight,
+  html.ed-showa, html.ed-comic, html.ed-web1, html.ed-hyper{
     --paper:#FBFAF8; --ink:#141412; --muted:#6B6A64; --hairline:rgba(20,20,18,0.14); --heavy:#141412;
     --flow-1:#9FE1CB; --flow-2:#5DCAA5; --flow-3:#1D9E75; --flow-4:#0F6E56; --flow-5:#085041;
     --rej:#B4B2A9; --neg:#A32D2D; --warn:#BA7517; --pos-ink:#0F6E56;
@@ -296,6 +455,23 @@ html.ed-midnight .attn-panel{ border-left-color:#D4A951; }
   html.ed-vintage .section{ border-top:none; }
   html.ed-midnight .section{ margin-top:24px; }
   html.ed-midnight .stat-value, html.ed-midnight .stat-value .numlink{ font-size:23px; }
+  /* feedback-round editions: strip their structural theatrics for print */
+  html.ed-showa .section-head .kicker{ writing-mode:horizontal-tb; border:none; padding:0; color:var(--muted); }
+  html.ed-showa .masthead-title::after{ content:none; }
+  html.ed-showa .section{ border-top:none; }
+  html.ed-comic .section{ border:none; padding:0; }
+  html.ed-comic .section-head{ transform:none; }
+  html.ed-comic .kicker, html.ed-comic .finding-headline, html.ed-comic .masthead-title{ font-family:var(--serif); font-size:revert; letter-spacing:0; }
+  html.ed-web1 body{ background-image:none; }
+  html.ed-web1 .section-head{ display:flex; text-align:left; }
+  html.ed-web1 .section-head::after{ content:none; }
+  html.ed-web1 .stat-value{ background:none; color:var(--ink); font-family:var(--serif); letter-spacing:0; padding:0; }
+  html.ed-web1 .stat-value .numlink{ color:var(--ink); font-family:var(--serif); }
+  html.ed-web1 table.report-table td, html.ed-web1 table.report-table thead th{ border:none; border-bottom:0.5px solid var(--hairline); background:none; }
+  html.ed-web1 .sincevisit{ animation:none; }
+  html.ed-hyper body{ background-image:none; }
+  html.ed-hyper .masthead-title{ transform:none; text-transform:none; letter-spacing:0; font-family:var(--serif); color:var(--ink); }
+  html.ed-hyper .kicker, html.ed-hyper .finding-headline, html.ed-hyper .stat-value{ font-family:var(--serif); color:var(--ink); }
 }
 *{ box-sizing:border-box; }
 html,body{ margin:0; padding:0; background:var(--paper); color:var(--ink); }
@@ -1470,6 +1646,9 @@ html.presenting{ overflow:hidden; }
   <pattern id="bp-hatch-sparse" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#EAF2FF" stroke-width="0.8" opacity="0.35"/></pattern>
   <pattern id="vp-hatch" width="4.5" height="4.5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4.5" stroke="#221A10" stroke-width="0.9" opacity="0.65"/></pattern>
   <pattern id="vp-stipple" width="4" height="4" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="0.65" fill="#221A10" opacity="0.55"/><circle cx="3" cy="3" r="0.65" fill="#221A10" opacity="0.55"/></pattern>
+  <pattern id="sr-halftone" width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="1.15" fill="#26466D" opacity="0.55"/><circle cx="4.5" cy="4.5" r="1.15" fill="#26466D" opacity="0.55"/></pattern>
+  <pattern id="sr-halftone-red" width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="1.3" fill="#D7402B" opacity="0.6"/><circle cx="4.5" cy="4.5" r="1.3" fill="#D7402B" opacity="0.6"/></pattern>
+  <pattern id="cb-halftone" width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.4" fill="#111111" opacity="0.5"/><circle cx="5.5" cy="5.5" r="1.4" fill="#111111" opacity="0.5"/></pattern>
 </defs></svg>
 <input type="file" id="file-input-hidden" accept=".xlsx,.xls,.csv" multiple style="display:none" />
 <script>
@@ -1537,6 +1716,7 @@ const state = {
   },
   selection: null,           // { kind:'stage'|'reject'|'withdraw'|'decline'|'active', stage, } — sankey/table cross-filter
   drill: [],                 // history stack of pre-drill snapshots for "← Back" (viz clicks only)
+  redo: [],                  // forward stack: popped drill snapshots, re-applied by Ctrl+Y / "→ Forward"
   attnOpen: null,            // id of the Attention flag whose investigation panel is expanded
   visibleDims: null,         // Set of dim keys shown in the filter desk (null = default set); persisted per fingerprint
   reqTargets: {},            // lab: per-req hire targets { jobName: n }, persisted per fingerprint
@@ -2367,6 +2547,7 @@ function facetedCounts(dimField){
   return counts;
 }
 function toggleDimValue(dim, value){
+  clearRedo(); // a manual filter change invalidates the forward path
   const f = state.filters;
   if (!f.dims[dim]) f.dims[dim] = new Set();
   if (f.dims[dim].has(value)) f.dims[dim].delete(value); else f.dims[dim].add(value);
@@ -2376,6 +2557,7 @@ function toggleDimValue(dim, value){
 function clearAllFilters(){
   state.filters.dims = {}; state.filters.search = ''; state.selection = null;
   state.drill.length = 0;
+  clearRedo();
   $('#fd-search').value = '';
   queueRender();
 }
@@ -2414,6 +2596,7 @@ function periodPresetLabel(p){
   return map[p] || p;
 }
 function setPeriodPreset(p){
+  clearRedo(); // manual period change invalidates the forward path
   // crossing the snapshot/cohort boundary invalidates sankey selections + drill history + time machine
   if ((state.filters.periodPreset === 'current') !== (p === 'current')) { state.selection = null; state.drill.length = 0; state.asOfDate = null; }
   state.filters.periodPreset = p;
@@ -3673,6 +3856,12 @@ function renderFilterDesk(){
     line.appendChild(backBtn);
     line.appendChild(document.createTextNode(' · '));
   }
+  if (state.redo && state.redo.length) {
+    const fwdBtn = el('button', { class:'drill-back' }, '→ Forward');
+    fwdBtn.addEventListener('click', redoDrill);
+    line.appendChild(fwdBtn);
+    line.appendChild(document.createTextNode(' · '));
+  }
   line.appendChild(document.createTextNode(`${fmtN(state.rows.length)} of ${fmtN(state.rawRows.length)} candidates`));
   for (const t of terms) {
     const span = el('span', { class:'term' }, ' · ', t.text, ' ');
@@ -4618,14 +4807,12 @@ function selectionsEqual(a,b){
 function dimsSnapshot(){
   return Object.fromEntries(Object.entries(state.filters.dims).map(([k,v]) => [k, new Set(v)]));
 }
-function pushDrill(){
+function currentDrillSnapshot(){
   const f = state.filters;
-  state.drill.push({ selection: state.selection ? { ...state.selection } : null, dims: dimsSnapshot(),
-    period: { preset: f.periodPreset, customFrom: f.customFrom, customTo: f.customTo } });
+  return { selection: state.selection ? { ...state.selection } : null, dims: dimsSnapshot(),
+    period: { preset: f.periodPreset, customFrom: f.customFrom, customTo: f.customTo } };
 }
-function popDrill(){
-  const snap = state.drill.pop();
-  if (!snap) return;
+function applyDrillSnapshot(snap){
   state.selection = snap.selection;
   state.filters.dims = snap.dims;
   if (snap.period) { // drills may change the period (e.g. velocity-heatmap cohort cells) — restore it
@@ -4633,12 +4820,32 @@ function popDrill(){
     state.filters.customFrom = snap.period.customFrom;
     state.filters.customTo = snap.period.customTo;
   }
+}
+// forward (redo) stack: Back/Escape/Ctrl+Z push the state they leave here;
+// any NEW drill or manual filter change invalidates the forward path
+function clearRedo(){ state.redo.length = 0; }
+function pushDrill(){
+  clearRedo();
+  state.drill.push(currentDrillSnapshot());
+}
+function popDrill(){
+  const snap = state.drill.pop();
+  if (!snap) return;
+  state.redo.push(currentDrillSnapshot());
+  applyDrillSnapshot(snap);
+  queueRender();
+}
+function redoDrill(){
+  const snap = state.redo.pop();
+  if (!snap) return;
+  state.drill.push(currentDrillSnapshot());
+  applyDrillSnapshot(snap);
   queueRender();
 }
 function drillToggleDim(dim, value){
   const set = state.filters.dims[dim];
   const removing = set && set.has(value);
-  if (removing) state.drill.pop(); // clicking the same row again undoes the drill
+  if (removing) { state.drill.pop(); clearRedo(); } // clicking the same row again undoes the drill (a new action, not history nav)
   else pushDrill();
   toggleDimValue(dim, value);
 }
@@ -7813,6 +8020,10 @@ const EDITIONS = [
   ['blueprint','Blueprint','technical drawing set — cyanotype blue, drafting mono, line-art charts · locks blue'],
   ['vintage','Vintage press','1890s newspaper — aged paper, Playfair, engraved hatching · locks light'],
   ['midnight','Midnight','luxury annual report — true black, gold accent, oversized numerals · locks dark'],
+  ['showa','Shōwa retro','risograph duotone — hanko red + indigo, vertical seal kickers, halftone charts · locks light'],
+  ['comic','Comic book','bold outlines, CMYK accents, speech-bubble tooltips, POW flags · locks light'],
+  ['web1','Web 1.0','deliberate 90s kitsch — beveled chrome, hit-counter stats, rainbow rules · locks light'],
+  ['hyper','Hyperdrive','space-opera console — starfield black, luminous yellow, holo-cyan charts · locks dark'],
 ];
 // google-font stylesheet per edition, injected lazily on first activation
 const EDITION_FONTS = {
@@ -7821,6 +8032,10 @@ const EDITION_FONTS = {
   blueprint:['font-blueprint', 'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Archivo:wght@500;600;700&display=swap'],
   vintage:  ['font-vintage', 'https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;0,800;0,900;1,500&display=swap'],
   midnight: ['font-midnight', 'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&display=swap'],
+  showa:    ['font-showa', 'https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Shippori+Mincho:wght@500;600;700&display=swap'],
+  comic:    ['font-comic', 'https://fonts.googleapis.com/css2?family=Bangers&family=Archivo:wght@500;600;700&display=swap'],
+  // web1 uses system Times New Roman — nothing to load
+  hyper:    ['font-hyper', 'https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap'],
 };
 function getEdition(){ try { return localStorage.getItem('lab:edition') || 'broadsheet'; } catch(e){ return 'broadsheet'; } }
 function ensureEditionFont(ed){
@@ -8193,10 +8408,10 @@ function wireEvents(){
   $('#btn-print').addEventListener('click', () => window.print());
 
   $('#fd-period').addEventListener('change', (e) => { setPeriodPreset(e.target.value); });
-  $('#fd-date-from').addEventListener('change', (e) => { state.filters.customFrom = e.target.value ? new Date(e.target.value) : null; queueRender(); });
-  $('#fd-date-to').addEventListener('change', (e) => { state.filters.customTo = e.target.value ? new Date(e.target.value+'T23:59:59') : null; queueRender(); });
+  $('#fd-date-from').addEventListener('change', (e) => { clearRedo(); state.filters.customFrom = e.target.value ? new Date(e.target.value) : null; queueRender(); });
+  $('#fd-date-to').addEventListener('change', (e) => { clearRedo(); state.filters.customTo = e.target.value ? new Date(e.target.value+'T23:59:59') : null; queueRender(); });
   $$('.fd-datefield button').forEach(b => b.addEventListener('click', () => { state.filters.dateField = b.dataset.datefield; queueRender(); }));
-  $('#fd-search').addEventListener('input', debounce((e) => { state.filters.search = e.target.value; queueRender(); }, 150));
+  $('#fd-search').addEventListener('input', debounce((e) => { clearRedo(); state.filters.search = e.target.value; queueRender(); }, 150));
   // time machine (lab): scrubber, week steps, resets
   $('#tm-range').addEventListener('input', (e) => {
     const start = datasetSpanStart();
@@ -8279,6 +8494,18 @@ function wireEvents(){
     if (presentState && presentState.printStack) { presentState.printStack.remove(); presentState.printStack = null; }
   });
 
+  // Ctrl+Z / Ctrl+Y (Cmd on mac): silent drill history navigation.
+  // Never intercepts typing targets or open overlays (they own their keys).
+  window.addEventListener('keydown', (e) => {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+    const k = e.key.toLowerCase();
+    if (k !== 'z' && k !== 'y') return;
+    const t = e.target;
+    if (t && t.matches && t.matches('input, textarea, select, [contenteditable="true"]')) return;
+    if (document.querySelector('.sheet-overlay') || paletteIsOpen() || presentState) return;
+    if (k === 'z' && !e.shiftKey) { if (state.drill.length) { e.preventDefault(); popDrill(); } return; }
+    if (k === 'y' || (k === 'z' && e.shiftKey)) { if (state.redo.length) { e.preventDefault(); redoDrill(); } }
+  });
   // Ctrl+K / Cmd+K toggles the command palette
   window.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
