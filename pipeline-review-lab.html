@@ -701,6 +701,26 @@ svg.funnel .fn-bar{ fill:var(--flow-3); cursor:pointer; }
 svg.funnel .fn-rest{ fill:var(--rej); opacity:0.4; cursor:pointer; }
 svg.funnel .fn-inproc{ fill:var(--flow-1); opacity:0.7; }
 svg.funnel .fn-bar:hover, svg.funnel .fn-rest:hover{ opacity:0.85; }
+/* sub-state segments (funnel bars + river pools) share one palette:
+   solid = needs action (amber-hot when mostly overdue), hollow = scheduled,
+   mid = needs decision, deep = offer extended */
+svg .fn-seg, svg .pool-seg{ cursor:pointer; }
+svg .fn-seg.ss-needs-step, svg .pool-seg.ss-needs-step{ fill:var(--flow-3); }
+svg .fn-seg.ss-needs-step.hot{ fill:var(--warn); }
+svg .fn-seg.ss-scheduled, svg .pool-seg.ss-scheduled{ fill:var(--paper); stroke:var(--flow-3); stroke-width:1; }
+svg .fn-seg.ss-awaiting-feedback, svg .pool-seg.ss-awaiting-feedback{ fill:var(--flow-4); }
+svg .fn-seg.ss-offer-out, svg .pool-seg.ss-offer-out{ fill:var(--flow-5); }
+svg .fn-seg:hover, svg .pool-seg:hover{ opacity:0.85; }
+svg .fn-seg{ stroke:var(--paper); stroke-width:0.75; }
+.fn-seg-label{ font-size:9.5px; fill:var(--ink); paint-order:stroke; stroke:var(--paper); stroke-width:2.5px; stroke-linejoin:round; pointer-events:none; }
+.fn-legend{ display:flex; gap:16px; margin-top:8px; font-size:11px; color:var(--muted); flex-wrap:wrap; font-variant-numeric:tabular-nums; }
+.fn-legend-item{ display:inline-flex; align-items:center; gap:5px; }
+.fn-swatch{ width:10px; height:10px; display:inline-block; flex-shrink:0; }
+.fn-swatch.ss-needs-step{ background:var(--flow-3); }
+.fn-swatch.ss-scheduled{ background:var(--paper); border:1px solid var(--flow-3); }
+.fn-swatch.ss-awaiting-feedback{ background:var(--flow-4); }
+.fn-swatch.ss-offer-out{ background:var(--flow-5); }
+.st-subrow td.st-subline{ text-align:left; font-size:11px; color:var(--muted); padding:3px 10px 8px 14px; font-variant-numeric:tabular-nums; }
 /* ============================================================
    METRO + RADIAL flow views, CHORD gallery viz (wild round B)
    ============================================================ */
@@ -2462,6 +2482,7 @@ function rowMatchesSelection(r){
   if (s.type === 'withdraw') return r.status === 'withdrawn' && r.current_stage === s.stage;
   if (s.type === 'decline') return r.status === 'declined';
   if (s.type === 'active') return r.status === 'active' && r.current_stage === s.stage;
+  if (s.type === 'substate') return r.status === 'active' && r.current_stage === s.stage && nextStepState(r).state === s.substate;
   if (s.type === 'overdue') {
     if (s.stage && r.current_stage !== s.stage) return false;
     return agingTier(r, new Date()) != null;
@@ -2590,6 +2611,7 @@ function selectionLabel(s){
   if (s.type==='withdraw') return `Withdrawn at ${s.stage}`;
   if (s.type==='decline') return `Offer declined`;
   if (s.type==='active') return `In process · ${s.stage}`;
+  if (s.type==='substate') return `${s.stage} · ${subStateLabel(s.stage, s.substate)}`;
   if (s.type==='overdue') return s.stage ? `Overdue · ${s.stage}` : 'Overdue to advance';
   if (s.type==='status') return ({ hired:'Hired', active:'Active', declined:'Offer declined', withdrawn:'Withdrawn', rejected:'Rejected' })[s.status] || s.status;
   if (s.type==='row') return s.name || 'Single candidate';
@@ -2773,19 +2795,41 @@ function nextStepState(r, now){
   }
   return { state:'needs-step', since: r.stage_entered_at || r.applied_at };
 }
+/* ---- sub-stage vocabulary (user's words, position-driven like the owner
+   heuristic): Screen splits into "Needs scheduling" / "Screen scheduled" /
+   "Needs decision"; the first stage's needs-step is "Needs review"; the
+   last pre-terminal stage splits into "Offer pending" / "Offer extended". */
+function subStateLabel(stage, ss){
+  const idx = Math.max(0, stageIndex(stage));
+  const lastPre = idx >= state.canonicalStages.length - 2 && idx > 0;
+  if (ss === 'scheduled') return `${stage} scheduled`;
+  if (ss === 'awaiting-feedback') return 'Needs decision';
+  if (ss === 'offer-out') return 'Offer extended';
+  if (idx === 0) return 'Needs review';
+  if (lastPre) return 'Offer pending';
+  return 'Needs scheduling';
+}
+// process order for sub-state segments, left→right / top→bottom
+const SUBSTATE_ORDER = ['needs-step','scheduled','awaiting-feedback','offer-out'];
+// per-stage sub-state tallies over the current snapshot (same nextStepState +
+// nowRef the aging shapes and action queue use, so all counts reconcile)
+function subStateCounts(stage){
+  const now = nowRef();
+  const c = { 'needs-step':0, 'scheduled':0, 'awaiting-feedback':0, 'offer-out':0 };
+  for (const r of (state.snapshotRows || [])) if (r.current_stage === stage) c[nextStepState(r, now).state]++;
+  return c;
+}
 // the row's needed action, in words — leads every state-aware tooltip/row
 function neededAction(r, ns, now){
   now = now || nowRef();
+  const base = subStateLabel(r.current_stage, ns.state);
   if (ns.state === 'scheduled') {
     const when = dayjs(r.next_event_at).format('MMM D');
-    return agingTier(r, now) === 'amber' ? `scheduled far out (${when})` : `scheduled ${when}`;
+    return agingTier(r, now) === 'amber' ? `${base} far out (${when})` : `${base} ${when}`;
   }
-  if (ns.state === 'awaiting-feedback') return `awaiting feedback (interviewed ${dayjs(ns.since).format('MMM D')})`;
-  if (ns.state === 'offer-out') return `offer out ${Math.round((now - ns.since)/86400000)}d — follow up`;
-  const idx = Math.max(0, stageIndex(r.current_stage));
-  if (idx === 0) return 'needs review';
-  if (idx >= state.canonicalStages.length - 2) return 'needs decision to advance';
-  return 'needs scheduling';
+  if (ns.state === 'awaiting-feedback') return `${base} (interviewed ${dayjs(ns.since).format('MMM D')})`;
+  if (ns.state === 'offer-out') return `${base} ${Math.round((now - ns.since)/86400000)}d — follow up`;
+  return base;
 }
 // state-aware owner: feedback chases belong to the recruiter (HM at late
 // stages), offer follow-ups to the recruiter; needs-step falls back to the
@@ -2850,9 +2894,9 @@ function overdueBreakdownParts(od, now){
   const parts = [];
   if (cnt.review) parts.push(`${cnt.review} need review`);
   if (cnt.sched) parts.push(`${cnt.sched} need scheduling`);
-  if (cnt.dec) parts.push(`${cnt.dec} need a decision`);
-  if (cnt.fb) parts.push(`${cnt.fb} await interview feedback`);
-  if (cnt.offer) parts.push(`${cnt.offer} offer${cnt.offer===1?'':'s'} need${cnt.offer===1?'s':''} follow-up`);
+  if (cnt.dec) parts.push(`${cnt.dec} offer${cnt.dec===1?'':'s'} pending`);
+  if (cnt.fb) parts.push(`${cnt.fb} need a decision`);
+  if (cnt.offer) parts.push(`${cnt.offer} offer${cnt.offer===1?'':'s'} extended awaiting response`);
   if (cnt.far) parts.push(`${cnt.far} scheduled far out`);
   return parts;
 }
@@ -4429,7 +4473,7 @@ function actionMessage(ownerName, rows){
   }
   if (by.dec.length) {
     const list = by.dec.map(x => `${who(x)}, ${Math.round(daysInCurrentStage(x.r, now) || 0)}d)`).join(', ');
-    segs.push(`${by.dec.length} candidate${by.dec.length===1?' is':'s are'} waiting on a decision to advance: ${list}. Can we make the call?`);
+    segs.push(`${by.dec.length} offer${by.dec.length===1?' is':'s are'} pending — decided but not yet sent: ${list}. Can we get ${by.dec.length===1?'it':'them'} out?`);
   }
   if (by.offer.length) {
     const list = by.offer.map(x => `${who(x)}, out ${Math.round((now - x.ns.since)/86400000)}d)`).join(', ');
@@ -4940,7 +4984,7 @@ function wireFlowHover(svg, elm){
 }
 function selectionsEqual(a,b){
   if (!a || !b) return false;
-  return a.type===b.type && a.stage===b.stage;
+  return a.type===b.type && a.stage===b.stage && a.substate===b.substate;
 }
 /* ---- drill history: only viz/table clicks push, dropdown edits don't ---- */
 function dimsSnapshot(){
@@ -5448,10 +5492,21 @@ function renderRiver(){
         rect.addEventListener('mouseleave', hideRiverTooltip);
         wireFlowHover(svg, rect);
         svg.appendChild(rect);
-        if (odN > 0) {
-          const oh = Math.min(Math.max(odN * scale, 2), h);
-          svg.appendChild(svgEl('rect', { x, y, width:poolW, height:oh, fill:'var(--warn)', opacity:0.45, 'pointer-events':'none' }));
-          if (oh < h) svg.appendChild(svgEl('line', { class:'pool-sep', x1:x, y1:y+oh, x2:x+poolW, y2:y+oh, 'pointer-events':'none' }));
+        // sub-state stack replaces the old single overdue overlay; total
+        // height stays = active count, hairline separators between segments
+        const ssCounts = subStateCounts(f.stage);
+        let segY = y;
+        for (const ss of SUBSTATE_ORDER) {
+          const cnt = ssCounts[ss];
+          if (!cnt) continue;
+          const sh = h * (cnt / n);
+          if (segY > y) svg.appendChild(svgEl('line', { class:'pool-sep', x1:x, y1:segY, x2:x+poolW, y2:segY, 'pointer-events':'none' }));
+          const seg = svgEl('rect', { class:'pool-seg ss-' + ss, x, y:segY, width:poolW, height:sh });
+          seg.addEventListener('click', (ev) => { ev.stopPropagation(); hideRiverTooltip(); setSelection({ type:'substate', stage: f.stage, substate: ss }); });
+          seg.addEventListener('mousemove', (ev) => { ev.stopPropagation(); showRiverTooltip(ev, `<b>${escapeHtml(subStateLabel(f.stage, ss))}</b> — ${fmtN(cnt)} of ${fmtN(n)} in ${escapeHtml(f.stage)}<br><span class="tt-muted">click to drill</span>`); });
+          seg.addEventListener('mouseleave', hideRiverTooltip);
+          svg.appendChild(seg);
+          segY += sh;
         }
         if (h >= 16 && !floored) {
           svg.appendChild(svgEl('text', { class:'corridor-label on-flow', x:cx, y:y+h/2+4, 'text-anchor':'middle' }, textNode(fmtPctSafe(n, totalActive))));
@@ -5794,11 +5849,38 @@ function renderFlowFunnel(){
       const n = f.activeNow || 0;
       const w = (n / maxN) * plotW;
       if (n > 0) {
+        // base bar keeps the whole-stage drill; labeled sub-state segments
+        // sit on top in process order (needs action → scheduled → needs
+        // decision → offer pending/extended)
         const bar = svgEl('rect', { class:'fn-bar', x:labelW, y, width:Math.max(w, 3), height:barH });
         bar.addEventListener('click', () => setSelection({ type:'active', stage: f.stage }));
         bar.addEventListener('mousemove', e => showRiverTooltip(e, `<b>${f.stage}</b><br>${fmtN(n)} active · median ${fmtDays(f.medianDays)}`));
         bar.addEventListener('mouseleave', hideRiverTooltip);
         svg.appendChild(bar);
+        const counts = subStateCounts(f.stage);
+        const nowF = nowRef();
+        let segX = labelW;
+        for (const ss of SUBSTATE_ORDER) {
+          const cnt = counts[ss];
+          if (!cnt) continue;
+          const sw = w * (cnt / n);
+          const label = subStateLabel(f.stage, ss);
+          let cls = 'fn-seg ss-' + ss;
+          if (ss === 'needs-step') {
+            // alert-leaning when most of the needs-action segment is overdue
+            const odHere = (state.snapshotRows||[]).filter(r => r.current_stage === f.stage && nextStepState(r, nowF).state === 'needs-step' && agingTier(r, nowF)).length;
+            if (odHere > cnt * 0.5) cls += ' hot';
+          }
+          const seg = svgEl('rect', { class:cls, x:segX, y, width:Math.max(sw, 2), height:barH });
+          seg.addEventListener('click', (ev) => { ev.stopPropagation(); hideRiverTooltip(); setSelection({ type:'substate', stage: f.stage, substate: ss }); });
+          seg.addEventListener('mousemove', (ev) => { ev.stopPropagation(); showRiverTooltip(ev, `<b>${escapeHtml(label)}</b> — ${fmtN(cnt)} of ${fmtN(n)} in ${escapeHtml(f.stage)}<br><span class="tt-muted">click to drill</span>`); });
+          seg.addEventListener('mouseleave', hideRiverTooltip);
+          svg.appendChild(seg);
+          if (sw > (label.length + String(cnt).length) * 5.6 + 12) {
+            svg.appendChild(svgEl('text', { class:'fn-seg-label', x:segX + sw / 2, y:y + 12, 'text-anchor':'middle' }, textNode(`${label} ${cnt}`)));
+          }
+          segX += sw;
+        }
       }
       svg.appendChild(svgEl('text', { class:'fn-count', x:labelW + Math.max(w, 3) + 8, y:y + 12 }, textNode(fmtN(n) + (f.medianDays != null ? ` · ${fmtDays(f.medianDays)} median` : ''))));
     } else {
@@ -5832,8 +5914,22 @@ function renderFlowFunnel(){
     }
   });
   wrap.appendChild(svg);
+  // compact sub-state legend (entries with zero occurrences hide; a lone
+  // needs-action entry means the date fields are unmapped — no legend then)
+  if (isSnapshot) {
+    const nowL = nowRef();
+    const totals = { 'needs-step':0, 'scheduled':0, 'awaiting-feedback':0, 'offer-out':0 };
+    for (const r of (state.snapshotRows || [])) totals[nextStepState(r, nowL).state]++;
+    const LEG = [['needs-step','needs action'],['scheduled','scheduled'],['awaiting-feedback','needs decision'],['offer-out','offer extended']];
+    const legend = el('div', { class:'fn-legend' });
+    for (const [ss, name] of LEG) {
+      if (!totals[ss]) continue;
+      legend.appendChild(el('span', { class:'fn-legend-item' }, el('span', { class:'fn-swatch ss-' + ss }), `${name} ${fmtN(totals[ss])}`));
+    }
+    if (legend.children.length > 1) wrap.appendChild(legend);
+  }
   $('#river-caption').textContent = isSnapshot
-    ? 'Fig. Funnel — active candidates per stage.'
+    ? 'Fig. Funnel — active candidates per stage, split by next step.'
     : 'Fig. Funnel — entered per stage; filled = advanced, gray = rejected/withdrawn, light = in process.';
 }
 let riverResizeObs = null;
@@ -5887,12 +5983,11 @@ function renderAging(){
   };
   // tooltip lede: what the candidate is actually waiting on
   const stateLede = (r, ns) => {
-    if (ns.state === 'scheduled') return `${escapeHtml(r.current_stage)} scheduled ${dayjs(r.next_event_at).format('MMM D')}${agingTier(r, now) === 'amber' ? ' — far out' : ''}`;
-    if (ns.state === 'awaiting-feedback') return `Interviewed ${dayjs(ns.since).format('MMM D')} — awaiting feedback ${Math.round((now - ns.since)/86400000)}d`;
-    if (ns.state === 'offer-out') return `Offer out ${Math.round((now - ns.since)/86400000)}d — follow up`;
-    const idx = Math.max(0, stageIndex(r.current_stage));
-    const verb = idx === 0 ? 'Needs review' : (idx >= state.canonicalStages.length - 2 ? 'Needs decision' : 'Needs scheduling');
-    return `${verb} — ${Math.round(daysInCurrentStage(r, now) || 0)}d in ${escapeHtml(r.current_stage)}`;
+    const label = escapeHtml(subStateLabel(r.current_stage, ns.state));
+    if (ns.state === 'scheduled') return `${label} ${dayjs(r.next_event_at).format('MMM D')}${agingTier(r, now) === 'amber' ? ' — far out' : ''}`;
+    if (ns.state === 'awaiting-feedback') return `${label} — interviewed ${dayjs(ns.since).format('MMM D')}, ${Math.round((now - ns.since)/86400000)}d ago`;
+    if (ns.state === 'offer-out') return `${label} ${Math.round((now - ns.since)/86400000)}d — follow up`;
+    return `${label} — ${Math.round(daysInCurrentStage(r, now) || 0)}d in ${escapeHtml(r.current_stage)}`;
   };
   stages.forEach((s, i) => {
     const y0 = i * rowH;
@@ -5969,9 +6064,9 @@ function renderAging(){
   // shape legend + unmapped-fields hint
   const legend = el('div', { class:'aging-legend' });
   const item = (glyphCls, label) => el('span', { class:'aging-legend-item' }, el('span', { class:'aging-glyph ' + glyphCls }), label);
-  legend.appendChild(item('g-needs', 'needs step'));
-  if (state.mapping.next_event_at) { legend.appendChild(item('g-sched', 'scheduled (in motion)')); legend.appendChild(item('g-await', 'awaiting feedback')); }
-  if (state.mapping.offer_extended_at) legend.appendChild(item('g-offer', 'offer out'));
+  legend.appendChild(item('g-needs', 'needs action (review · scheduling · offer pending)'));
+  if (state.mapping.next_event_at) { legend.appendChild(item('g-sched', 'scheduled (in motion)')); legend.appendChild(item('g-await', 'needs decision')); }
+  if (state.mapping.offer_extended_at) legend.appendChild(item('g-offer', 'offer extended'));
   wrap.appendChild(legend);
   if (!state.mapping.next_event_at || !state.mapping.offer_extended_at) {
     wrap.appendChild(el('div', { class:'aging-unmapped' },
@@ -6516,6 +6611,19 @@ function renderStatement(){
         el('td', { class:isBottleneck?'warn-cell':'' }, f.medianDays!=null?fmtDays(f.medianDays):'—'),
         el('td', {}, f.oldest!=null?fmtDays(f.oldest):'—'), el('td', {}, '—'));
       tbody.appendChild(tr);
+      // sub-state breakdown line (only when the stage splits into >1 sub-state)
+      const cts = subStateCounts(f.stage);
+      const present = SUBSTATE_ORDER.filter(ss => cts[ss] > 0);
+      if (present.length > 1) {
+        const line = el('td', { colspan:'7', class:'st-subline' });
+        present.forEach((ss, i) => {
+          if (i) line.appendChild(document.createTextNode(' · '));
+          line.appendChild(document.createTextNode(subStateLabel(f.stage, ss) + ' '));
+          line.appendChild(numlink(fmtN(cts[ss]), () => drillTo({ type:'substate', stage:f.stage, substate:ss }),
+            tipHtml(`${subStateLabel(f.stage, ss)} — ${cts[ss]} of ${f.activeNow} ${f.stage} actives. Click to drill.`)));
+        });
+        tbody.appendChild(el('tr', { class:'st-subrow' }, line));
+      }
     });
     table.appendChild(tbody);
   } else {
