@@ -3163,15 +3163,16 @@ function neededAction(r, ns, now){
   if (ns.state === 'offer-out') return `${base} ${Math.round((now - ns.since)/86400000)}d — follow up`;
   return base;
 }
-// state-aware owner: feedback chases belong to the recruiter (HM at late
-// stages), offer follow-ups to the recruiter; needs-step falls back to the
-// stage-position heuristic (coordinator for scheduling, HM for decisions)
+// state-aware owner: awaiting-feedback belongs to the HIRING MANAGER first
+// (leader action — ask the panel for scorecards / make the call), recruiter
+// when no HM is mapped; offer follow-ups to the recruiter; needs-step falls
+// back to the stage-position heuristic (coordinator schedules, HM decides)
 function stateOwnerFor(r, ns){
   const idx = Math.max(0, stageIndex(r.current_stage));
   const N = state.canonicalStages.length;
   let pri = null;
   if (ns.state === 'offer-out') pri = ['recruiter'];
-  else if (ns.state === 'awaiting-feedback') pri = (idx >= N - 2) ? ['hiring_manager','recruiter'] : ['recruiter'];
+  else if (ns.state === 'awaiting-feedback') pri = ['hiring_manager','recruiter'];
   if (pri) {
     const o = pri.filter(f => state.mapping[f]).map(f => ({ field:f, role:ROLE_LABEL[f], name:r[f] })).filter(x => x.name);
     if (o.length) return o[0];
@@ -3619,7 +3620,7 @@ function computeFlags(){
       subject: { type:'stage', stage: bn.stage },
       short: `${bn.stage} bottleneck`,
       fact: `median wait ${Math.round(bn.medianDays)}d — ${ratio ? ratio.toFixed(1) : '?'}× other stages, ${fmtN(waiting)} waiting`,
-      action: `Unblock ${bn.stage}${bnOwner ? ` — start with ${bnOwner.name} (${bnOwner.role})` : ''}.`,
+      action: `Resolve ${bn.stage} bottleneck${bnOwner ? ` — start with ${bnOwner.name} (${bnOwner.role})` : ''}.`,
       talkTo: bnOwner ? `${bnOwner.name} (${bnOwner.role})` : null,
       ruleTip: tipHtml('Flags when a stage\'s median wait exceeds 2× the median of the other stages.', 'red when over 3×'),
       severity: ratio && ratio > 3 ? 'red' : 'amber', score: 100 + (ratio || 0),
@@ -3940,7 +3941,7 @@ function investigateFlag(flag){
       fn: rows => { const f = computeStageFlow(rows, state.canonicalStages, null, 'cohort').find(x => x.stage === S); return f && f.medianDays != null ? f.medianDays : 0; } };
     const top = inv.contributors[0];
     const owner = inv.owners && inv.owners[0];
-    inv.suggested = `Suggested: unblock ${S}${top ? ` — start with the ${top.n} ${top.value} candidates` : ''}; the ${inv.evidence.length} oldest are at ${joinDays(inv.evidence)} days.${owner ? ` Talk to ${owner.name} (${owner.role}).` : ''}`;
+    inv.suggested = `Suggested: resolve the ${S} bottleneck${top ? ` — start with the ${top.n} ${top.value} candidates` : ''}; the ${inv.evidence.length} oldest are at ${joinDays(inv.evidence)} days.${owner ? ` Talk to ${owner.name} (${owner.role}).` : ''}`;
   }
 
   else if (flag.id === 'overdue') {
@@ -3956,7 +3957,7 @@ function investigateFlag(flag){
     inv.evidenceText = r => `${r.candidate_name||'—'} · ${r.job||'—'} · ${Math.round(dd(r)||0)}d in ${r.current_stage}`;
     inv.trend = null; // no historical snapshots of "overdue" exist to trend
     const owner = inv.owners && inv.owners[0];
-    inv.suggested = `Suggested: nudge the ${od.length} overdue candidates${owner ? ` — start with ${owner.name} (${owner.role})` : ''}; the ${inv.evidence.length} longest-waiting are at ${joinDays(inv.evidence)} days.`;
+    inv.suggested = `Suggested: get next steps booked for the ${od.length} overdue candidates${owner ? ` — start with ${owner.name} (${owner.role})` : ''}; the ${inv.evidence.length} longest-waiting are at ${joinDays(inv.evidence)} days.`;
   }
 
   else if (flag.id === 'offersout') {
@@ -4834,8 +4835,8 @@ function clearActionsState(){
   toast('Worklist cleared.');
 }
 // ready-to-send plain-text note for an owner's overdue group — ACTION-AWARE:
-// a scheduling ask, a feedback chase, a decision ask and an offer follow-up
-// read differently, so the message is composed per needed action.
+// a scheduling ask, a scorecard/decision ask (leader-directed) and an offer
+// follow-up read differently, so the message is composed per needed action.
 function actionMessage(ownerName, rows){
   const now = nowRef();
   const first = String(ownerName || '').split(/\s+/)[0] || ownerName;
@@ -4864,7 +4865,7 @@ function actionMessage(ownerName, rows){
   }
   if (by.fb.length) {
     const list = by.fb.map(x => `${who(x)}, interviewed ${dayjs(x.ns.since).format('MMM D')})`).join(', ');
-    segs.push(`${by.fb.length} candidate${by.fb.length===1?' has':'s have'} interviewed but feedback hasn't landed: ${list}. Can we chase the panel?`);
+    segs.push(`${by.fb.length} candidate${by.fb.length===1?' has':'s have'} been interviewed but scorecards or decisions are still pending: ${list}. Could you ask the panel to submit scorecards and make the call this week?`);
   }
   if (by.dec.length) {
     const list = by.dec.map(x => `${who(x)}, ${Math.round(daysInCurrentStage(x.r, now) || 0)}d)`).join(', ');
@@ -4897,7 +4898,7 @@ function renderActionQueue(){
   }
   const groups = new Map();
   for (const r of all) {
-    const o = stateOwnerFor(r, nextStepState(r, now)); // state-aware: feedback chases → recruiter, offers → recruiter
+    const o = stateOwnerFor(r, nextStepState(r, now)); // state-aware: scorecards/decisions → HM, offers → recruiter
     const key = o ? o.field + '|' + o.name : '__unassigned__';
     if (!groups.has(key)) groups.set(key, { role: o ? o.role : null, name: o ? o.name : 'Unassigned', rows: [] });
     groups.get(key).rows.push(r);
@@ -4940,7 +4941,7 @@ function renderActionQueue(){
       const snoozeBtn = el('button', { class:'underline-btn muted aq-snooze', type:'button' }, 'Snooze 7d');
       snoozeBtn.addEventListener('click', () => snoozeAction(key));
       // the days column shows the STATE clock: time since the event for
-      // feedback chases, since extension for offers, since stage entry otherwise
+      // scorecard waits, since extension for offers, since stage entry otherwise
       const clockDays = (ns.state === 'awaiting-feedback' || ns.state === 'offer-out') ? (now - ns.since)/86400000 : days;
       row.append(cb, nameBtn,
         el('span', { class:'aq-job' }, r.job || '—'),
@@ -8797,7 +8798,13 @@ function draftItemText(r, ns, now){
   const d = Math.round(daysInCurrentStage(r, now) || 0);
   const idx = Math.max(0, stageIndex(r.current_stage));
   const lastPre = idx >= state.canonicalStages.length - 2 && idx > 0;
-  if (ns.state === 'awaiting-feedback') return `Chase ${r.current_stage} feedback for ${name} — interviewed ${dayjs(ns.since).format('MMM D')}`;
+  if (ns.state === 'awaiting-feedback') {
+    // leader framing: ask for scorecards at interview stages, ask for a
+    // decision when the stage is the decision point
+    const when = dayjs(ns.since).format('MMM D');
+    return lastPre ? `Decision needed on ${name} — interviewed ${when}`
+      : `Ask interviewers to submit scorecards for ${name} — interviewed ${when}`;
+  }
   if (ns.state === 'offer-out') return `Follow up on ${name}'s offer — out ${Math.round((now - ns.since) / 86400000)}d`;
   if (idx === 0) return `Review ${name}'s application — ${d}d waiting (norm ${Math.round(stageNorm(r.current_stage))}d)`;
   if (lastPre) return `Send ${name}'s offer — ${d}d in ${r.current_stage}`;
