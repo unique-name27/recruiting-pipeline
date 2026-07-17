@@ -1118,6 +1118,36 @@ svg.forecast .fc-line-s{ fill:none; stroke:var(--warn); stroke-width:1.6; stroke
 .scn-delta .scn-delta-part{ color:var(--ink); }
 @media print{ .scn-toggle, .scn-panel{ display:none !important; } }
 /* ============================================================
+   ACTION ITEM SUMMARY (editable, exportable)
+   ============================================================ */
+.ai-note{ font-size:12px; color:var(--muted); font-style:italic; }
+.ai-group{ margin:16px 0 4px; }
+.ai-group-title{ font-size:10.5px; font-weight:600; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; border-bottom:0.5px solid var(--hairline); padding-bottom:3px; margin-bottom:4px; }
+.ai-item{ display:flex; align-items:center; gap:8px; padding:3px 0; }
+.ai-item input[type="text"]{
+  flex:1; border:none; border-bottom:0.5px solid var(--hairline); background:transparent; color:var(--ink);
+  font-family:var(--sans); font-size:13px; padding:2px 2px;
+}
+.ai-item input[type="text"]:focus{ outline:none; border-bottom-color:var(--ink); }
+.ai-item.done input[type="text"]{ text-decoration:line-through; color:var(--muted); }
+.ai-item select{
+  border:none; border-bottom:0.5px solid var(--hairline); background:transparent; color:var(--muted);
+  font-family:var(--sans); font-size:11px; max-width:120px; padding:1px 0;
+}
+.ai-move{ display:flex; flex-direction:column; gap:0; }
+.ai-move button{ background:none; border:none; color:var(--muted); font-size:8px; line-height:1.1; cursor:pointer; padding:0 2px; }
+.ai-move button:hover{ color:var(--ink); }
+.ai-x, .ai-link{ background:none; border:none; color:var(--muted); font-size:11px; cursor:pointer; padding:1px 3px; }
+.ai-x:hover{ color:var(--neg); }
+.ai-link:hover{ color:var(--ink); }
+.ai-add{ background:none; border:none; color:var(--muted); font-family:var(--sans); font-size:11.5px; cursor:pointer; padding:2px 0; border-bottom:0.5px dotted var(--hairline); }
+.ai-add:hover{ color:var(--ink); }
+.ai-foot{ display:flex; gap:18px; align-items:baseline; flex-wrap:wrap; margin-top:22px; padding-top:12px; border-top:0.5px solid var(--hairline); font-size:12.5px; }
+.ai-foot label{ display:flex; align-items:center; gap:6px; color:var(--muted); font-size:11.5px; cursor:pointer; }
+.ai-confirm{ color:var(--warn); font-size:12px; }
+.ai-confirm button{ background:none; border:none; color:var(--ink); font:inherit; cursor:pointer; border-bottom:1px solid var(--ink); padding:0 0 1px; margin-left:8px; }
+
+/* ============================================================
    SCHEDULING CAPACITY + COMPARE WORKSPACE (overnight #3 round 4)
    ============================================================ */
 .cap-summary{ font-family:var(--serif); font-size:15px; color:var(--ink); margin:2px 0 10px; }
@@ -1610,6 +1640,7 @@ html.presenting{ overflow:hidden; }
           <h4 style="margin-top:16px;">Setup</h4>
           <div class="pcol">
             <button class="underline-btn" id="btn-run-review2">Run review</button>
+            <button class="underline-btn" id="btn-action-summary2">Action summary</button>
             <button class="underline-btn" id="btn-mapping">Mapping</button>
             <button class="underline-btn" id="btn-saved-views">Saved views</button>
             <button class="underline-btn" id="btn-customize">Customize</button>
@@ -1709,6 +1740,7 @@ html.presenting{ overflow:hidden; }
       <div class="section-head">
         <span class="kicker">This week</span>
         <span class="section-note" id="actions-note"></span>
+        <button class="underline-btn section-action" id="btn-action-summary">Action summary</button>
         <button class="underline-btn section-action" id="btn-actions-clear">Clear</button>
       </div>
       <div id="actions-list"></div>
@@ -2033,6 +2065,7 @@ const state = {
   actionsState: {},          // lab round 8: action-queue worklist { [rowKey]: { handled, snoozeUntil } }, persisted per fingerprint
   notes: {},                 // candidate workspace: { [rowKey]: { star, tags:[], note, noteEdited } }, persisted per fingerprint — NEVER touches source data
   insightsExpanded: false,   // "Noticed" feed show-more toggle (session-only)
+  actionItems: null,         // editable action-item summary { items:[], includeInPptx } — persisted per fingerprint
   panelKey: null,            // rowKey of the open candidate panel (session-only)
   slas: {},                  // lab round 8: per-stage target days { [stage]: days }, persisted per fingerprint — overrides the historical median
   sinceVisit: null,          // lab round 8: { diff, sinceTs, dismissed } computed once per dataset load; null = first visit or no changes
@@ -2743,6 +2776,7 @@ function applyDimPrefs(){
   loadActionsState(); // lab round 8: action-queue worklist travels with the dataset
   loadSlas();          // lab round 8: stage SLAs travel with the dataset
   loadNotes();         // candidate workspace annotations travel with the dataset
+  loadActionItems();   // the editable action-item summary travels with the dataset
   state.panelKey = null;
   state.sinceVisit = null;
   state._sinceVisitPending = true; // consumed by the first renderAll once snapshotRows exist
@@ -3515,6 +3549,16 @@ function loadNotes(){
   state.notes = {};
   idbKeyval.get('lab:notes:'+fp).then(n => {
     if (n && state.fingerprint === fp) { state.notes = n; queueRender(); }
+  }).catch(()=>{});
+}
+function persistActionItems(){
+  if (state.fingerprint) idbKeyval.set('lab:actionitems:'+state.fingerprint, state.actionItems).catch(()=>{});
+}
+function loadActionItems(){
+  const fp = state.fingerprint;
+  state.actionItems = null;
+  idbKeyval.get('lab:actionitems:'+fp).then(v => {
+    if (v && state.fingerprint === fp) state.actionItems = v;
   }).catch(()=>{});
 }
 function noteFor(key){ return (state.notes && state.notes[key]) || {}; }
@@ -8739,6 +8783,267 @@ function toggleTheme(){
 }
 
 /* ============================================================
+   ACTION ITEM SUMMARY — editable, exportable (user request)
+   Pre-filled from the same engine the action queue uses (story actions
+   first, then overdue candidates via neededAction/subStateLabel
+   vocabulary, then escalated/starred candidates with notes), then freely
+   editable: text, owner, order, done, add/remove. Persisted per
+   fingerprint under lab:actionitems:<fp>. "Reset to suggested"
+   regenerates — a plain replace with an inline confirm, no smart merge.
+   Exports: markdown copy, .md download, optional final PowerPoint slide.
+   ============================================================ */
+function draftItemText(r, ns, now){
+  const name = r.candidate_name || '—';
+  const d = Math.round(daysInCurrentStage(r, now) || 0);
+  const idx = Math.max(0, stageIndex(r.current_stage));
+  const lastPre = idx >= state.canonicalStages.length - 2 && idx > 0;
+  if (ns.state === 'awaiting-feedback') return `Chase ${r.current_stage} feedback for ${name} — interviewed ${dayjs(ns.since).format('MMM D')}`;
+  if (ns.state === 'offer-out') return `Follow up on ${name}'s offer — out ${Math.round((now - ns.since) / 86400000)}d`;
+  if (idx === 0) return `Review ${name}'s application — ${d}d waiting (norm ${Math.round(stageNorm(r.current_stage))}d)`;
+  if (lastPre) return `Send ${name}'s offer — ${d}d in ${r.current_stage}`;
+  return `Schedule ${r.current_stage} for ${name} — ${d}d waiting (norm ${Math.round(stageNorm(r.current_stage))}d)`;
+}
+let _aiSeq = 0;
+function buildActionItemDrafts(){
+  const now = nowRef();
+  const items = [];
+  const mk = (o) => items.push({ id: 'ai' + (++_aiSeq) + '-' + Date.now().toString(36), text:'', owner:'', done:false, key:null, pri:false, ...o });
+  // 1. priorities: one item per Attention story action
+  for (const st of (state._stories || [])) {
+    if (!st.action) continue;
+    let owner = '';
+    try { const inv = investigateFlag(st.primary); owner = (inv.owners && inv.owners[0] && inv.owners[0].name) || ''; } catch (e) {}
+    // only append the owner when the story's action doesn't already name them
+    const base = st.action.replace(/\.\s*$/, '');
+    mk({ text: base + (owner && !base.includes(owner) ? ` — start with ${owner}` : ''), owner, pri: true });
+  }
+  // 2. overdue candidates — the action queue's set (snoozed hidden; already-
+  //    handled ones prefill as done, so the summary matches the worklist)
+  const stAct = state.actionsState || {};
+  const od = overdueActives().filter(r => {
+    if (nextStepState(r, now).state === 'scheduled') return false;
+    const s = stAct[rowKey(r)];
+    return !(s && s.snoozeUntil && s.snoozeUntil > Date.now());
+  }).sort((a, b) => (daysInCurrentStage(b, now) || 0) - (daysInCurrentStage(a, now) || 0));
+  const covered = new Set();
+  for (const r of od) {
+    const key = rowKey(r);
+    covered.add(key);
+    const ns = nextStepState(r, now);
+    const o = stateOwnerFor(r, ns);
+    mk({ text: draftItemText(r, ns, now), owner: o ? o.name : '', key, done: !!(stAct[key] && stAct[key].handled) });
+  }
+  // 3. escalated/starred candidates with a note (not already covered above)
+  for (const key of Object.keys(state.notes || {})) {
+    const n = state.notes[key];
+    if (covered.has(key) || !n.note) continue;
+    if (!n.star && !(n.tags || []).includes('escalated')) continue;
+    const r = state.rawRows.find(x => rowKey(x) === key);
+    if (!r || r.status !== 'active') continue;
+    const o = ownersFor(r)[0];
+    mk({ text: `${r.candidate_name || '—'}: ${n.note.split('\n')[0]}`, owner: o ? o.name : '', key });
+  }
+  return items;
+}
+function knownOwners(){
+  const s = new Set();
+  for (const f of ['recruiter', 'coordinator', 'hiring_manager']) {
+    if (!state.mapping[f]) continue;
+    for (const r of state.rawRows) if (r[f]) s.add(r[f]);
+  }
+  return Array.from(s).sort();
+}
+function ownerRoleSuffix(name){
+  for (const [f, role] of [['recruiter', 'recruiter'], ['coordinator', 'coordinator'], ['hiring_manager', 'hiring manager']]) {
+    if (state.mapping[f] && state.rawRows.some(r => r[f] === name)) return ` (${role})`;
+  }
+  return '';
+}
+// display groups: Priorities first, then owner desks (largest first), Unassigned last
+function actionItemGroups(){
+  const ai = state.actionItems;
+  if (!ai) return [];
+  const groups = [];
+  const pri = ai.items.filter(i => i.pri);
+  if (pri.length) groups.push(['Priorities', pri]);
+  const byOwner = new Map();
+  for (const it of ai.items) {
+    if (it.pri) continue;
+    const k = it.owner || 'Unassigned';
+    if (!byOwner.has(k)) byOwner.set(k, []);
+    byOwner.get(k).push(it);
+  }
+  const arr = Array.from(byOwner.entries()).sort((a, b) =>
+    ((a[0] === 'Unassigned') - (b[0] === 'Unassigned')) || (b[1].length - a[1].length) || a[0].localeCompare(b[0]));
+  for (const [name, its] of arr) groups.push([name === 'Unassigned' ? 'Unassigned' : name + ownerRoleSuffix(name), its]);
+  return groups;
+}
+function actionItemsMd(){
+  const L = [`# Action items — ${dayjs().format('MMM D, YYYY')}`, ''];
+  for (const [label, items] of actionItemGroups()) {
+    const its = items.filter(i => i.text.trim());
+    if (!its.length) continue;
+    L.push('## ' + label);
+    for (const it of its) L.push(`- [${it.done ? 'x' : ' '}] ${it.text.trim()}`);
+    L.push('');
+  }
+  L.push('_Drafted from days in stage and next-step status — edited freely._');
+  return L.join('\n');
+}
+function ensureActionItems(){
+  if (!state.actionItems) { state.actionItems = { items: buildActionItemDrafts(), includeInPptx: false }; persistActionItems(); }
+  return state.actionItems;
+}
+function openActionSummary(){
+  if (!state.rawRows.length) { toast('Load data first.'); return; }
+  if (impliedMode() !== 'snapshot') { toast('Action summary works on the Current pipeline — switch the period first.'); return; }
+  ensureActionItems();
+  renderActionSummarySheet();
+}
+function closeActionSummary(){
+  const o = document.getElementById('actionitems-overlay');
+  if (o) o.remove();
+}
+function renderActionSummarySheet(){
+  closeActionSummary();
+  const ai = state.actionItems;
+  const root = $('#mapper-root');
+  const overlay = el('div', { class:'sheet-overlay', id:'actionitems-overlay' });
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeActionSummary(); });
+  const sheet = el('div', { class:'sheet', style:'max-width:760px;' });
+  sheet.addEventListener('click', (e) => e.stopPropagation());
+  const closeX = el('button', { class:'cp-close', type:'button', style:'float:right; margin:18px 24px 0 0;', 'aria-label':'close' }, '✕');
+  closeX.addEventListener('click', closeActionSummary);
+  sheet.appendChild(closeX);
+  sheet.appendChild(el('div', { class:'sheet-head' },
+    el('h2', {}, 'Action items'),
+    el('p', { class:'ai-note' }, 'Drafted from days in stage and next-step status — edit freely.')));
+  const body = el('div', { class:'sheet-body' });
+  const save = () => persistActionItems();
+  const rerender = () => { persistActionItems(); renderActionSummarySheet(); };
+  const owners = knownOwners();
+  const itemRow = (it) => {
+    const row = el('div', { class:'ai-item' + (it.done ? ' done' : '') });
+    const cb = el('input', { type:'checkbox' });
+    cb.checked = it.done;
+    cb.addEventListener('change', () => { it.done = cb.checked; persistActionItems(); row.classList.toggle('done', it.done); });
+    // reorder among visible group siblings = adjacent same-group entries in the flat array
+    const siblings = () => ai.items.filter(x => x.pri === it.pri && (x.pri || (x.owner || '') === (it.owner || '')));
+    const move = (d) => {
+      const sib = siblings();
+      const si = sib.indexOf(it);
+      const ti = si + d;
+      if (ti < 0 || ti >= sib.length) return;
+      const a = ai.items.indexOf(it), b = ai.items.indexOf(sib[ti]);
+      ai.items[a] = sib[ti]; ai.items[b] = it;
+      rerender();
+    };
+    const up = el('button', { type:'button', 'aria-label':'move up' }, '▲');
+    up.addEventListener('click', () => move(-1));
+    const dn = el('button', { type:'button', 'aria-label':'move down' }, '▼');
+    dn.addEventListener('click', () => move(1));
+    const inp = el('input', { type:'text' });
+    inp.value = it.text;
+    inp.addEventListener('input', debounce(() => { it.text = inp.value; save(); }, 400));
+    inp.addEventListener('blur', () => { it.text = inp.value; save(); });
+    const sel = el('select');
+    sel.appendChild(el('option', { value:'' }, 'unassigned'));
+    for (const o of owners) sel.appendChild(el('option', { value: o }, o));
+    if (it.owner && !owners.includes(it.owner)) sel.appendChild(el('option', { value: it.owner }, it.owner));
+    sel.value = it.owner || '';
+    sel.addEventListener('change', () => { it.owner = sel.value; rerender(); });
+    row.append(cb, el('span', { class:'ai-move' }, up, dn), inp);
+    if (it.key) {
+      const link = el('button', { class:'ai-link', type:'button', 'aria-label':'open candidate' }, '↗');
+      attachTip(link, tipHtml('Open this candidate\'s panel (closes the sheet). The link survives text edits.', 'linked candidate'));
+      link.addEventListener('click', () => {
+        closeActionSummary();
+        openCandidatePanel(it.key);
+        const r = state.rawRows.find(x => rowKey(x) === it.key);
+        if (r) drillTo({ type:'row', key: it.key, name: r.candidate_name || 'Candidate' });
+      });
+      row.appendChild(link);
+    }
+    row.appendChild(sel);
+    const x = el('button', { class:'ai-x', type:'button', 'aria-label':'remove item' }, '✕');
+    x.addEventListener('click', () => { ai.items.splice(ai.items.indexOf(it), 1); rerender(); });
+    row.appendChild(x);
+    return row;
+  };
+  const addBtn = (label, preset) => {
+    const b = el('button', { class:'ai-add', type:'button' }, label);
+    b.addEventListener('click', () => {
+      ai.items.push({ id: 'ai' + (++_aiSeq) + '-' + Date.now().toString(36), text:'', owner: preset.owner || '', done:false, key:null, pri: !!preset.pri });
+      rerender();
+      // focus the new empty input
+      const inputs = document.querySelectorAll('#actionitems-overlay .ai-item input[type="text"]');
+      for (const i of inputs) if (!i.value) { i.focus(); break; }
+    });
+    return b;
+  };
+  for (const [label, items] of actionItemGroups()) {
+    const g = el('div', { class:'ai-group' }, el('div', { class:'ai-group-title' }, label));
+    for (const it of items) g.appendChild(itemRow(it));
+    const first = items[0] || {};
+    g.appendChild(addBtn('+ Add item', { pri: label === 'Priorities', owner: label === 'Priorities' || label === 'Unassigned' ? '' : (first.owner || '') }));
+    body.appendChild(g);
+  }
+  if (!ai.items.length) body.appendChild(el('div', { class:'attn-none' }, 'No items — nothing overdue and no story actions. Add one below.'));
+  body.appendChild(el('div', { class:'ai-group' }, addBtn('+ Add item', { owner:'' })));
+  // footer: exports + pptx toggle + reset
+  const foot = el('div', { class:'ai-foot' });
+  const copyBtn = el('button', { class:'underline-btn', type:'button' }, 'Copy as markdown');
+  copyBtn.addEventListener('click', copyActionItemsMd);
+  const dlBtn = el('button', { class:'underline-btn', type:'button' }, 'Download .md');
+  dlBtn.addEventListener('click', () => {
+    const blob = new Blob([actionItemsMd()], { type:'text/markdown' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'action-items-' + dayjs().format('YYYY-MM-DD') + '.md';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    toast('Downloaded ' + a.download);
+  });
+  const tog = el('input', { type:'checkbox' });
+  tog.checked = !!ai.includeInPptx;
+  tog.addEventListener('change', () => { ai.includeInPptx = tog.checked; persistActionItems(); });
+  const togLabel = el('label', {}, tog, 'Include as final slide in PowerPoint export');
+  const resetWrap = el('span', {});
+  const resetBtn = el('button', { class:'underline-btn muted', type:'button' }, 'Reset to suggested');
+  resetBtn.addEventListener('click', () => {
+    resetWrap.innerHTML = '';
+    const yes = el('button', { type:'button' }, 'Reset');
+    yes.addEventListener('click', () => { ai.items = buildActionItemDrafts(); rerender(); toast('Re-drafted from the current pipeline.'); });
+    const no = el('button', { type:'button' }, 'Keep');
+    no.addEventListener('click', () => rerender());
+    resetWrap.appendChild(el('span', { class:'ai-confirm' }, `Replace ${ai.items.length} item${ai.items.length === 1 ? '' : 's'}? Your edits will be lost —`, yes, no));
+  });
+  resetWrap.appendChild(resetBtn);
+  foot.append(copyBtn, dlBtn, togLabel, resetWrap);
+  body.appendChild(foot);
+  sheet.appendChild(body);
+  overlay.appendChild(sheet);
+  root.innerHTML = '';
+  root.appendChild(overlay);
+}
+async function copyActionItemsMd(){
+  const text = actionItemsMd();
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('Action items copied as markdown.');
+  } catch (e) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy');
+      ta.remove();
+      toast('Action items copied as markdown.');
+    } catch (e2) { toast('Copy failed — clipboard unavailable.'); }
+  }
+}
+
+/* ============================================================
    SCHEDULING CAPACITY (overnight #3 round 4, gallery, Current only)
    Booked = scheduled events (next_event_at) per week, next two weeks.
    Demand: week 1 = the CURRENT needs-scheduling queue at scheduling
@@ -9166,6 +9471,26 @@ async function exportPptx(){
           const scale = Math.min(maxW / png.w, maxH / png.h);
           slide.addImage({ data: png.data, x:0.7, y:1.2, w: png.w * scale, h: png.h * scale });
         }
+      }
+    }
+    // optional final slide: the editable action-item summary (open items only)
+    if (state.actionItems && state.actionItems.includeInPptx) {
+      const open = state.actionItems.items.filter(i => !i.done && i.text.trim());
+      if (open.length) {
+        const slide = pptx.addSlide();
+        slide.background = { color: 'FBFAF8' };
+        slide.addText('ACTION ITEMS', { x:0.7, y:0.5, w:12, h:0.4, fontSize:12, color:MUTED, charSpacing:2 });
+        const parts = [];
+        let used = 0;
+        for (const [label, items] of actionItemGroups()) {
+          const its = items.filter(i => !i.done && i.text.trim());
+          if (!its.length || used >= 12) continue;
+          parts.push({ text: label, options: { bold: true, breakLine: true, color: INK } });
+          for (const it of its) { if (used >= 12) break; parts.push({ text: it.text.trim(), options: { bullet: true, breakLine: true, color: INK } }); used++; }
+        }
+        slide.addText(parts, { x:0.9, y:1.2, w:11.5, h:5.7, fontSize:13 });
+        if (open.length > used) slide.addText(`+${open.length - used} more open items`, { x:0.9, y:7.0, w:5, h:0.35, fontSize:11, color:MUTED });
+        made++;
       }
     }
     const fileName = 'pipeline-review-' + dayjs(nowRef()).format('YYYY-MM-DD') + '.pptx';
@@ -10418,6 +10743,7 @@ function buildPaletteIndex(){
     items.push({ type:'Commands', label:'Export PowerPoint', run: exportPptx });
     if (impliedMode() === 'snapshot') items.push({ type:'Commands', label:'Replay pipeline history', run: () => { if (!replay.playing) startReplay(); } });
     if (impliedMode() === 'snapshot') items.push({ type:'Commands', label:'Run weekly review', ctx:'meeting mode', run: openReview });
+    if (impliedMode() === 'snapshot') items.push({ type:'Commands', label:'Action item summary', ctx:'editable export', run: openActionSummary });
     items.push({ type:'Commands', label:'Reset filters', run: clearAllFilters });
     items.push({ type:'Commands', label:'Start presentation', ctx:'P', run: () => openPresent(false) });
     items.push({ type:'Commands', label:'Wall mode (ambient display)', run: () => openPresent(true) });
@@ -10629,6 +10955,9 @@ function wireEvents(){
   attachTipOnce($('#btn-export-pptx'), tipHtml('Export the Present deck as a real .pptx — text and tables stay editable in PowerPoint; charts embed as 2× images.', 'always rendered in Broadsheet styling'));
   attachTipOnce($('#btn-run-review'), tipHtml('Run the weekly review — a guided walk through the stories and overdue candidates, capturing decisions as you go.', 'Current pipeline only'));
   $('#btn-run-review2').addEventListener('click', openReview);
+  $('#btn-action-summary').addEventListener('click', openActionSummary);
+  attachTipOnce($('#btn-action-summary'), tipHtml('An editable action-item list pre-drafted from days in stage and next-step status — reassign, reword, reorder, then copy or export it.', 'persists per dataset'));
+  $('#btn-action-summary2').addEventListener('click', openActionSummary);
   // present/wall keyboard: arrows + space advance, P toggles, any key exits the wall
   window.addEventListener('keydown', (e) => {
     if (e.target && e.target.matches && e.target.matches('input, textarea, select')) return;
@@ -10701,6 +11030,8 @@ function wireEvents(){
     if (paletteIsOpen()) { closePalette(); return; } // palette closes next
     const cz = document.getElementById('customize-overlay');
     if (cz) { cz.remove(); return; } // settings overlay closes next
+    const ais = document.getElementById('actionitems-overlay');
+    if (ais) { closeActionSummary(); return; } // action-items sheet closes next
     if (replay.playing) { stopReplay(false); return; } // then the replay pauses
     const openPops = $$('.popover:not(.hidden), .fd-panel:not(.hidden)');
     if (openPops.length) { openPops.forEach(p=>p.classList.add('hidden')); return; }
