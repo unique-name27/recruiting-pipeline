@@ -1118,6 +1118,73 @@ svg.forecast .fc-line-s{ fill:none; stroke:var(--warn); stroke-width:1.6; stroke
 .scn-delta .scn-delta-part{ color:var(--ink); }
 @media print{ .scn-toggle, .scn-panel{ display:none !important; } }
 /* ============================================================
+   WEEKLY REVIEW MEETING MODE (overnight #3 round 2) — a guided,
+   interactive flow over the attention stories + overdue candidates.
+   Reuses the Present chrome vocabulary (paper overlay, kicker/title)
+   at reading scale; decisions are broadsheet text-buttons.
+   ============================================================ */
+.review-root{
+  position:fixed; inset:0; background:var(--paper); color:var(--ink); z-index:780;
+  display:flex; flex-direction:column; font-family:var(--sans);
+}
+.rv-head{
+  display:flex; justify-content:space-between; align-items:baseline; gap:16px;
+  padding:16px 34px 10px; border-bottom:2px solid var(--heavy);
+}
+.rv-head-title{ font-family:var(--serif); font-size:17px; font-weight:600; }
+.rv-head-meta{ font-size:11.5px; color:var(--muted); font-variant-numeric:tabular-nums; }
+.rv-progress{ height:2px; background:var(--hairline); position:relative; }
+.rv-progress-fill{ position:absolute; left:0; top:0; bottom:0; background:var(--ink); transition:width 200ms; }
+@media (prefers-reduced-motion: reduce){ .rv-progress-fill{ transition:none; } }
+.rv-scene{ flex:1; overflow-y:auto; padding:5vh 34px 24px; }
+.rv-scene-inner{ max-width:720px; margin:0 auto; }
+.rv-kicker{ font-size:11px; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); margin-bottom:14px; }
+.rv-title{ font-family:var(--serif); font-weight:600; font-size:clamp(24px, 3vw, 38px); line-height:1.2; letter-spacing:-0.01em; }
+.rv-title.red{ color:var(--neg, var(--bad)); }
+.rv-fact{ font-size:14.5px; color:var(--muted); margin-top:10px; max-width:60ch; }
+.rv-suggest{ font-family:var(--serif); font-style:italic; font-size:15.5px; color:var(--ink); margin-top:14px; max-width:60ch; }
+.rv-block{ margin-top:26px; }
+.rv-block-title{
+  font-size:10.5px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted);
+  border-bottom:0.5px solid var(--hairline); padding-bottom:3px; margin-bottom:8px;
+}
+.rv-line{ font-size:13px; color:var(--ink); padding:3px 0; }
+.rv-line .small-flag{ color:var(--muted); font-size:11px; font-style:italic; }
+.rv-line button{ background:none; border:none; color:var(--ink); font:inherit; cursor:pointer; padding:0; border-bottom:0.5px solid var(--hairline); }
+.rv-line button:hover{ border-bottom-color:var(--ink); }
+.rv-agenda-row{ display:flex; gap:10px; font-size:14px; padding:5px 0; align-items:baseline; }
+.rv-agenda-n{ font-family:var(--serif); font-size:19px; font-weight:600; min-width:2ch; text-align:right; font-variant-numeric:tabular-nums; }
+.rv-decisions{ display:flex; gap:22px; align-items:baseline; margin-top:30px; padding-top:12px; border-top:0.5px solid var(--hairline); flex-wrap:wrap; }
+.rv-btn{
+  background:none; border:none; cursor:pointer; font-family:var(--sans); font-size:13.5px; color:var(--ink);
+  padding:0 0 1px; border-bottom:1px solid var(--ink);
+}
+.rv-btn:hover{ color:var(--muted); border-bottom-color:var(--muted); }
+.rv-btn .rv-key{ color:var(--muted); font-size:10.5px; margin-right:5px; font-variant-numeric:tabular-nums; }
+.rv-btn.done{ color:var(--muted); border-bottom-style:dotted; }
+.rv-note-editor{ margin-top:16px; }
+.rv-note-editor textarea{
+  width:100%; min-height:70px; resize:vertical; border:0.5px solid var(--hairline); background:transparent;
+  color:var(--ink); font-family:var(--sans); font-size:13px; line-height:1.5; padding:8px 10px;
+}
+.rv-note-editor textarea:focus{ outline:none; border-color:var(--ink); }
+.rv-cand-sub{ font-size:13px; color:var(--muted); margin-top:6px; }
+.rv-cand-sub .cp-substate{ color:var(--ink); }
+.rv-group-note{ font-size:11.5px; color:var(--muted); font-style:italic; margin-bottom:8px; }
+.rv-cand .cp-timeline{ margin-top:4px; max-width:520px; }
+.rv-summary-md{ font-size:13.5px; line-height:1.65; }
+.rv-summary-md h3{ font-family:var(--serif); font-size:16px; font-weight:600; margin:20px 0 6px; }
+.rv-footnote{ font-size:11.5px; color:var(--muted); font-style:italic; margin-top:26px; border-top:0.5px solid var(--hairline); padding-top:10px; max-width:60ch; }
+.rv-nav{
+  display:flex; justify-content:space-between; align-items:baseline;
+  padding:10px 34px 16px; border-top:0.5px solid var(--hairline); font-size:12px; color:var(--muted);
+}
+.rv-nav button{ background:none; border:none; color:var(--ink); font-family:var(--sans); font-size:12.5px; cursor:pointer; padding:0 0 1px; border-bottom:0.5px solid var(--hairline); }
+.rv-nav button:hover{ border-bottom-color:var(--ink); }
+.rv-nav button:disabled{ color:var(--muted); border-bottom-color:transparent; cursor:default; }
+@media print{ .review-root{ display:none !important; } }
+
+/* ============================================================
    CANDIDATE WORKSPACE (overnight #3) — stars/tags/notes + side panel.
    The panel is a fixed right-side sheet: hairline left rule on paper,
    beneath the palette (600) and present (800) overlays.
@@ -1403,7 +1470,7 @@ html.presenting{ overflow:hidden; }
 .toast-line{
   position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(8px);
   background:var(--ink); color:var(--paper); font-size:12.5px; padding:9px 16px;
-  z-index:400; opacity:0; transition:opacity 160ms, transform 160ms; pointer-events:none; text-align:center; max-width:80vw;
+  z-index:900; opacity:0; transition:opacity 160ms, transform 160ms; pointer-events:none; text-align:center; max-width:80vw;
 }
 .toast-line.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 
@@ -1461,6 +1528,7 @@ html.presenting{ overflow:hidden; }
           </div>
           <h4 style="margin-top:16px;">Setup</h4>
           <div class="pcol">
+            <button class="underline-btn" id="btn-run-review2">Run review</button>
             <button class="underline-btn" id="btn-mapping">Mapping</button>
             <button class="underline-btn" id="btn-saved-views">Saved views</button>
             <button class="underline-btn" id="btn-customize">Customize</button>
@@ -1547,7 +1615,10 @@ html.presenting{ overflow:hidden; }
     <section class="section" id="section-attention">
       <div class="section-head">
         <span class="kicker">Attention</span>
-        <button class="underline-btn section-action" id="btn-copy-summary">Copy executive summary</button>
+        <span>
+          <button class="underline-btn section-action" id="btn-run-review">Run review</button>
+          <button class="underline-btn section-action" id="btn-copy-summary">Copy executive summary</button>
+        </span>
       </div>
       <div id="attention-list"></div>
     </section>
@@ -4388,6 +4459,9 @@ function renderFinding(){
    RENDER: ATTENTION — exec flag list + copy summary
    ============================================================ */
 function renderAttention(){
+  // meeting mode runs on the Current pipeline only — the button follows
+  const rrBtn = $('#btn-run-review');
+  if (rrBtn) rrBtn.classList.toggle('hidden', impliedMode() !== 'snapshot');
   const list = $('#attention-list'); list.innerHTML = '';
   const stories = state._stories || [];
   if (!stories.length) {
@@ -8520,6 +8594,395 @@ function toggleTheme(){
 }
 
 /* ============================================================
+   WEEKLY REVIEW MEETING MODE (overnight #3 round 2)
+   A guided flow for running the pipeline meeting: agenda -> each attention
+   story -> ITS overdue candidates -> remaining overdue grouped by owner ->
+   summary. Decisions (handled/snooze/escalate/note) write the SAME stores
+   as the action queue and workspace annotations, live as clicked — the
+   summary is a record, not a commit step. Flow position is session-only.
+   Current-pipeline mode only.
+   ============================================================ */
+let reviewState = null; // { steps, idx, acks:{storyId:'acknowledged'|'skipped'}, decisions:{rowKey:{types:[],note}}, root, sceneEl }
+
+// the meeting's candidate pool: overdue actives still needing a decision —
+// already-handled and snoozed candidates drop out (so re-entering reflects
+// prior decisions), scheduled candidates are in motion and never items
+function reviewPendingOverdue(){
+  const now = nowRef();
+  const st = state.actionsState || {};
+  return overdueActives().filter(r => {
+    if (nextStepState(r, now).state === 'scheduled') return false;
+    const s = st[rowKey(r)];
+    if (s && s.handled) return false;
+    if (s && s.snoozeUntil && s.snoozeUntil > Date.now()) return false;
+    return true;
+  });
+}
+// does a story claim this overdue candidate? Judged from its members' subjects.
+// The broad 'overdue' flag only claims when it is the story's PRIMARY —
+// as a supporting fact inside a bottleneck story it must not swallow
+// candidates outside that stage.
+function storyClaims(st, r, now){
+  for (const m of st.members) {
+    const root = m.id.split(':')[0];
+    if (root === 'bottleneck' && m.subject && r.current_stage === m.subject.stage) return true;
+    if (root === 'overdue' && m === st.primary) return true;
+    if (root === 'emptyfunnel' && m.subject && m.subject.reqs.includes(r.job || '—')) return true;
+    if (root === 'pacing' && m.subject && (r.job || '—') === m.subject.req) return true;
+    if (root === 'offersout' && nextStepState(r, now).state === 'offer-out') return true;
+  }
+  return false;
+}
+function buildReviewSteps(){
+  const now = nowRef();
+  const dd = r => daysInCurrentStage(r, now) || 0;
+  const stories = state._stories || [];
+  const pending = reviewPendingOverdue();
+  const claimed = new Set();
+  const steps = [{ kind:'agenda' }];
+  // grouped flow: story -> its candidates (first claim wins, story order)
+  for (const st of stories) {
+    const mine = pending.filter(r => !claimed.has(rowKey(r)) && storyClaims(st, r, now))
+      .sort((a,b) => dd(b) - dd(a));
+    steps.push({ kind:'story', story: st, count: mine.length });
+    for (const r of mine) { claimed.add(rowKey(r)); steps.push({ kind:'cand', row: r, storyId: st.id, storyHeadline: st.headline }); }
+  }
+  // leftovers grouped by owner (largest desk first, oldest wait first within)
+  const groups = new Map();
+  for (const r of pending) {
+    if (claimed.has(rowKey(r))) continue;
+    const o = stateOwnerFor(r, nextStepState(r, now));
+    const k = o ? o.name : 'Unassigned';
+    if (!groups.has(k)) groups.set(k, { label: o ? `${o.name} (${o.role})` : 'Unassigned', rows: [] });
+    groups.get(k).rows.push(r);
+  }
+  for (const g of Array.from(groups.values()).sort((a,b) => b.rows.length - a.rows.length)) {
+    g.rows.sort((a,b) => dd(b) - dd(a));
+    for (const r of g.rows) steps.push({ kind:'cand', row: r, ownerGroup: g.label });
+  }
+  steps.push({ kind:'summary' });
+  return steps;
+}
+function reviewItemSteps(){ return reviewState.steps.filter(s => s.kind === 'story' || s.kind === 'cand'); }
+function openReview(){
+  if (!state.rawRows.length) { toast('Load data first.'); return; }
+  if (impliedMode() !== 'snapshot') { toast('Run review works on the Current pipeline — switch the period first.'); return; }
+  if (reviewState) closeReview();
+  if (presentState) closePresent();
+  closeCandidatePanel(); // the panel is chrome — the flow carries its own candidate card
+  state.renderQueued = false; renderAll(); // steps reflect the freshest stores
+  const root = el('div', { class:'review-root', id:'review-root' });
+  const head = el('div', { class:'rv-head' },
+    el('span', { class:'rv-head-title' }, 'Weekly review'),
+    el('span', { class:'rv-head-meta', id:'rv-head-meta' }));
+  const progress = el('div', { class:'rv-progress' }, el('div', { class:'rv-progress-fill', id:'rv-progress-fill', style:'width:0%' }));
+  const sceneEl = el('div', { class:'rv-scene' });
+  const nav = el('div', { class:'rv-nav' });
+  const backBtn = el('button', { type:'button', id:'rv-back' }, '← Back');
+  backBtn.addEventListener('click', () => reviewNav(-1));
+  const nextBtn = el('button', { type:'button', id:'rv-next' }, 'Next →');
+  nextBtn.addEventListener('click', () => reviewNav(1));
+  nav.append(backBtn, el('span', {}, '1–4 decide · arrows move · Esc ends with the summary'), nextBtn);
+  root.append(head, progress, sceneEl, nav);
+  reviewState = { steps: buildReviewSteps(), idx: 0, acks: {}, decisions: {}, root, sceneEl };
+  document.body.appendChild(root);
+  document.documentElement.classList.add('presenting'); // scroll lock, same as Present
+  showReviewStep(0);
+}
+function closeReview(){
+  const rv = reviewState;
+  if (!rv) return;
+  reviewState = null;
+  rv.root.remove();
+  document.documentElement.classList.remove('presenting');
+  state.renderQueued = false; renderAll(); // decisions made in the flow surface in the report
+}
+function reviewNav(d){
+  const rv = reviewState;
+  if (!rv) return;
+  showReviewStep(Math.max(0, Math.min(rv.steps.length - 1, rv.idx + d)));
+}
+function reviewJumpToRow(key){
+  const rv = reviewState;
+  const i = rv.steps.findIndex(s => s.kind === 'cand' && rowKey(s.row) === key);
+  if (i >= 0) showReviewStep(i);
+}
+function showReviewStep(idx){
+  const rv = reviewState;
+  if (!rv) return;
+  rv.idx = idx;
+  const step = rv.steps[idx];
+  const items = reviewItemSteps();
+  const itemNo = items.indexOf(step) + 1; // 0 for agenda/summary
+  const done = step.kind === 'summary' ? items.length : Math.max(0, itemNo - (step.kind === 'agenda' ? 0 : 1));
+  document.getElementById('rv-progress-fill').style.width = items.length ? Math.round(done / items.length * 100) + '%' : '0%';
+  document.getElementById('rv-head-meta').textContent =
+    step.kind === 'agenda' ? subLabel() :
+    step.kind === 'summary' ? 'summary' : `item ${itemNo} of ${items.length}`;
+  document.getElementById('rv-back').disabled = idx === 0;
+  document.getElementById('rv-next').disabled = idx === rv.steps.length - 1;
+  rv.sceneEl.innerHTML = '';
+  const inner = el('div', { class:'rv-scene-inner' });
+  rv.sceneEl.appendChild(inner);
+  if (step.kind === 'agenda') buildReviewAgenda(inner);
+  else if (step.kind === 'story') buildReviewStory(inner, step);
+  else if (step.kind === 'cand') buildReviewCand(inner, step);
+  else buildReviewSummary(inner);
+  rv.sceneEl.scrollTop = 0;
+}
+function buildReviewAgenda(c){
+  const rv = reviewState;
+  const now = nowRef();
+  const stories = rv.steps.filter(s => s.kind === 'story');
+  const cands = rv.steps.filter(s => s.kind === 'cand');
+  c.appendChild(el('div', { class:'rv-kicker' }, 'Agenda — ' + dayjs().format('dddd, MMM D')));
+  c.appendChild(el('h1', { class:'rv-title' }, $('#finding-headline').textContent || 'Pipeline review.'));
+  const block = el('div', { class:'rv-block' });
+  const row = (n, txt) => block.appendChild(el('div', { class:'rv-agenda-row' }, el('span', { class:'rv-agenda-n' }, String(n)), el('span', {}, txt)));
+  row(stories.length, `attention stor${stories.length === 1 ? 'y' : 'ies'} to walk through`);
+  // overdue by needed action
+  const byState = new Map();
+  for (const s of cands) { const st = nextStepState(s.row, now).state; byState.set(st, (byState.get(st) || 0) + 1); }
+  const WORDS = { 'needs-step': 'waiting on a next step', 'awaiting-feedback': 'awaiting interview feedback', 'offer-out': 'offers awaiting a response' };
+  for (const key of SUBSTATE_ORDER) if (byState.get(key)) row(byState.get(key), WORDS[key] || key);
+  c.appendChild(block);
+  c.appendChild(el('p', { class:'rv-suggest' }, `${cands.length} decision${cands.length === 1 ? '' : 's'} ahead.`));
+  if (!stories.length && !cands.length) c.appendChild(el('p', { class:'rv-fact' }, 'Nothing needs a decision — the pipeline is within normal ranges. → for the summary.'));
+}
+function buildReviewStory(c, step){
+  const rv = reviewState;
+  const st = step.story;
+  c.appendChild(el('div', { class:'rv-kicker' }, 'Attention · ' + (st.severity === 'red' ? 'red flag' : 'amber flag')));
+  c.appendChild(el('h1', { class:'rv-title' + (st.severity === 'red' ? ' red' : '') }, st.headline));
+  for (const f of st.facts) c.appendChild(el('p', { class:'rv-fact' }, f));
+  if (st.action) c.appendChild(el('p', { class:'rv-suggest' }, st.action));
+  // investigation: top contributors + evidence (links jump to that candidate's step)
+  let inv = null;
+  try { inv = investigateFlag(st.primary); } catch (e) { /* a failed investigation must not strand the meeting */ }
+  if (inv && inv.contributors && inv.contributors.length) {
+    const blk = el('div', { class:'rv-block' }, el('div', { class:'rv-block-title' }, 'Where it concentrates'));
+    for (const f of inv.contributors.slice(0, 3))
+      blk.appendChild(el('div', { class:'rv-line' }, f.text, f.small ? el('span', { class:'small-flag' }, ' · small sample') : null));
+    c.appendChild(blk);
+  }
+  if (inv && inv.evidence && inv.evidence.length) {
+    const blk = el('div', { class:'rv-block' }, el('div', { class:'rv-block-title' }, 'Evidence'));
+    for (const r of inv.evidence) {
+      const key = rowKey(r);
+      const inFlow = rv.steps.some(s => s.kind === 'cand' && rowKey(s.row) === key);
+      const line = el('div', { class:'rv-line' });
+      if (inFlow) {
+        const b = el('button', { type:'button' }, inv.evidenceText(r));
+        b.addEventListener('click', () => reviewJumpToRow(key));
+        line.appendChild(b);
+        line.appendChild(el('span', { class:'small-flag' }, ' · in this review'));
+      } else line.appendChild(document.createTextNode(inv.evidenceText(r)));
+      blk.appendChild(line);
+    }
+    c.appendChild(blk);
+  }
+  if (step.count) c.appendChild(el('p', { class:'rv-fact' }, `${step.count} of its candidates follow.`));
+  // acknowledge / skip
+  const ack = rv.acks[st.id];
+  const dec = el('div', { class:'rv-decisions' });
+  const mkBtn = (n, label, val) => {
+    const b = el('button', { class:'rv-btn' + (ack === val ? ' done' : ''), type:'button' },
+      el('span', { class:'rv-key' }, String(n)), (ack === val ? '✓ ' : '') + label);
+    b.addEventListener('click', () => { rv.acks[st.id] = val; reviewNav(1); });
+    return b;
+  };
+  dec.append(mkBtn(1, 'Acknowledge', 'acknowledged'), mkBtn(2, 'Skip', 'skipped'));
+  c.appendChild(dec);
+}
+function reviewRecord(key, name, type, note){
+  const rv = reviewState;
+  const d = rv.decisions[key] = rv.decisions[key] || { types: [], name };
+  if (!d.types.includes(type)) d.types.push(type);
+  if (note != null) d.note = note;
+}
+function buildReviewCand(c, step){
+  const rv = reviewState;
+  const r = step.row;
+  const key = rowKey(r);
+  const now = nowRef();
+  const note = noteFor(key);
+  const ns = nextStepState(r, now);
+  const tier = agingTier(r, now);
+  const days = daysInCurrentStage(r, now);
+  const d = rv.decisions[key] || { types: [] };
+  c.appendChild(el('div', { class:'rv-kicker' }, step.storyHeadline ? 'Re: ' + step.storyHeadline : 'Owner desk'));
+  if (step.ownerGroup) c.appendChild(el('div', { class:'rv-group-note' }, step.ownerGroup + "'s desk"));
+  c.appendChild(el('h1', { class:'rv-title' }, (note.star ? '★ ' : '') + (r.candidate_name || '—')));
+  c.appendChild(el('div', { class:'rv-cand-sub' },
+    `${r.job || '—'} · ${r.current_stage || '—'} · `,
+    el('span', { class:'cp-substate' }, subStateLabel(r.current_stage, ns.state)),
+    el('span', { class:'cp-days' + (tier ? ' ' + tier : '') }, days != null ? ` · ${Math.round(days)}d in stage` : '')));
+  const cand = el('div', { class:'rv-cand' });
+  // mini timeline — the same construction the candidate panel uses
+  cand.appendChild(el('div', { class:'rv-block' }, el('div', { class:'rv-block-title' }, 'Timeline'), panelTimeline(r, now)));
+  const owners = ownersFor(r);
+  if (owners.length) cand.appendChild(el('div', { class:'rv-block' }, el('div', { class:'rv-block-title' }, 'Owners'),
+    el('div', { class:'rv-line' }, owners.map(o => `${o.name} (${o.role})`).join(' · '))));
+  const tgs = note.tags || [];
+  if (tgs.length) {
+    const blk = el('div', { class:'rv-block' }, el('div', { class:'rv-block-title' }, 'Tags'));
+    const line = el('div', { class:'rv-line' });
+    for (const t of tgs) line.appendChild(el('span', { class:'lg-tag cp-tag', style:'margin-right:5px;margin-left:0;' }, t));
+    blk.appendChild(line);
+    cand.appendChild(blk);
+  }
+  if (note.note) cand.appendChild(el('div', { class:'rv-block' }, el('div', { class:'rv-block-title' }, 'Note'),
+    el('div', { class:'rv-line', style:'color:var(--muted);' }, note.note)));
+  c.appendChild(cand);
+  // decisions — applied to the live stores the moment they are clicked
+  const dec = el('div', { class:'rv-decisions' });
+  const mkBtn = (n, label, type, fn) => {
+    const done = d.types.includes(type);
+    const b = el('button', { class:'rv-btn' + (done ? ' done' : ''), type:'button' },
+      el('span', { class:'rv-key' }, String(n)), (done ? '✓ ' : '') + label);
+    b.addEventListener('click', fn);
+    return b;
+  };
+  dec.append(
+    mkBtn(1, 'Handled', 'handled', () => { setActionHandled(key, true); reviewRecord(key, r.candidate_name, 'handled'); reviewNav(1); }),
+    mkBtn(2, 'Snooze 7d', 'snoozed', () => { snoozeAction(key); reviewRecord(key, r.candidate_name, 'snoozed'); reviewNav(1); }),
+    mkBtn(3, 'Escalate', 'escalated', () => { reviewEscalate(r); reviewRecord(key, r.candidate_name, 'escalated'); reviewNav(1); }),
+    mkBtn(4, 'Note…', 'noted', () => toggleReviewNote(c, step)));
+  c.appendChild(dec);
+  if (d.types.includes('noted') || rv._noteOpenFor === key) toggleReviewNote(c, step, true);
+}
+function reviewEscalate(r){
+  const key = rowKey(r);
+  const cur = noteFor(key);
+  const tags = cur.tags || [];
+  updateNote(key, { star: true, tags: tags.includes('escalated') ? tags : tags.concat(['escalated']) });
+  if (state.visibleDims && !state.visibleDims.has('tags')) { state.visibleDims.add('tags'); persistDimPrefs(); }
+  toast('Escalated — starred and tagged.');
+}
+function toggleReviewNote(c, step, keepOpen){
+  const rv = reviewState;
+  const r = step.row;
+  const key = rowKey(r);
+  let ed = c.querySelector('.rv-note-editor');
+  if (ed) { if (!keepOpen) { ed.remove(); rv._noteOpenFor = null; } return; }
+  rv._noteOpenFor = key;
+  ed = el('div', { class:'rv-note-editor' });
+  const ta = el('textarea', { placeholder:'meeting note — saves to the candidate’s workspace note' });
+  ta.value = noteFor(key).note || '';
+  const save = el('button', { class:'rv-btn', type:'button', style:'margin-top:8px;' }, 'Save note');
+  save.addEventListener('click', () => {
+    const txt = ta.value.trim();
+    updateNote(key, { note: txt, noteEdited: txt ? Date.now() : null });
+    reviewRecord(key, r.candidate_name, 'noted', txt);
+    rv._noteOpenFor = null;
+    toast('Note saved.');
+    reviewNav(1); // a decision auto-advances
+  });
+  ed.append(ta, el('div', {}, save));
+  c.appendChild(ed);
+  if (!keepOpen) ta.focus();
+}
+function reviewFollowUps(){
+  const rv = reviewState;
+  const now = nowRef();
+  const groups = new Map();
+  for (const s of rv.steps) {
+    if (s.kind !== 'cand') continue;
+    const key = rowKey(s.row);
+    const d = rv.decisions[key];
+    const ws = actionRowState(key);
+    if ((d && (d.types.includes('handled') || d.types.includes('snoozed'))) || ws.handled) continue;
+    const o = stateOwnerFor(s.row, nextStepState(s.row, now));
+    const k = o ? `${o.name} (${o.role})` : 'Unassigned';
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(`${s.row.candidate_name || '—'} (${subStateLabel(s.row.current_stage, nextStepState(s.row, now).state).toLowerCase()}, ${Math.round(daysInCurrentStage(s.row, now) || 0)}d)`);
+  }
+  return Array.from(groups.entries()).sort((a,b) => b[1].length - a[1].length);
+}
+function reviewSummaryMd(){
+  const rv = reviewState;
+  const L = [];
+  L.push(`# Pipeline review — ${dayjs().format('MMM D, YYYY')}`);
+  L.push(`Period: ${subLabel()} · ${fmtN((state.snapshotRows || []).length)} active candidates`);
+  const stories = rv.steps.filter(s => s.kind === 'story');
+  if (stories.length) {
+    L.push('', '## Stories');
+    for (const s of stories) L.push(`- [${rv.acks[s.story.id] || 'not discussed'}] ${s.story.headline}${s.story.action ? ' — ' + s.story.action : ''}`);
+  }
+  const byType = { handled: [], snoozed: [], escalated: [], noted: [] };
+  for (const key of Object.keys(rv.decisions)) {
+    const d = rv.decisions[key];
+    for (const t of d.types) byType[t].push(t === 'noted' ? `${d.name} — ${(d.note || '').split('\n')[0]}` : d.name);
+  }
+  L.push('', '## Decisions');
+  L.push(`- Handled: ${byType.handled.join(', ') || '—'}`);
+  L.push(`- Snoozed 7d: ${byType.snoozed.join(', ') || '—'}`);
+  L.push(`- Escalated: ${byType.escalated.join(', ') || '—'}`);
+  L.push(`- Noted: ${byType.noted.join(' · ') || '—'}`);
+  const fu = reviewFollowUps();
+  L.push('', '## Follow-ups');
+  if (fu.length) for (const [who, items] of fu) L.push(`- Talk to ${who}: ${items.join(', ')}`);
+  else L.push('- None — everything was handled or snoozed.');
+  L.push('', '_Decisions were applied to the worklist and notes as they were made — this summary is a record, not a commit step._');
+  return L.join('\n');
+}
+function buildReviewSummary(c){
+  const rv = reviewState;
+  c.appendChild(el('div', { class:'rv-kicker' }, 'Meeting summary'));
+  c.appendChild(el('h1', { class:'rv-title' }, 'That’s the pipeline.'));
+  const md = reviewSummaryMd();
+  // on-screen digest mirrors the markdown, minus the header line
+  const body = el('div', { class:'rv-summary-md rv-block' });
+  for (const line of md.split('\n').slice(2)) {
+    if (line.startsWith('## ')) body.appendChild(el('h3', {}, line.slice(3)));
+    else if (line.startsWith('- ')) body.appendChild(el('div', { class:'rv-line' }, line.slice(2)));
+    else if (line.startsWith('_')) continue; // the footnote renders separately below
+  }
+  c.appendChild(body);
+  const dec = el('div', { class:'rv-decisions' });
+  const copy = el('button', { class:'rv-btn', type:'button' }, el('span', { class:'rv-key' }, '1'), 'Copy summary');
+  copy.addEventListener('click', () => copyReviewSummary());
+  const end = el('button', { class:'rv-btn', type:'button' }, el('span', { class:'rv-key' }, '2'), 'End review');
+  end.addEventListener('click', closeReview);
+  dec.append(copy, end);
+  c.appendChild(dec);
+  c.appendChild(el('p', { class:'rv-footnote' },
+    'Decisions were applied to the worklist and notes as you clicked — this summary is a record, not a commit step. Re-running the review picks up whatever still needs a decision.'));
+}
+async function copyReviewSummary(){
+  const text = reviewSummaryMd();
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('Summary copied.');
+  } catch (e) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy');
+      ta.remove();
+      toast('Summary copied.');
+    } catch (e2) { toast('Copy failed — clipboard unavailable.'); }
+  }
+}
+// keyboard: 1-4 decide, arrows move; Escape is owned by the global chain
+function reviewKeydown(e){
+  const rv = reviewState;
+  if (!rv || e.key === 'Escape') return;
+  const t = e.target;
+  if (t && t.matches && t.matches('input, textarea, select')) return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); reviewNav(1); return; }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); reviewNav(-1); return; }
+  if (!['1','2','3','4'].includes(e.key)) return;
+  const step = rv.steps[rv.idx];
+  const inner = rv.sceneEl.querySelector('.rv-scene-inner');
+  const btns = inner ? inner.querySelectorAll('.rv-decisions .rv-btn') : [];
+  const b = btns[+e.key - 1];
+  if (b) { e.preventDefault(); b.click(); }
+}
+
+/* ============================================================
    CANDIDATE PANEL (overnight #3) — a proper right-side workspace panel
    replacing the old inline expanded ledger row. Opens from ledger rows and
    every single-candidate drill; Escape closes it (above drills, beneath the
@@ -8882,6 +9345,7 @@ function buildPaletteIndex(){
     items.push({ type:'Commands', label:'Current pipeline', ctx:'period', run: () => setPeriodPreset('current') });
     items.push({ type:'Commands', label:'Copy executive summary', run: copyExecSummary });
     if (impliedMode() === 'snapshot') items.push({ type:'Commands', label:'Replay pipeline history', run: () => { if (!replay.playing) startReplay(); } });
+    if (impliedMode() === 'snapshot') items.push({ type:'Commands', label:'Run weekly review', ctx:'meeting mode', run: openReview });
     items.push({ type:'Commands', label:'Reset filters', run: clearAllFilters });
     items.push({ type:'Commands', label:'Start presentation', ctx:'P', run: () => openPresent(false) });
     items.push({ type:'Commands', label:'Wall mode (ambient display)', run: () => openPresent(true) });
@@ -9085,9 +9549,15 @@ function wireEvents(){
   attachTipOnce($('#btn-present'), tipHtml('Present — a full-screen deck built from the current report state.', 'shortcut: P · arrows navigate · Esc exits'));
   $('#btn-wall').addEventListener('click', () => openPresent(true));
   attachTipOnce($('#btn-wall'), tipHtml('Wall — ambient auto-cycling display for a TV; 15s per scene with a live ticker.', 'any key or click exits'));
+  // review meeting mode keyboard
+  window.addEventListener('keydown', reviewKeydown);
+  $('#btn-run-review').addEventListener('click', openReview);
+  attachTipOnce($('#btn-run-review'), tipHtml('Run the weekly review — a guided walk through the stories and overdue candidates, capturing decisions as you go.', 'Current pipeline only'));
+  $('#btn-run-review2').addEventListener('click', openReview);
   // present/wall keyboard: arrows + space advance, P toggles, any key exits the wall
   window.addEventListener('keydown', (e) => {
     if (e.target && e.target.matches && e.target.matches('input, textarea, select')) return;
+    if (reviewState) return; // the review flow owns its keys
     if (presentState) {
       if (e.key === 'Escape') return; // the Escape chain below owns exit
       if (presentState.wall) { e.preventDefault(); closePresent(); return; } // any key exits the wall
@@ -9097,6 +9567,7 @@ function wireEvents(){
       return;
     }
     if ((e.key === 'p' || e.key === 'P') && !e.ctrlKey && !e.metaKey && !e.altKey && state.rawRows.length && !paletteIsOpen() && !document.getElementById('customize-overlay')) {
+      if (reviewState) return;
       e.preventDefault();
       openPresent(false);
     }
@@ -9131,13 +9602,14 @@ function wireEvents(){
     if (k !== 'z' && k !== 'y') return;
     const t = e.target;
     if (t && t.matches && t.matches('input, textarea, select, [contenteditable="true"]')) return;
-    if (document.querySelector('.sheet-overlay') || paletteIsOpen() || presentState) return;
+    if (document.querySelector('.sheet-overlay') || paletteIsOpen() || presentState || reviewState) return;
     if (k === 'z' && !e.shiftKey) { if (state.drill.length) { e.preventDefault(); popDrill(); } return; }
     if (k === 'y' || (k === 'z' && e.shiftKey)) { if (state.redo.length) { e.preventDefault(); redoDrill(); } }
   });
   // Ctrl+K / Cmd+K toggles the command palette
   window.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+      if (reviewState) return; // the meeting flow keeps focus
       e.preventDefault();
       if (paletteIsOpen()) closePalette(); else openPalette();
     }
@@ -9145,6 +9617,11 @@ function wireEvents(){
   // Escape chain: present/wall > palette > overlays > open popovers/panels > expanded trend fig > expanded ledger row > drill pop
   window.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
+    if (reviewState) { // exiting early lands on the summary — the record still gets shown
+      if (reviewState.steps[reviewState.idx].kind === 'summary') closeReview();
+      else showReviewStep(reviewState.steps.length - 1);
+      return;
+    }
     if (presentState) { closePresent(); return; } // present/wall exits before anything else
     if (paletteIsOpen()) { closePalette(); return; } // palette closes next
     const cz = document.getElementById('customize-overlay');
