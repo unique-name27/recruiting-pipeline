@@ -1118,6 +1118,46 @@ svg.forecast .fc-line-s{ fill:none; stroke:var(--warn); stroke-width:1.6; stroke
 .scn-delta .scn-delta-part{ color:var(--ink); }
 @media print{ .scn-toggle, .scn-panel{ display:none !important; } }
 /* ============================================================
+   SCHEDULING CAPACITY + COMPARE WORKSPACE (overnight #3 round 4)
+   ============================================================ */
+.cap-summary{ font-family:var(--serif); font-size:15px; color:var(--ink); margin:2px 0 10px; }
+.cap-week{ margin:8px 0 14px; }
+.cap-week-label{ font-size:10.5px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
+.cap-bar-row{ display:flex; align-items:center; gap:10px; padding:2px 0; font-size:12px; }
+.cap-bar-name{ width:70px; color:var(--muted); flex-shrink:0; }
+.cap-bar{ height:12px; cursor:pointer; }
+.cap-bar.booked{ background:var(--flow-3); opacity:0.9; }
+.cap-bar.demand{ background:transparent; border:1px solid var(--warn); }
+.cap-bar.demand.forecast{ border-style:dashed; cursor:default; }
+.cap-bar-n{ font-variant-numeric:tabular-nums; color:var(--ink); }
+.cap-coord-row{ display:flex; gap:12px; align-items:baseline; padding:4px 0; font-size:12.5px; border-bottom:0.5px solid var(--hairline); }
+.cap-coord-name{ width:150px; flex-shrink:0; }
+.cap-coord-row .flagged{ color:var(--warn); font-weight:600; }
+.cap-coord-nums{ font-variant-numeric:tabular-nums; color:var(--muted); }
+.cap-coord-nums button{ background:none; border:none; color:var(--ink); font:inherit; cursor:pointer; padding:0; border-bottom:0.5px solid var(--hairline); }
+.cmp-controls{ display:flex; gap:18px; align-items:baseline; flex-wrap:wrap; margin-bottom:12px; font-size:12px; }
+.cmp-slot{ display:flex; gap:6px; align-items:baseline; }
+.cmp-slot-tag{ font-family:var(--serif); font-weight:600; font-size:14px; }
+.cmp-controls select{
+  border:none; border-bottom:0.5px solid var(--hairline); background:transparent; color:var(--ink);
+  font-family:var(--sans); font-size:12px; padding:1px 2px; max-width:170px;
+}
+.cmp-preset{ background:none; border:none; color:var(--muted); font-family:var(--sans); font-size:11.5px; cursor:pointer; padding:0 0 1px; border-bottom:0.5px dotted var(--hairline); }
+.cmp-preset:hover{ color:var(--ink); }
+.cmp-grid{ display:grid; grid-template-columns: 120px 1fr 1fr; gap:2px 18px; max-width:760px; align-items:center; }
+.cmp-head{ font-family:var(--serif); font-weight:600; font-size:14px; cursor:pointer; padding-bottom:4px; border-bottom:2px solid var(--heavy); }
+.cmp-head .cmp-n{ color:var(--muted); font-weight:400; font-family:var(--sans); font-size:11px; }
+.cmp-rowlabel{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; }
+.cmp-cell{ display:flex; align-items:center; gap:8px; font-size:12.5px; font-variant-numeric:tabular-nums; padding:2.5px 0; }
+.cmp-cell .cmp-minibar{ height:8px; background:var(--flow-3); opacity:0.85; min-width:1px; }
+.cmp-cell.b .cmp-minibar{ background:var(--muted); opacity:0.55; }
+.cmp-delta{ font-size:10.5px; margin-left:4px; }
+.cmp-delta.good{ color:var(--pos, var(--flow-3)); font-weight:600; }
+.cmp-delta.bad{ color:var(--neg); font-weight:600; }
+.cmp-delta.ns{ color:var(--muted); }
+.cmp-sect{ grid-column:1 / -1; font-size:10.5px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); border-bottom:0.5px solid var(--hairline); padding:10px 0 3px; }
+
+/* ============================================================
    INSIGHT FEED "Noticed" + DATA QUALITY AUDIT (overnight #3 round 3)
    ============================================================ */
 .ins-row{
@@ -1557,6 +1597,7 @@ html.presenting{ overflow:hidden; }
       <button class="underline-btn kbd-hint" id="btn-palette" type="button">⌘ Ctrl K</button>
       <button class="underline-btn theme-toggle" id="btn-theme-toggle">Dark</button>
       <button class="underline-btn" id="btn-present">Present</button>
+      <button class="underline-btn" id="btn-export-pptx">Export PowerPoint</button>
       <div class="popover-wrap">
         <button class="underline-btn" id="btn-settings">Settings ▾</button>
         <div class="popover hidden" id="pop-settings">
@@ -1867,6 +1908,23 @@ html.presenting{ overflow:hidden; }
       <div id="quality-grade"></div>
       <div id="quality-body"></div>
       <p class="river-caption" id="quality-caption"></p>
+    </section>
+
+    <!-- ========== SCHEDULING CAPACITY (overnight #3 round 4, gallery, Current only) ========== -->
+    <section class="section hidden" id="section-capacity">
+      <div class="section-head"><span class="kicker" id="capacity-kicker">Capacity</span><span class="section-note" id="capacity-note"></span></div>
+      <p class="cap-summary" id="capacity-summary"></p>
+      <div id="capacity-weeks"></div>
+      <div id="capacity-coords"></div>
+      <p class="river-caption" id="capacity-caption"></p>
+    </section>
+
+    <!-- ========== COMPARE WORKSPACE (overnight #3 round 4, gallery, cohort only) ========== -->
+    <section class="section hidden" id="section-compare">
+      <div class="section-head"><span class="kicker" id="compare-kicker">Compare</span><span class="section-note" id="compare-note"></span></div>
+      <div class="cmp-controls" id="compare-controls"></div>
+      <div id="compare-body"></div>
+      <p class="cap-summary" id="compare-sentence"></p>
     </section>
 
     <!-- ========== FOOTNOTE ========== -->
@@ -8205,6 +8263,10 @@ const SECTION_REGISTRY = [
     desc:'Per-stage pass rates, comparison vs now — the at-a-glance "did we get better".' },
   { key:'quality',    title:'Data quality audit', el:'section-quality',    render: () => renderQuality(), gallery:true,
     desc:'Report card for the loaded export — field coverage, date sanity, staleness, duplicate suspects, and an A–F grade.' },
+  { key:'capacity',   title:'Scheduling capacity', el:'section-capacity',  render: () => renderCapacity(), gallery:true, modeNote:'Current only',
+    desc:'Booked interviews vs scheduling demand, next two weeks, with per-coordinator queues. Needs a scheduled-interview column.' },
+  { key:'compare',    title:'Compare workspace', el:'section-compare',     render: () => renderCompare(), gallery:true, modeNote:'historical only',
+    desc:'A/B comparison — two segments or periods side by side: funnels, stats, and the biggest significant difference.' },
 ];
 let _layout = null;
 function getLayout(){
@@ -8303,6 +8365,14 @@ function galleryThumb(key){
   } else if (key === 'waffle') {
     for (let r = 0; r < 4; r++) for (let c = 0; c < 12; c++)
       add('rect', { x:2+c*6.5, y:2+r*7, width:5, height:5, fill: c < 5 ? 'var(--flow-3)' : c < 9 ? 'var(--flow-2)' : 'var(--rej)', opacity:0.85 });
+  } else if (key === 'capacity') {
+    [[26,38],[18,30]].forEach(([b,d],i) => {
+      add('rect', { x:2, y:4+i*13, width:b*1.6, height:5, fill:'var(--flow-3)' });
+      add('rect', { x:2, y:10+i*13, width:d*1.6, height:5, fill:'none', stroke:'var(--warn)', 'stroke-width':1 });
+    });
+  } else if (key === 'compare') {
+    [58,40,22,10].forEach((w,i) => add('rect', { x:40-w*0.55, y:2+i*7, width:w*0.55, height:5, fill:'var(--flow-3)', opacity:0.85 }));
+    [50,36,26,14].forEach((w,i) => add('rect', { x:44, y:2+i*7, width:w*0.55, height:5, fill:'var(--muted)', opacity:0.5 }));
   } else if (key === 'quality') {
     [78,64,30,50].forEach((w,i) => add('rect', { x:2, y:2+i*7, width:w*0.8, height:5,
       fill: w < 60 ? 'var(--neg)' : w < 90 ? 'var(--warn)' : 'var(--flow-3)', opacity:0.8 }));
@@ -8666,6 +8736,449 @@ function toggleTheme(){
   const isDarkNow = cur==='dark' || (cur==='auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   localStorage.setItem('pr-theme', isDarkNow ? 'light' : 'dark');
   applyTheme();
+}
+
+/* ============================================================
+   SCHEDULING CAPACITY (overnight #3 round 4, gallery, Current only)
+   Booked = scheduled events (next_event_at) per week, next two weeks.
+   Demand: week 1 = the CURRENT needs-scheduling queue at scheduling
+   stages; week 2 = expected arrivals into those stages, estimated as
+   (actives one stage earlier) × historical pass rate × the share of the
+   prior stage's norm that fits in the window. A deliberately simple
+   model — the caption says so. Hidden when next_event_at is unmapped.
+   ============================================================ */
+function schedulingStages(){
+  const st = state.canonicalStages;
+  return st.slice(1, Math.max(2, st.length - 2)); // the middle stages ("Needs scheduling" vocabulary)
+}
+function histPassRate(i){
+  const all = baseFilteredRows(null);
+  const entered = all.filter(r => stageIndex(r.current_stage) >= i).length;
+  const adv = all.filter(r => stageIndex(r.current_stage) >= i + 1).length;
+  return entered >= 8 ? adv / entered : 0.5; // thin history: assume a coin flip
+}
+function computeCapacity(){
+  const now = nowRef();
+  const snap = state.snapshotRows || [];
+  const stages = state.canonicalStages;
+  const sched = schedulingStages();
+  const wk = 7 * 86400000;
+  const inWeek = (d, w) => d > new Date(+now + (w - 1) * wk) && d <= new Date(+now + w * wk);
+  const booked1 = snap.filter(r => r.next_event_at && inWeek(r.next_event_at, 1));
+  const booked2 = snap.filter(r => r.next_event_at && inWeek(r.next_event_at, 2));
+  const needs = snap.filter(r => sched.includes(r.current_stage) && nextStepState(r, now).state === 'needs-step');
+  // expected arrivals into scheduling stages inside the 2-week window
+  let arrivals = 0;
+  for (const s of sched) {
+    const i = stageIndex(s);
+    if (i <= 0) continue;
+    const prevCount = snap.filter(r => r.current_stage === stages[i - 1]).length;
+    arrivals += prevCount * histPassRate(i - 1) * Math.min(1, 14 / Math.max(1, stageNorm(stages[i - 1])));
+  }
+  return { booked1, booked2, needs, arrivals: Math.round(arrivals), now };
+}
+function renderCapacity(){
+  const section = $('#section-capacity');
+  if (impliedMode() !== 'snapshot' || !state.mapping.next_event_at || !(state.snapshotRows || []).length) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+  attachTipOnce($('#capacity-kicker'), tipHtml(
+    'Scheduling demand vs booked interviews for the next two weeks, plus per-coordinator queues. Booked = scheduled events; demand = the current needs-scheduling queue, then expected stage arrivals.',
+    'a simple model — pace check, not a calendar'));
+  const cap = computeCapacity();
+  $('#capacity-note').textContent = 'next 2 weeks';
+  // summary sentence
+  const covered = cap.booked1.length >= cap.needs.length;
+  $('#capacity-summary').textContent = covered
+    ? `Booking pace covers demand — ${fmtN(cap.booked1.length)} booked this week against ${fmtN(cap.needs.length)} in the scheduling queue.`
+    : `${fmtN(cap.needs.length)} need scheduling but only ${fmtN(cap.booked1.length)} event${cap.booked1.length === 1 ? ' is' : 's are'} booked this week.`;
+  // paired bars per week
+  const wrap = $('#capacity-weeks'); wrap.innerHTML = '';
+  const maxN = Math.max(cap.booked1.length, cap.booked2.length, cap.needs.length, cap.arrivals, 1);
+  const px = n => Math.max(2, n / maxN * 380);
+  const drillRows = (rows, label) => { drillTo({ type:'rows', keys: new Set(rows.map(rowKey)), label }); scrollLedgerIntoView(); };
+  const week = (label, booked, demandN, demandRows, forecast) => {
+    const w = el('div', { class:'cap-week' }, el('div', { class:'cap-week-label' }, label));
+    const bBar = el('span', { class:'cap-bar booked', style:`width:${px(booked.length)}px;` });
+    attachTip(bBar, tipHtml(`${fmtN(booked.length)} candidates have a scheduled event in this window. Click for the list.`, 'from next_event_at'));
+    bBar.addEventListener('click', () => drillRows(booked, label + ' — booked'));
+    w.appendChild(el('div', { class:'cap-bar-row' }, el('span', { class:'cap-bar-name' }, 'booked'), bBar, el('span', { class:'cap-bar-n' }, fmtN(booked.length))));
+    const dBar = el('span', { class:'cap-bar demand' + (forecast ? ' forecast' : ''), style:`width:${px(demandN)}px;` });
+    attachTip(dBar, forecast
+      ? tipHtml(`~${fmtN(demandN)} candidates expected to arrive at a scheduling stage within the window — actives one stage earlier × historical pass rate × the share of that stage's norm inside 14 days. A forecast: no list to drill.`, 'estimated arrivals')
+      : tipHtml(`${fmtN(demandN)} actives at a scheduling stage need an event booked right now. Click for the list.`, 'needs-scheduling queue'));
+    if (!forecast) dBar.addEventListener('click', () => drillRows(demandRows, 'Needs scheduling'));
+    w.appendChild(el('div', { class:'cap-bar-row' }, el('span', { class:'cap-bar-name' }, 'demand'), dBar, el('span', { class:'cap-bar-n' }, (forecast ? '~' : '') + fmtN(demandN))));
+    return w;
+  };
+  wrap.appendChild(week('This week', cap.booked1, cap.needs.length, cap.needs, false));
+  wrap.appendChild(week('Next week', cap.booked2, cap.arrivals, null, true));
+  // per-coordinator rows
+  const coords = $('#capacity-coords'); coords.innerHTML = '';
+  const field = state.mapping.coordinator ? 'coordinator' : (state.mapping.recruiter ? 'recruiter' : null);
+  if (field) {
+    const names = new Map();
+    const bookedAll = cap.booked1.concat(cap.booked2);
+    for (const r of bookedAll) { const n = r[field]; if (!n) continue; if (!names.has(n)) names.set(n, { booked: [], queue: [] }); names.get(n).booked.push(r); }
+    for (const r of cap.needs) { const n = r[field]; if (!n) continue; if (!names.has(n)) names.set(n, { booked: [], queue: [] }); names.get(n).queue.push(r); }
+    const arr = Array.from(names.entries()).sort((a, b) => b[1].queue.length - a[1].queue.length).slice(0, 8);
+    if (arr.length) coords.appendChild(el('div', { class:'dq-block-title' }, (field === 'coordinator' ? 'Coordinator' : 'Recruiter') + ' desks'));
+    for (const [name, d] of arr) {
+      const weeklyRate = d.booked.length / 2;
+      const flagged = d.queue.length > 2 * weeklyRate;
+      const row = el('div', { class:'cap-coord-row' },
+        el('span', { class:'cap-coord-name' + (flagged ? ' flagged' : '') }, (flagged ? '⚠ ' : '') + name),
+        el('span', { class:'cap-coord-nums' }, buildCapLink(d.booked, `${fmtN(d.booked.length)} booked / 2wk`, name + ' — booked'),
+          ' · ', buildCapLink(d.queue, `${fmtN(d.queue.length)} in queue`, name + ' — needs scheduling')));
+      attachTip(row, tipHtml(flagged
+        ? `${name}'s scheduling queue (${d.queue.length}) is more than double the booking pace (${weeklyRate.toFixed(1)}/week) — the queue will grow.`
+        : `${name}: ${d.booked.length} events booked over two weeks against a queue of ${d.queue.length}.`, 'queue vs booking pace'));
+      coords.appendChild(row);
+    }
+  }
+  $('#capacity-caption').textContent = 'Demand model: this week = the current needs-scheduling queue; next week = expected arrivals (actives one stage earlier × historical pass rate × norm-share of the window). A pace check, not a calendar.';
+}
+function buildCapLink(rows, text, label){
+  const b = el('button', { type:'button' }, text);
+  b.addEventListener('click', (e) => { e.stopPropagation(); drillTo({ type:'rows', keys: new Set(rows.map(rowKey)), label }); scrollLedgerIntoView(); });
+  return b;
+}
+
+/* ============================================================
+   COMPARE WORKSPACE (overnight #3 round 4, gallery, cohort only)
+   Two slots A|B — a dimension value (or "everyone else"), or a period
+   preset. Side-by-side mini funnels + stat pairs; Δ colored only when it
+   clears the significance gates (n≥5 both sides, ≥15% relative). One
+   auto-sentence names the biggest significant difference. Session-only.
+   ============================================================ */
+let compareState = null; // { a:{type:'period',preset}|{type:'dim',dim,value}|{type:'rest'}, b:{...} }
+function cmpDefault(){ return { a: { type:'period', preset:'quarter' }, b: { type:'period', preset:'lastquarter' } }; }
+const CMP_PERIODS = [['quarter','This quarter'],['lastquarter','Last quarter'],['month','This month'],['ytd','YTD'],['t12m','Trailing 12m']];
+function cmpSlotRows(slot, otherSlot){
+  if (slot.type === 'period') {
+    const [from, to] = getPeriodRange({ periodPreset: slot.preset, customFrom: null, customTo: null });
+    const df = state.filters.dateField || 'applied_at';
+    return baseFilteredRows(null).filter(r => r[df] && (!from || r[df] >= from) && (!to || r[df] <= to));
+  }
+  if (slot.type === 'dim') return state.rows.filter(r => { const v = dimValue(r, slot.dim); return (Array.isArray(v) ? v : [v ?? '—']).includes(slot.value); });
+  if (slot.type === 'rest' && otherSlot && otherSlot.type === 'dim')
+    return state.rows.filter(r => { const v = dimValue(r, otherSlot.dim); return !(Array.isArray(v) ? v : [v ?? '—']).includes(otherSlot.value); });
+  return [];
+}
+function cmpSlotLabel(slot, otherSlot){
+  if (slot.type === 'period') { const p = CMP_PERIODS.find(x => x[0] === slot.preset); return p ? p[1] : slot.preset; }
+  if (slot.type === 'dim') return slot.value;
+  if (slot.type === 'rest') return 'Everyone else';
+  return '—';
+}
+const CMP_STATS = [
+  { id:'apps', label:'Applications', val: rows => rows.length, n: rows => rows.length, fmt: fmtN, good:'up',
+    tip:'Candidates in each set.' },
+  { id:'hires', label:'Hires', val: rows => rows.filter(r => r.status === 'hired').length, n: rows => rows.length, fmt: fmtN, good:'up',
+    tip:'Hired candidates in each set.' },
+  { id:'hirerate', label:'Hire rate', val: rows => rows.length ? rows.filter(r => r.status === 'hired').length / rows.length : null, n: rows => rows.length, fmt: v => fmtPct(v, 1), good:'up',
+    tip:'Hires ÷ candidates. Δ colored only when significant (n≥5 both sides, ≥15% relative).' },
+  { id:'accept', label:'Offer accept', val: rows => { const h = rows.filter(r => r.status === 'hired').length, d = rows.filter(r => r.status === 'declined').length; return h + d ? h / (h + d) : null; },
+    n: rows => rows.filter(r => r.status === 'hired' || r.status === 'declined').length, fmt: v => fmtPct(v, 0), good:'up',
+    tip:'Hired ÷ (hired + declined) — resolved offers only.' },
+  { id:'tth', label:'Median TTH', val: rows => { const t = rows.filter(r => r.status === 'hired' && r.hired_at && r.applied_at).map(r => (r.hired_at - r.applied_at) / 86400000); return t.length ? median(t) : null; },
+    n: rows => rows.filter(r => r.status === 'hired' && r.hired_at && r.applied_at).length, fmt: v => Math.round(v) + 'd', good:'down',
+    tip:'Median applied→hired days among each set\'s hires.' },
+];
+function cmpSig(a, b, na, nb){
+  if (a == null || b == null || na < 5 || nb < 5) return false;
+  const base = Math.max(Math.abs(a), Math.abs(b), 1e-9);
+  return Math.abs(a - b) / base >= 0.15;
+}
+function cmpDelta(a, b, na, nb, good){
+  if (a == null || b == null) return el('span', { class:'cmp-delta ns' }, '·');
+  const sig = cmpSig(a, b, na, nb);
+  const rel = b !== 0 ? (a - b) / Math.abs(b) : (a ? 1 : 0);
+  const txt = (rel >= 0 ? '+' : '') + Math.round(rel * 100) + '%';
+  if (!sig) return el('span', { class:'cmp-delta ns' }, txt);
+  const isGood = good === 'up' ? rel > 0 : rel < 0;
+  return el('span', { class:'cmp-delta ' + (isGood ? 'good' : 'bad') }, txt);
+}
+function renderCompare(){
+  const section = $('#section-compare');
+  if (impliedMode() === 'snapshot' || !state.rawRows.length) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+  attachTipOnce($('#compare-kicker'), tipHtml(
+    'Two sets side by side — dimension segments or period presets. Deltas are colored only when they clear the significance gates (n≥5 both sides, ≥15% relative difference). Session-only; not part of saved views.',
+    'A | B comparison'));
+  if (!compareState) compareState = cmpDefault();
+  const cs = compareState;
+  $('#compare-note').textContent = 'session only';
+  // controls
+  const ctl = $('#compare-controls'); ctl.innerHTML = '';
+  const slotCtl = (tag, slot, other, isB) => {
+    const wrap = el('span', { class:'cmp-slot' }, el('span', { class:'cmp-slot-tag' }, tag));
+    const s1 = el('select');
+    for (const [k, lbl] of CMP_PERIODS) s1.appendChild(el('option', { value:'period:' + k }, 'Period: ' + lbl));
+    for (const [f, lbl] of mappedDimFields()) if (f !== 'current_stage' && f !== 'status') s1.appendChild(el('option', { value:'dim:' + f }, lbl));
+    if (isB) s1.appendChild(el('option', { value:'rest' }, 'Everyone else'));
+    s1.value = slot.type === 'period' ? 'period:' + slot.preset : slot.type === 'dim' ? 'dim:' + slot.dim : 'rest';
+    const s2 = el('select');
+    if (slot.type === 'dim') {
+      const vals = Array.from(new Set(state.rawRows.flatMap(r => { const v = dimValue(r, slot.dim); return (Array.isArray(v) ? v : [v ?? '—']).map(String); }))).sort();
+      for (const v of vals) s2.appendChild(el('option', { value:v }, v));
+      s2.value = slot.value;
+      s2.addEventListener('change', () => { slot.value = s2.value; renderCompare(); });
+    } else s2.classList.add('hidden');
+    s1.addEventListener('change', () => {
+      const v = s1.value;
+      const next = v === 'rest' ? { type:'rest' }
+        : v.startsWith('period:') ? { type:'period', preset: v.slice(7) }
+        : { type:'dim', dim: v.slice(4), value: null };
+      if (next.type === 'dim') {
+        const vals = Array.from(new Set(state.rawRows.flatMap(r => { const x = dimValue(r, next.dim); return (Array.isArray(x) ? x : [x ?? '—']).map(String); }))).sort();
+        next.value = vals[0] || '—';
+      }
+      if (isB) cs.b = next; else cs.a = next;
+      renderCompare();
+    });
+    wrap.append(s1, s2);
+    return wrap;
+  };
+  ctl.appendChild(slotCtl('A', cs.a, cs.b, false));
+  ctl.appendChild(el('span', { style:'color:var(--muted);' }, 'vs'));
+  ctl.appendChild(slotCtl('B', cs.b, cs.a, true));
+  // presets
+  const p1 = el('button', { class:'cmp-preset', type:'button' }, 'This vs last quarter');
+  p1.addEventListener('click', () => { compareState = cmpDefault(); renderCompare(); });
+  ctl.appendChild(p1);
+  if (state.mapping.source) {
+    const srcs = Array.from(new Set(state.rawRows.map(r => r.source).filter(Boolean)));
+    const ref = srcs.find(s => /referral/i.test(s)) || srcs[0];
+    if (ref) {
+      const p2 = el('button', { class:'cmp-preset', type:'button' }, `${ref} vs rest`);
+      p2.addEventListener('click', () => { compareState = { a: { type:'dim', dim:'source', value: ref }, b: { type:'rest' } }; renderCompare(); });
+      ctl.appendChild(p2);
+    }
+  }
+  // data
+  const rowsA = cmpSlotRows(cs.a, cs.b), rowsB = cmpSlotRows(cs.b, cs.a);
+  const body = $('#compare-body'); body.innerHTML = '';
+  const grid = el('div', { class:'cmp-grid' });
+  const drillSide = (rows, label) => { drillTo({ type:'rows', keys: new Set(rows.map(rowKey)), label }); scrollLedgerIntoView(); };
+  const headA = el('div', { class:'cmp-head' }, cmpSlotLabel(cs.a, cs.b), ' ', el('span', { class:'cmp-n' }, fmtN(rowsA.length)));
+  const headB = el('div', { class:'cmp-head' }, cmpSlotLabel(cs.b, cs.a), ' ', el('span', { class:'cmp-n' }, fmtN(rowsB.length)));
+  headA.addEventListener('click', () => drillSide(rowsA, 'Compare A: ' + cmpSlotLabel(cs.a, cs.b)));
+  headB.addEventListener('click', () => drillSide(rowsB, 'Compare B: ' + cmpSlotLabel(cs.b, cs.a)));
+  attachTip(headA, tipHtml('Click to open this set in the ledger.', fmtN(rowsA.length) + ' candidates'));
+  attachTip(headB, tipHtml('Click to open this set in the ledger.', fmtN(rowsB.length) + ' candidates'));
+  grid.append(el('div'), headA, headB);
+  let biggest = null;
+  // stats
+  grid.appendChild(el('div', { class:'cmp-sect' }, 'By the numbers'));
+  for (const S of CMP_STATS) {
+    const va = S.val(rowsA), vb = S.val(rowsB);
+    const na = S.n(rowsA), nb = S.n(rowsB);
+    const label = el('div', { class:'cmp-rowlabel' }, S.label);
+    attachTip(label, tipHtml(S.tip, S.label.toLowerCase()));
+    grid.appendChild(label);
+    const maxV = Math.max(va || 0, vb || 0, 1e-9);
+    const cell = (v, n, cls) => el('div', { class:'cmp-cell ' + cls },
+      el('span', { class:'cmp-minibar', style:`width:${Math.max(1, (v || 0) / maxV * 90)}px;` }),
+      el('span', {}, v == null ? '—' : S.fmt(v)),
+      cls === 'b' ? cmpDelta(va, vb, na, nb, S.good) : null);
+    grid.append(cell(va, na, 'a'), cell(vb, nb, 'b'));
+    // raw counts (apps, hires) never win the sentence — differently-sized or
+    // differently-aged sets make raw-count gaps trivially large; rates carry it
+    if (va != null && vb != null && vb !== 0 && cmpSig(va, vb, na, nb) && S.id !== 'apps' && S.id !== 'hires') {
+      const rel = Math.abs(va - vb) / Math.abs(vb);
+      if (!biggest || rel > biggest.rel) biggest = { rel, S, va, vb };
+    }
+  }
+  // mini funnels: pass % per stage
+  grid.appendChild(el('div', { class:'cmp-sect' }, 'Pass rates'));
+  const stages = state.canonicalStages;
+  for (let i = 0; i < stages.length - 1; i++) {
+    const pa = passPair(rowsA, i), pb = passPair(rowsB, i);
+    const label = el('div', { class:'cmp-rowlabel' }, `${stages[i]} →`);
+    attachTip(label, tipHtml(`Share of candidates who reached ${stages[i]} and went on past it, in each set.`, `reached ${stages[i+1]} ÷ reached ${stages[i]}`));
+    grid.appendChild(label);
+    const maxV = Math.max(pa.rate || 0, pb.rate || 0, 1e-9);
+    const cell = (p, cls, other) => el('div', { class:'cmp-cell ' + cls },
+      el('span', { class:'cmp-minibar', style:`width:${Math.max(1, (p.rate || 0) / maxV * 90)}px;` }),
+      el('span', {}, p.rate == null ? '—' : fmtPct(p.rate, 0)),
+      cls === 'b' ? cmpDelta(pa.rate, pb.rate, pa.n, pb.n, 'up') : null);
+    grid.append(cell(pa, 'a'), cell(pb, 'b'));
+    if (pa.rate != null && pb.rate != null && pb.rate > 0 && cmpSig(pa.rate, pb.rate, pa.n, pb.n)) {
+      const rel = Math.abs(pa.rate - pb.rate) / pb.rate;
+      if (!biggest || rel > biggest.rel) biggest = { rel, S: { label: `${stages[i]} pass rate`, fmt: v => fmtPct(v, 0), good:'up' }, va: pa.rate, vb: pb.rate };
+    }
+  }
+  body.appendChild(grid);
+  const la = cmpSlotLabel(cs.a, cs.b), lb = cmpSlotLabel(cs.b, cs.a);
+  $('#compare-sentence').textContent = biggest
+    ? `Biggest significant difference: ${biggest.S.label.toLowerCase()} — ${biggest.S.fmt(biggest.va)} (${la}) vs ${biggest.S.fmt(biggest.vb)} (${lb}).`
+    : 'No significant differences between the two sets.';
+}
+function passPair(rows, i){
+  const entered = rows.filter(r => stageIndex(r.current_stage) >= i);
+  if (!entered.length) return { rate: null, n: 0 };
+  const adv = entered.filter(r => stageIndex(r.current_stage) >= i + 1).length;
+  return { rate: adv / entered.length, n: entered.length };
+}
+
+/* ============================================================
+   EXPORT POWERPOINT (overnight #3 round 4 — parity with stable)
+   The same deck Present shows, as a real 16:9 .pptx via pptxgenjs
+   (lazy CDN load; offline falls back to Present). Title/story slides are
+   native text; statement/reqs are native editable tables scraped from the
+   DOM; the Noticed feed becomes native bullets; chart sections rasterize
+   their first SVG at 2× with computed styles inlined. Always captured in
+   Broadsheet styling; the active edition is restored afterwards.
+   ============================================================ */
+let _pptxLoading = null;
+function loadPptxGen(){
+  if (window.PptxGenJS) return Promise.resolve();
+  if (_pptxLoading) return _pptxLoading;
+  _pptxLoading = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js';
+    s.onload = () => resolve();
+    s.onerror = () => { _pptxLoading = null; reject(new Error('pptxgenjs failed to load')); };
+    document.head.appendChild(s);
+  });
+  return _pptxLoading;
+}
+function svgToPngDataUrl(svgEl){
+  return new Promise((resolve, reject) => {
+    const clone = svgEl.cloneNode(true);
+    const PROPS = ['fill','fill-opacity','stroke','stroke-width','stroke-dasharray','stroke-linecap','stroke-linejoin',
+      'opacity','font-family','font-size','font-weight','letter-spacing','text-anchor','paint-order','text-transform'];
+    (function copyStyles(src, dst){
+      if (src.nodeType === 1) {
+        const cs = getComputedStyle(src);
+        let style = '';
+        for (const p of PROPS) { const v = cs.getPropertyValue(p); if (v) style += `${p}:${v};`; }
+        dst.setAttribute('style', style);
+      }
+      for (let i = 0; i < src.children.length; i++) copyStyles(src.children[i], dst.children[i]);
+    })(svgEl, clone);
+    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    const w = +svgEl.getAttribute('width') || svgEl.clientWidth || 900;
+    const h = +svgEl.getAttribute('height') || svgEl.clientHeight || 300;
+    const blob = new Blob([new XMLSerializer().serializeToString(clone)], { type:'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = w * 2; canvas.height = h * 2;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#FBFAF8'; // broadsheet paper behind transparent SVG
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve({ data: canvas.toDataURL('image/png'), w, h });
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('SVG rasterization failed')); };
+    img.src = url;
+  });
+}
+function scrapeTableForPptx(sel){
+  const table = document.querySelector(sel + ' table');
+  if (!table) return null;
+  const rows = [];
+  const heads = Array.from(table.querySelectorAll('thead th')).map(th => ({
+    text: th.textContent.replace(/[▲▼]/g, '').trim(),
+    options: { bold: true, color: '141412', fill: { color: 'EFEDE8' }, fontSize: 9 },
+  }));
+  rows.push(heads);
+  for (const tr of table.querySelectorAll('tbody tr')) {
+    const cells = Array.from(tr.children).map(td => {
+      const opts = { fontSize: 9, color: '141412' };
+      if (td.classList.contains('alert')) { opts.color = 'A32D2D'; opts.bold = true; }
+      else if (td.classList.contains('warn-cell')) { opts.color = 'BA7517'; opts.bold = true; }
+      else if (td.classList.contains('zero')) opts.color = '6B6A64';
+      return { text: td.textContent.trim(), options: opts };
+    });
+    if (cells.length === rows[0].length) rows.push(cells); // skip detail rows
+  }
+  const MAXR = 13; // header + 12 — deck detail-trim
+  const more = Math.max(0, rows.length - MAXR);
+  return { rows: rows.slice(0, MAXR), more };
+}
+// lab: registry sections that export as native tables (everything else
+// rasterizes its first SVG; sections with neither are skipped)
+const PPTX_TABLES = { statement:'#statement-table-wrap', reqs:'#reqs-table-wrap' };
+async function exportPptx(){
+  if (!state.rawRows.length) { toast('Load data first.'); return; }
+  try {
+    await loadPptxGen();
+  } catch (e) {
+    toast('PowerPoint library failed to load (offline?) — opening Present mode instead.');
+    openPresent(false);
+    return;
+  }
+  toast('Building PowerPoint…');
+  const curEd = getEdition();
+  if (curEd !== 'broadsheet') applyEdition('broadsheet'); // one consistent deliverable styling
+  state.renderQueued = false; renderAll();
+  const ACCENT = '0F6E56', INK = '141412', MUTED = '6B6A64', NEGC = 'A32D2D', WARNC = 'BA7517';
+  try {
+    const pptx = new PptxGenJS();
+    pptx.defineLayout({ name:'WIDE', width: 13.33, height: 7.5 });
+    pptx.layout = 'WIDE';
+    const scenes = buildPresentScenes(); // the same deck Present shows
+    let made = 0;
+    for (const sc of scenes) {
+      if (sc.kind === 'section' && sc.def.key === 'insights') {
+        // the Noticed feed exports as native bullets
+        const ins = computeInsights().slice(0, 5);
+        if (!ins.length) continue;
+        const slide = pptx.addSlide();
+        slide.background = { color: 'FBFAF8' };
+        slide.addText('NOTICED', { x:0.7, y:0.5, w:12, h:0.4, fontSize:12, color:MUTED, charSpacing:2 });
+        slide.addText(ins.map(i => ({ text: i.text, options: { bullet: true, breakLine: true } })), { x:0.9, y:1.4, w:11.5, h:5.4, fontSize:16, color:INK });
+        made++;
+        continue;
+      }
+      if (sc.kind === 'section' && !PPTX_TABLES[sc.def.key] && !document.querySelector('#' + sc.def.el + ' svg')) continue; // nothing exportable
+      const slide = pptx.addSlide();
+      slide.background = { color: 'FBFAF8' };
+      made++;
+      if (sc.kind === 'title') {
+        slide.addText('PIPELINE REVIEW — ' + subLabel().toUpperCase(), { x:0.7, y:0.7, w:12, h:0.4, fontSize:12, color:MUTED, charSpacing:2 });
+        slide.addText($('#finding-headline').textContent, { x:0.7, y:2.2, w:11.9, h:2.4, fontSize:34, color:INK, fontFace:'Georgia' });
+        slide.addText(`${fmtN(state.rows.length)} candidates in view`, { x:0.7, y:5.2, w:11.9, h:0.5, fontSize:14, color:MUTED });
+        slide.addShape('line', { x:0.7, y:1.3, w:11.9, h:0, line:{ color:ACCENT, width:1.5 } });
+      } else if (sc.kind === 'flag') {
+        const st = sc.st;
+        slide.addText('ATTENTION', { x:0.7, y:0.7, w:12, h:0.4, fontSize:12, color:MUTED, charSpacing:2 });
+        slide.addText(st.headline, { x:0.7, y:1.7, w:11.9, h:1.8, fontSize:30, color: st.severity === 'red' ? NEGC : WARNC, fontFace:'Georgia' });
+        if (st.facts.length) slide.addText(st.facts.map(b => ({ text: b, options:{ bullet:true, breakLine:true } })), { x:0.9, y:3.7, w:11.5, h:1.9, fontSize:16, color:INK });
+        if (st.action) slide.addText(st.action, { x:0.9, y:5.9, w:11.5, h:0.7, fontSize:16, italic:true, color:INK });
+      } else if (PPTX_TABLES[sc.def.key]) {
+        slide.addText(sc.def.title.toUpperCase(), { x:0.7, y:0.5, w:12, h:0.4, fontSize:12, color:MUTED, charSpacing:2 });
+        const scraped = scrapeTableForPptx(PPTX_TABLES[sc.def.key]);
+        if (scraped) {
+          slide.addTable(scraped.rows, { x:0.7, y:1.2, w:11.9, border:{ type:'solid', color:'DDD9D0', pt:0.5 }, autoPage:false, rowH:0.32, valign:'middle' });
+          if (scraped.more) slide.addText(`+${scraped.more} more rows`, { x:0.7, y:7.0, w:5, h:0.35, fontSize:11, color:MUTED });
+        }
+      } else {
+        slide.addText(sc.def.title.toUpperCase(), { x:0.7, y:0.5, w:12, h:0.4, fontSize:12, color:MUTED, charSpacing:2 });
+        const svg = document.querySelector('#' + sc.def.el + ' svg');
+        if (svg) {
+          const png = await svgToPngDataUrl(svg);
+          const maxW = 11.9, maxH = 5.8;
+          const scale = Math.min(maxW / png.w, maxH / png.h);
+          slide.addImage({ data: png.data, x:0.7, y:1.2, w: png.w * scale, h: png.h * scale });
+        }
+      }
+    }
+    const fileName = 'pipeline-review-' + dayjs(nowRef()).format('YYYY-MM-DD') + '.pptx';
+    await pptx.writeFile({ fileName });
+    toast(`Exported ${made}-slide deck — ${fileName}`);
+  } catch (e) {
+    console.warn('pptx export failed', e);
+    toast('PowerPoint export failed — opening Present mode instead.');
+    openPresent(false);
+  } finally {
+    if (curEd !== 'broadsheet') applyEdition(curEd);
+    state.renderQueued = false; renderAll();
+  }
 }
 
 /* ============================================================
@@ -9750,7 +10263,7 @@ function buildPresentScenes(){
   }
   // key sections, priority order, only currently visible ones
   const galleryKeys = orderedSectionDefs().filter(d => d.gallery && !isSectionOff(d)).map(d => d.key);
-  for (const key of ['flow','aging','statement','forecast'].concat(galleryKeys)) {
+  for (const key of ['flow','aging','statement','insights','forecast'].concat(galleryKeys)) {
     if (scenes.length >= 10) break;
     const def = SECTION_REGISTRY.find(d => d.key === key);
     if (!def) continue;
@@ -9902,6 +10415,7 @@ function buildPaletteIndex(){
     items.push({ type:'Commands', label:'Total pipeline', ctx:'period', run: () => setPeriodPreset('total') });
     items.push({ type:'Commands', label:'Current pipeline', ctx:'period', run: () => setPeriodPreset('current') });
     items.push({ type:'Commands', label:'Copy executive summary', run: copyExecSummary });
+    items.push({ type:'Commands', label:'Export PowerPoint', run: exportPptx });
     if (impliedMode() === 'snapshot') items.push({ type:'Commands', label:'Replay pipeline history', run: () => { if (!replay.playing) startReplay(); } });
     if (impliedMode() === 'snapshot') items.push({ type:'Commands', label:'Run weekly review', ctx:'meeting mode', run: openReview });
     items.push({ type:'Commands', label:'Reset filters', run: clearAllFilters });
@@ -10111,6 +10625,8 @@ function wireEvents(){
   window.addEventListener('keydown', reviewKeydown);
   $('#btn-run-review').addEventListener('click', openReview);
   $('#btn-insights-more').addEventListener('click', () => { state.insightsExpanded = !state.insightsExpanded; renderInsights(); });
+  $('#btn-export-pptx').addEventListener('click', exportPptx);
+  attachTipOnce($('#btn-export-pptx'), tipHtml('Export the Present deck as a real .pptx — text and tables stay editable in PowerPoint; charts embed as 2× images.', 'always rendered in Broadsheet styling'));
   attachTipOnce($('#btn-run-review'), tipHtml('Run the weekly review — a guided walk through the stories and overdue candidates, capturing decisions as you go.', 'Current pipeline only'));
   $('#btn-run-review2').addEventListener('click', openReview);
   // present/wall keyboard: arrows + space advance, P toggles, any key exits the wall
